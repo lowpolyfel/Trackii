@@ -1,0 +1,38 @@
+﻿@model Trackii.Models.Admin.User.UserListVm
+
+<h2>Usuarios</h2>
+
+<form method="get">
+    <input name="search" value="@Model.Search" placeholder="Buscar usuario..." />
+    <button type="submit">Buscar</button>
+</form>
+
+<a href="/Admin/User/Create">Nuevo</a>
+
+<table border="1">
+    <tr>
+        <th>Usuario</th>
+        <th>Rol</th>
+        <th>Activo</th>
+        <th></th>
+    </tr>
+    @foreach (var u in Model.Items)
+    {
+        <tr>
+            <td>@u.Username</td>
+            <td>@u.Role</td>
+            <td>@u.Active</td>
+            <td>
+                <a href="/Admin/User/Edit/@u.Id">Editar</a>
+                <a href="/Admin/User/Toggle/@u.Id">@(u.Active ? "Desactivar" : "Activar")</a>
+            </td>
+        </tr>
+    }
+</table>
+
+<div>
+    @for (int i = 1; i <= Model.TotalPages; i++)
+    {
+        <a href="?page=@i&search=@Model.Search">@i</a>
+    }
+</div>

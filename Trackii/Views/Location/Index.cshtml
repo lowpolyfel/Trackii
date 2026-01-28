@@ -1,0 +1,74 @@
+﻿@model Trackii.Models.Admin.Location.LocationListVm
+
+<h2>Locations</h2>
+
+<form method="get" action="/Admin/Location">
+    <input name="search" value="@Model.Search" placeholder="Buscar..." />
+
+    <label>
+        <input type="checkbox"
+               name="showInactive"
+               value="true"
+               @(Model.ShowInactive ? "checked" : "") />
+        Ver inactivos
+    </label>
+
+    <button type="submit">Filtrar</button>
+    <a href="/Admin/Location/Create">Nuevo</a>
+</form>
+
+@if (TempData["Error"] != null)
+{
+    <div style="color:red">@TempData["Error"]</div>
+}
+
+<table border="1" cellpadding="5">
+    <tr>
+        <th>Nombre</th>
+        <th>Activo</th>
+        <th></th>
+    </tr>
+
+    @foreach (var l in Model.Items)
+    {
+        <tr>
+            <td>@l.Name</td>
+            <td>@l.Active</td>
+            <td>
+                <a href="/Admin/Location/Edit/@l.Id">Editar</a>
+
+                <form method="post"
+                      action="/Admin/Location/Toggle"
+                      style="display:inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@l.Id" />
+                    <input type="hidden" name="active" value="@(l.Active ? 0 : 1)" />
+                    <button type="submit">
+                        @(l.Active ? "Desactivar" : "Activar")
+                    </button>
+                </form>
+            </td>
+        </tr>
+    }
+</table>
+
+@if (Model.TotalPages > 1)
+{
+    <div>
+        @for (int i = 1; i <= Model.TotalPages; i++)
+        {
+            if (i == Model.Page)
+            {
+                <strong>@i</strong>
+            }
+            else
+            {
+                <a href="/Admin/Location?page=@i
+                             &search=@Model.Search
+                             &showInactive=@(Model.ShowInactive ? "true" : "")">
+                    @i
+                </a>
+            }
+        }
+    </div>
+}

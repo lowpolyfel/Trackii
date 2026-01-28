@@ -1,0 +1,26 @@
+﻿@model Trackii.Models.Admin.Product.ProductEditVm
+
+<h2>Nuevo Product</h2>
+
+<form method="post" action="/Admin/Product/Create">
+    @Html.AntiForgeryToken()
+
+    <label>Subfamily</label><br />
+    <select asp-for="SubfamilyId">
+        <option value="">-- Selecciona Subfamily --</option>
+        @foreach (var s in ViewBag.Subfamilies as List<(uint Id, string Name)>)
+        {
+            <option value="@s.Id">@s.Name</option>
+        }
+    </select>
+    <span asp-validation-for="SubfamilyId"></span>
+    <br /><br />
+
+    <label>Part Number</label><br />
+    <input asp-for="PartNumber" />
+    <span asp-validation-for="PartNumber"></span>
+    <br /><br />
+
+    <button type="submit">Guardar</button>
+    <a href="/Admin/Product">Cancelar</a>
+</form>

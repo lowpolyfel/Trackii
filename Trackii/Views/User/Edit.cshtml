@@ -1,0 +1,23 @@
+﻿@model Trackii.Models.Admin.User.UserEditVm
+
+<h2>Editar Usuario</h2>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <label>Usuario</label><br />
+    <input asp-for="Username" /><br /><br />
+
+    <label>Rol</label><br />
+    <input asp-for="RoleId" /><br /><br />
+
+    <label>Activo</label>
+    <input type="checkbox" asp-for="Active" /><br /><br />
+
+    <label>Nueva contraseña (opcional)</label><br />
+    <input asp-for="NewPassword" type="password" /><br /><br />
+
+    <button type="submit">Guardar</button>
+    <a href="/Admin/User">Cancelar</a>
+</form>

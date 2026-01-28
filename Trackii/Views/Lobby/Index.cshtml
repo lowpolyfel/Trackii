@@ -1,0 +1,22 @@
+﻿@{
+    ViewData["Title"] = "Lobby";
+}
+
+<h2>Trackii – Lobby</h2>
+
+<p>Selecciona un módulo:</p>
+<ul>
+    <li><a href="/Admin/Area">Areas</a></li>
+    <li><a href="/Admin/Family">Families</a></li>
+    <li><a href="/Admin/Subfamily">Subfamilies</a></li>
+    <li><a href="/Admin/Product">Products</a></li>
+    <li><a href="/Admin/Location">Locations</a></li>
+    <li><a href="/Admin/Role">Roles</a></li>
+    <li><a href="/Admin/User">Usuarios</a></li>
+</ul>
+
+<hr />
+
+<form asp-controller="Account" asp-action="Logout" method="post">
+    <button type="submit">Cerrar sesión</button>
+</form>

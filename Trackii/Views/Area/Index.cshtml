@@ -1,0 +1,58 @@
+﻿@model Trackii.Models.Admin.Area.AreaListVm
+
+<h2>Areas</h2>
+
+<form method="get" action="/Admin/Area">
+    <input name="search" value="@Model.Search" placeholder="Buscar..." />
+    <label>
+        <input type="checkbox" name="showInactive" value="true"
+               @(Model.ShowInactive ? "checked" : "") />
+        Ver inactivos
+    </label>
+    <button type="submit">Filtrar</button>
+    <a href="/Admin/Area/Create">Nuevo</a>
+</form>
+
+<table border="1" cellpadding="5">
+    <tr>
+        <th>Nombre</th>
+        <th>Activo</th>
+        <th></th>
+    </tr>
+    @foreach (var a in Model.Items)
+    {
+        <tr>
+            <td>@a.Name</td>
+            <td>@a.Active</td>
+            <td>
+                <a href="/Admin/Area/Edit/@a.Id">Editar</a>
+
+                <form action="/Admin/Area/Toggle" method="post" style="display:inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@a.Id" />
+                    <input type="hidden" name="active" value="@(a.Active ? 0 : 1)" />
+                    <button type="submit">
+                        @(a.Active ? "Desactivar" : "Activar")
+                    </button>
+                </form>
+            </td>
+        </tr>
+    }
+</table>
+
+@if (Model.TotalPages > 1)
+{
+    <div>
+        @for (int i = 1; i <= Model.TotalPages; i++)
+        {
+            if (i == Model.Page)
+            {
+                <strong>@i</strong>
+            }
+            else
+            {
+                <a href="/Admin/Area?page=@i&search=@Model.Search&showInactive=@Model.ShowInactive">@i</a>
+            }
+        }
+    </div>
+}

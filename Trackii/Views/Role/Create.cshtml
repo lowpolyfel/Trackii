@@ -1,0 +1,14 @@
+﻿@model Trackii.Models.Admin.Role.RoleEditVm
+
+<h2>Nuevo Rol</h2>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+
+    <label>Nombre</label><br />
+    <input asp-for="Name" />
+    <span asp-validation-for="Name"></span><br /><br />
+
+    <button type="submit">Guardar</button>
+    <a href="/Admin/Role">Cancelar</a>
+</form>

@@ -1,0 +1,15 @@
+﻿@model Trackii.Models.Admin.Location.LocationEditVm
+
+<h2>Nueva Location</h2>
+
+<form method="post" action="/Admin/Location/Create">
+    @Html.AntiForgeryToken()
+
+    <label>Nombre</label><br />
+    <input asp-for="Name" />
+    <span asp-validation-for="Name"></span>
+    <br /><br />
+
+    <button type="submit">Guardar</button>
+    <a href="/Admin/Location">Cancelar</a>
+</form>

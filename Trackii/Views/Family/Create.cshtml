@@ -1,0 +1,27 @@
+﻿@model Trackii.Models.Admin.Family.FamilyEditVm
+@{
+    var areas = ViewBag.Areas as List<(uint Id, string Name)>;
+}
+
+<h2>Nueva Family</h2>
+
+<form method="post" action="/Admin/Family/Create">
+    @Html.AntiForgeryToken()
+
+    <label>Área</label><br />
+    <select asp-for="AreaId">
+        <option value="">-- Selecciona Área --</option>
+        @foreach (var a in areas!)
+        {
+            <option value="@a.Id">@a.Name</option>
+        }
+    </select>
+    <span asp-validation-for="AreaId"></span><br /><br />
+
+    <label>Nombre</label><br />
+    <input asp-for="Name" />
+    <span asp-validation-for="Name"></span><br /><br />
+
+    <button type="submit">Guardar</button>
+    <a href="/Admin/Family">Cancelar</a>
+</form>

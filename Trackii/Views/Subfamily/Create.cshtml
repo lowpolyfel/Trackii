@@ -1,0 +1,26 @@
+﻿@model Trackii.Models.Admin.Subfamily.SubfamilyEditVm
+
+<h2>Nueva Subfamily</h2>
+
+<form method="post" action="/Admin/Subfamily/Create">
+    @Html.AntiForgeryToken()
+
+    <label>Family</label><br />
+    <select asp-for="FamilyId">
+        <option value="">-- Selecciona Family --</option>
+        @foreach (var f in ViewBag.Families as List<(uint Id, string Name)>)
+        {
+            <option value="@f.Id">@f.Name</option>
+        }
+    </select>
+    <span asp-validation-for="FamilyId"></span>
+    <br /><br />
+
+    <label>Nombre</label><br />
+    <input asp-for="Name" />
+    <span asp-validation-for="Name"></span>
+    <br /><br />
+
+    <button type="submit">Guardar</button>
+    <a href="/Admin/Subfamily">Cancelar</a>
+</form>
