@@ -1,12 +1,45 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Scanner";
 }
 
-<div class="card">
-    <div class="page-header">
-        <div>
-            <h2>Bienvenido</h2>
-            <p class="subtitle">Selecciona una opción del menú para comenzar.</p>
+<div class="scanner-page">
+    <div class="scanner-surface">
+        <div class="scanner-header">
+            <div>
+                <h2>Scanner</h2>
+                <p class="subtitle">Autoriza la cámara para leer códigos de barra.</p>
+            </div>
+            <div class="scanner-actions">
+                <button type="button" id="scannerStart" class="btn btn-primary">Solicitar cámara</button>
+                <button type="button" id="scannerStop" class="btn btn-secondary" disabled>Detener</button>
+            </div>
+        </div>
+
+        <div class="scanner-grid">
+            <div class="scanner-preview">
+                <video id="scannerVideo" class="scanner-video" autoplay playsinline muted></video>
+                <div id="scannerStatus" class="scanner-status">Listo para iniciar la cámara.</div>
+                <div class="scanner-result">
+                    Último código detectado: <span id="scannerResult">—</span>
+                </div>
+            </div>
+
+            <div class="scanner-form">
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="orderNumber">No. de orden</label>
+                        <input id="orderNumber" class="input" placeholder="Ej. 1234567" inputmode="numeric" />
+                    </div>
+                    <div class="form-field">
+                        <label for="partNumber">No. de parte</label>
+                        <input id="partNumber" class="input" placeholder="Ej. ABC-12345" />
+                    </div>
+                </div>
+
+                <div class="scanner-hint">
+                    <strong>Regla:</strong> si el código tiene 7 dígitos se envía a No. de orden; de lo contrario a No. de parte.
+                </div>
+            </div>
         </div>
     </div>
 </div>
