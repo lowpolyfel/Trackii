@@ -45,6 +45,7 @@
 </div>
 
 @section Scripts {
+    <script src="https://unpkg.com/@zxing/library@0.21.2"></script>
     <script>
         (() => {
             const video = document.getElementById("scannerVideo");
@@ -59,14 +60,16 @@
             let detector = null;
             let scanning = false;
             let lastValue = "";
+            let zxingReader = null;
+            let usingZxing = false;
 
             const setStatus = (text) => {
                 status.textContent = text;
             };
 
-            const supportsScanner = "BarcodeDetector" in window;
-            if (!supportsScanner) {
-                setStatus("Este navegador no soporta BarcodeDetector.");
+            const supportsBarcodeDetector = "BarcodeDetector" in window;
+            if (!supportsBarcodeDetector && typeof window.ZXing === "undefined") {
+                setStatus("No se encontró un lector de códigos compatible.");
                 startButton.disabled = true;
             }
 
@@ -79,8 +82,11 @@
                 if (video) {
                     video.srcObject = null;
                 }
+                if (zxingReader) {
+                    zxingReader.reset();
+                }
                 stopButton.disabled = true;
-                startButton.disabled = !supportsScanner;
+                startButton.disabled = !supportsBarcodeDetector && typeof window.ZXing === "undefined";
                 if (announce) {
                     setStatus("Cámara detenida.");
                 }
@@ -99,7 +105,7 @@
             };
 
             const scanLoop = async () => {
-                if (!scanning || !detector) return;
+                if (!scanning || !detector || usingZxing) return;
                 try {
                     const barcodes = await detector.detect(video);
                     if (barcodes.length > 0) {
@@ -113,21 +119,37 @@
             };
 
             const startCamera = async () => {
-                if (!supportsScanner || scanning) return;
+                if ((!supportsBarcodeDetector && typeof window.ZXing === "undefined") || scanning) return;
                 try {
                     stream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: "environment" }
                     });
                     video.srcObject = stream;
                     await video.play();
-                    detector = new BarcodeDetector({
-                        formats: ["code_128", "ean_13", "ean_8", "qr_code", "upc_a", "upc_e", "code_39"]
-                    });
+                    usingZxing = !supportsBarcodeDetector;
+                    if (supportsBarcodeDetector) {
+                        detector = new BarcodeDetector({
+                            formats: ["code_128", "ean_13", "ean_8", "qr_code", "upc_a", "upc_e", "code_39"]
+                        });
+                    } else if (window.ZXing) {
+                        zxingReader = new window.ZXing.BrowserMultiFormatReader();
+                    }
                     scanning = true;
                     startButton.disabled = true;
                     stopButton.disabled = false;
                     setStatus("Cámara activa. Apunta al código de barras.");
-                    scanLoop();
+                    if (usingZxing && zxingReader) {
+                        zxingReader.decodeFromVideoDevice(null, video, (result, error) => {
+                            if (result) {
+                                handleValue(result.getText());
+                            }
+                            if (error && error.name !== "NotFoundException") {
+                                setStatus("No se pudo leer el código. Intenta de nuevo.");
+                            }
+                        });
+                    } else {
+                        scanLoop();
+                    }
                 } catch (error) {
                     stopCamera(false);
                     setStatus("No fue posible abrir la cámara. Verifica permisos.");
