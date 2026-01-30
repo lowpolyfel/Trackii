@@ -27,3 +27,26 @@ public class ScanResponse
     public uint? NextStep { get; set; }
     public string? NextLocation { get; set; }
 }
+
+// Para autollenar la pantalla SIN grabar nada
+public class ScanResolveResponse
+{
+    public bool Ok { get; set; }
+    public string Reason { get; set; } = "";
+
+    public uint ProductId { get; set; }
+    public string ProductName { get; set; } = "";
+    public string Area { get; set; } = "";
+    public string Family { get; set; } = "";
+    public string Subfamily { get; set; } = "";
+
+    public uint RouteId { get; set; }
+    public int RouteVersion { get; set; }
+
+    public uint CurrentStep { get; set; }
+    public string ExpectedLocation { get; set; } = "";
+
+    // Para habilitar cantidad:
+    public uint SuggestedQty { get; set; }
+    public uint MaxQty { get; set; }
+}

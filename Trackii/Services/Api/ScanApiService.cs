@@ -267,6 +267,143 @@ public class ScanApiService
             throw;
         }
     }
+    public ScanResolveResponse Resolve(uint userId, uint deviceId, string lot, string partNumber)
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+        using var tx = cn.BeginTransaction();
+
+        try
+        {
+            // Device location (requiere location)
+            var devLoc = GetDeviceLocation(cn, tx, deviceId);
+            if (devLoc == null)
+            {
+                tx.Commit();
+                return new ScanResolveResponse { Ok = false, Reason = "DEVICE_INVALID_OR_NO_LOCATION" };
+            }
+
+            var (deviceLocationId, deviceLocationName) = devLoc.Value;
+
+            // Product by part number
+            var productId = GetProductId(cn, tx, partNumber);
+            if (productId == null)
+            {
+                tx.Commit();
+                return new ScanResolveResponse { Ok = false, Reason = "PRODUCT_NOT_FOUND" };
+            }
+
+            // Product hierarchy + names
+            string areaName = "", familyName = "", subfamilyName = "", productName = "";
+            uint routeId = 0;
+            int routeVersion = 0;
+
+            using (var cmd = new MySqlCommand(@"
+            SELECT 
+                p.id AS product_id,
+                COALESCE(p.name,'') AS product_name,
+                COALESCE(a.name,'') AS area_name,
+                COALESCE(f.name,'') AS family_name,
+                COALESCE(sf.name,'') AS subfamily_name,
+                COALESCE(sf.active_route_id,0) AS route_id
+            FROM product p
+            JOIN subfamily sf ON sf.id = p.id_subfamily
+            JOIN family f ON f.id = sf.family_id
+            JOIN area a ON a.id = f.area_id
+            WHERE p.id=@pid
+            LIMIT 1", cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@pid", productId.Value);
+                using var rd = cmd.ExecuteReader();
+                if (!rd.Read())
+                {
+                    tx.Commit();
+                    return new ScanResolveResponse { Ok = false, Reason = "PRODUCT_HIERARCHY_INVALID" };
+                }
+
+                productName = rd.GetString("product_name");
+                areaName = rd.GetString("area_name");
+                familyName = rd.GetString("family_name");
+                subfamilyName = rd.GetString("subfamily_name");
+                routeId = Convert.ToUInt32(rd.GetUInt32("route_id"));
+            }
+
+            if (routeId == 0)
+            {
+                tx.Commit();
+                return new ScanResolveResponse { Ok = false, Reason = "NO_ACTIVE_ROUTE" };
+            }
+
+            // route version
+            using (var rv = new MySqlCommand("SELECT version FROM route WHERE id=@id LIMIT 1", cn, tx))
+            {
+                rv.Parameters.AddWithValue("@id", routeId);
+                var obj = rv.ExecuteScalar();
+                routeVersion = obj == null ? 0 : Convert.ToInt32(obj);
+            }
+
+            // Work order (wo_number = lot)
+            var workOrderId = GetOrCreateWorkOrder(cn, tx, lot, productId.Value);
+
+            // Get or create WIP (locked)
+            var (wipItemId, wipStatus, rId, currentStepId) = GetOrCreateWipLocked(cn, tx, workOrderId, routeId);
+
+            if (wipStatus == "HOLD")
+            {
+                tx.Commit();
+                return new ScanResolveResponse { Ok = false, Reason = "WIP_ON_REWORK" };
+            }
+
+            if (wipStatus is "FINISHED" or "SCRAPPED")
+            {
+                tx.Commit();
+                return new ScanResolveResponse { Ok = false, Reason = "WIP_CLOSED" };
+            }
+
+            // Current step meta
+            var stepMeta = GetStepMetaLocked(cn, tx, rId, currentStepId);
+            if (stepMeta == null)
+            {
+                tx.Commit();
+                return new ScanResolveResponse { Ok = false, Reason = "STEP_INVALID" };
+            }
+
+            var (currentStepNumber, expectedLocationId) = stepMeta.Value;
+
+            // Expected location name
+            var expectedLocName = GetLocationName(cn, tx, expectedLocationId) ?? "";
+
+            // MaxQty = previous qty (si existe), si no existe -> suggested = 0? (o qty inicial)
+            uint? previousQty = GetPreviousQty(cn, tx, wipItemId, rId, currentStepNumber);
+            uint maxQty = previousQty ?? 0;
+
+            // Si es primer paso y no hay previousQty, sugerimos maxQty = 0 (la app puede pedir qty manual).
+            // Si quieres “qty inicial”, aquí es donde se define con una regla simple.
+            uint suggestedQty = previousQty ?? 0;
+
+            tx.Commit();
+            return new ScanResolveResponse
+            {
+                Ok = true,
+                ProductId = productId.Value,
+                ProductName = productName,
+                Area = areaName,
+                Family = familyName,
+                Subfamily = subfamilyName,
+                RouteId = routeId,
+                RouteVersion = routeVersion,
+                CurrentStep = currentStepNumber,
+                ExpectedLocation = expectedLocName,
+                SuggestedQty = suggestedQty,
+                MaxQty = maxQty
+            };
+        }
+        catch
+        {
+            tx.Rollback();
+            throw;
+        }
+    }
 
     // =========================================================
     // QUICK STATUS

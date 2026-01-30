@@ -12,3 +12,13 @@ public class DeviceBindResponse
     public uint LocationId { get; set; }
     public string LocationName { get; set; } = "";
 }
+
+public class DeviceStatusResponse
+{
+    public uint DeviceId { get; set; }
+    public string DeviceUid { get; set; } = "";
+    public bool Active { get; set; }
+
+    public uint? LocationId { get; set; }
+    public string? LocationName { get; set; }
+}

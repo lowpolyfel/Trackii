@@ -19,6 +19,29 @@ public class ScanApiController : ControllerBase
         _scan = scan;
     }
 
+    // GET /api/v1/scan/resolve?deviceId=1&lot=1234567&partNumber=ABC
+    [HttpGet("scan/resolve")]
+    public ActionResult<ScanResolveResponse> Resolve([FromQuery] uint deviceId, [FromQuery] string lot, [FromQuery] string partNumber)
+    {
+        if (deviceId == 0) return BadRequest("deviceId requerido");
+        lot = (lot ?? "").Trim();
+        partNumber = (partNumber ?? "").Trim();
+
+        if (lot.Length == 0) return BadRequest("lot requerido");
+        if (!Regex.IsMatch(lot, @"^\d{7}$")) return BadRequest("lot invalido");
+        if (partNumber.Length == 0) return BadRequest("partNumber requerido");
+
+        var uid = User.FindFirstValue("uid");
+        if (string.IsNullOrWhiteSpace(uid) || !uint.TryParse(uid, out var userId))
+            return Unauthorized("Token sin uid");
+
+        var r = _scan.Resolve(userId, deviceId, lot, partNumber);
+        if (!r.Ok) return BadRequest(r.Reason);
+
+        return Ok(r);
+    }
+
+    // POST /api/v1/scan  (commit)
     [HttpPost("scan")]
     public ActionResult<ScanResponse> Scan([FromBody] ScanRequest req)
     {

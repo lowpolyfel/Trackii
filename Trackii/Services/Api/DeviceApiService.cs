@@ -1,4 +1,5 @@
 ﻿using MySql.Data.MySqlClient;
+using Trackii.Models.Api;
 
 namespace Trackii.Services.Api;
 
@@ -17,12 +18,14 @@ public class DeviceApiService
         using var cn = new MySqlConnection(_conn);
         cn.Open();
 
-        // Validar location
-        using (var lc = new MySqlCommand("SELECT id, name FROM location WHERE id=@id AND active=1 LIMIT 1", cn))
+        // Validar location activa
+        string locName;
+        using (var lc = new MySqlCommand("SELECT name FROM location WHERE id=@id AND active=1 LIMIT 1", cn))
         {
             lc.Parameters.AddWithValue("@id", locationId);
-            using var rd = lc.ExecuteReader();
-            if (!rd.Read()) throw new Exception("Location inválida o inactiva");
+            locName = Convert.ToString(lc.ExecuteScalar()) ?? "";
+            if (string.IsNullOrWhiteSpace(locName))
+                throw new Exception("Location inválida o inactiva");
         }
 
         // Upsert device por device_uid
@@ -43,32 +46,36 @@ public class DeviceApiService
             deviceId = Convert.ToUInt32(q.ExecuteScalar());
         }
 
-        string locName;
-        using (var q2 = new MySqlCommand("SELECT name FROM location WHERE id=@id LIMIT 1", cn))
-        {
-            q2.Parameters.AddWithValue("@id", locationId);
-            locName = Convert.ToString(q2.ExecuteScalar()) ?? "";
-        }
-
         return (deviceId, locationId, locName);
     }
 
-    public (uint LocationId, string LocationName) GetDeviceLocation(uint deviceId)
+    // Para el header: Device + Location (puede NO tener location aún)
+    public DeviceStatusResponse? GetStatus(uint deviceId)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
 
         using var cmd = new MySqlCommand(@"
-            SELECT d.location_id, l.name
+            SELECT d.id, d.device_uid, d.active, d.location_id, l.name AS location_name
             FROM devices d
-            JOIN location l ON l.id = d.location_id
-            WHERE d.id=@id AND d.active=1
+            LEFT JOIN location l ON l.id = d.location_id
+            WHERE d.id=@id
             LIMIT 1", cn);
 
         cmd.Parameters.AddWithValue("@id", deviceId);
         using var rd = cmd.ExecuteReader();
-        if (!rd.Read()) throw new Exception("Device inválido o inactivo");
+        if (!rd.Read()) return null;
 
-        return (Convert.ToUInt32(rd.GetUInt32("location_id")), rd.GetString("name"));
+        uint? locId = rd.IsDBNull(rd.GetOrdinal("location_id")) ? null : rd.GetUInt32("location_id");
+        string? locName = rd.IsDBNull(rd.GetOrdinal("location_name")) ? null : rd.GetString("location_name");
+
+        return new DeviceStatusResponse
+        {
+            DeviceId = rd.GetUInt32("id"),
+            DeviceUid = rd.GetString("device_uid"),
+            Active = rd.GetBoolean("active"),
+            LocationId = locId,
+            LocationName = locName
+        };
     }
 }
