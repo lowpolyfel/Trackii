@@ -366,6 +366,71 @@ body {
     border-top: 1px solid var(--border);
 }
 
+/* Scanner */
+.scanner-card {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.scanner-grid {
+    display: grid;
+    grid-template-columns: minmax(240px, 1.1fr) minmax(240px, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.scanner-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.scanner-video {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #111827;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    object-fit: cover;
+}
+
+.scanner-status {
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.scanner-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.scanner-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.scanner-hint {
+    font-size: 13px;
+    color: #4b5563;
+    background: #f9fafb;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.scanner-result {
+    font-size: 14px;
+    color: #1f2937;
+}
+
+@media (max-width: 900px) {
+    .scanner-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Alerts */
 .alert {
     margin: 14px 0;

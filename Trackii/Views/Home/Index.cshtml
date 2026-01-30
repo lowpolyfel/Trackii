@@ -2,7 +2,146 @@
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="card scanner-card">
+    <div class="page-header">
+        <div>
+            <h2>Escaneo con webcam</h2>
+            <p class="subtitle">Abre la cámara, lee el código de barras y clasifica automáticamente.</p>
+        </div>
+    </div>
+
+    <div class="scanner-grid">
+        <div class="scanner-preview">
+            <video id="scannerVideo" class="scanner-video" autoplay playsinline muted></video>
+            <div id="scannerStatus" class="scanner-status">Listo para iniciar la cámara.</div>
+            <div class="scanner-actions">
+                <button type="button" id="scannerStart" class="btn btn-primary">Iniciar cámara</button>
+                <button type="button" id="scannerStop" class="btn btn-secondary" disabled>Detener</button>
+            </div>
+        </div>
+
+        <div class="scanner-form">
+            <div class="form">
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="orderNumber">No. de orden</label>
+                        <input id="orderNumber" class="input" placeholder="Ej. 1234567" inputmode="numeric" />
+                    </div>
+                    <div class="form-field">
+                        <label for="partNumber">No. de parte</label>
+                        <input id="partNumber" class="input" placeholder="Ej. ABC-12345" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="scanner-hint">
+                <strong>Regla:</strong> si el código tiene 7 dígitos se envía a No. de orden; de lo contrario a No. de parte.
+            </div>
+            <div class="scanner-result">
+                Último código detectado: <span id="scannerResult">—</span>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const video = document.getElementById("scannerVideo");
+            const startButton = document.getElementById("scannerStart");
+            const stopButton = document.getElementById("scannerStop");
+            const status = document.getElementById("scannerStatus");
+            const result = document.getElementById("scannerResult");
+            const orderInput = document.getElementById("orderNumber");
+            const partInput = document.getElementById("partNumber");
+
+            let stream = null;
+            let detector = null;
+            let scanning = false;
+            let lastValue = "";
+
+            const setStatus = (text) => {
+                status.textContent = text;
+            };
+
+            const supportsScanner = "BarcodeDetector" in window;
+            if (!supportsScanner) {
+                setStatus("Este navegador no soporta BarcodeDetector.");
+                startButton.disabled = true;
+            }
+
+            const stopCamera = (announce = true) => {
+                scanning = false;
+                if (stream) {
+                    stream.getTracks().forEach((track) => track.stop());
+                    stream = null;
+                }
+                if (video) {
+                    video.srcObject = null;
+                }
+                stopButton.disabled = true;
+                startButton.disabled = !supportsScanner;
+                if (announce) {
+                    setStatus("Cámara detenida.");
+                }
+            };
+
+            const handleValue = (value) => {
+                const cleaned = value.trim();
+                if (!cleaned || cleaned === lastValue) return;
+                lastValue = cleaned;
+                result.textContent = cleaned;
+                if (/^\d{7}$/.test(cleaned)) {
+                    orderInput.value = cleaned;
+                } else {
+                    partInput.value = cleaned;
+                }
+            };
+
+            const scanLoop = async () => {
+                if (!scanning || !detector) return;
+                try {
+                    const barcodes = await detector.detect(video);
+                    if (barcodes.length > 0) {
+                        const value = barcodes[0].rawValue || barcodes[0].value || "";
+                        handleValue(value);
+                    }
+                } catch {
+                    setStatus("No se pudo leer el código. Intenta de nuevo.");
+                }
+                requestAnimationFrame(scanLoop);
+            };
+
+            const startCamera = async () => {
+                if (!supportsScanner || scanning) return;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: "environment" }
+                    });
+                    video.srcObject = stream;
+                    await video.play();
+                    detector = new BarcodeDetector({
+                        formats: ["code_128", "ean_13", "ean_8", "qr_code", "upc_a", "upc_e", "code_39"]
+                    });
+                    scanning = true;
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                    setStatus("Cámara activa. Apunta al código de barras.");
+                    scanLoop();
+                } catch (error) {
+                    stopCamera(false);
+                    setStatus("No fue posible abrir la cámara. Verifica permisos.");
+                }
+            };
+
+            startButton?.addEventListener("click", startCamera);
+            stopButton?.addEventListener("click", stopCamera);
+            window.addEventListener("beforeunload", stopCamera);
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState !== "visible") {
+                    stopCamera();
+                }
+            });
+        })();
+    </script>
+}
