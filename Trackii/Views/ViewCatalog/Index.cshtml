@@ -1,0 +1,45 @@
+﻿@model Trackii.Models.ViewCatalog.ViewCatalogVm
+
+@{
+    ViewData["Title"] = "Catálogo de Tablas";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Catálogo de Tablas</h2>
+            <p class="subtitle">Tablas operativas que aún no tienen vista administrativa directa.</p>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Tabla</th>
+                    <th>Descripción</th>
+                    <th class="text-right">Registros</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Tables.Any())
+                {
+                    <tr>
+                        <td colspan="3" class="empty">No hay tablas registradas</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var t in Model.Tables)
+                    {
+                        <tr>
+                            <td>@t.Name</td>
+                            <td>@t.Description</td>
+                            <td class="text-right">@t.Rows</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

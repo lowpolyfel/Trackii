@@ -5,18 +5,20 @@ using Trackii.Services;
 namespace Trackii.Controllers;
 
 [Authorize]
-public class LobbyController : Controller
+[Route("ViewCatalog")]
+public class ViewCatalogController : Controller
 {
-    private readonly LobbyService _svc;
+    private readonly ViewCatalogService _svc;
 
-    public LobbyController(LobbyService svc)
+    public ViewCatalogController(ViewCatalogService svc)
     {
         _svc = svc;
     }
 
+    [HttpGet("")]
     public IActionResult Index()
     {
-        var vm = _svc.GetDashboard();
+        var vm = _svc.GetCatalog();
         return View(vm);
     }
 }

@@ -58,6 +58,26 @@
                     <i class="fa-solid fa-users"></i>
                     <span>Users</span>
                 </a>
+
+                <a asp-controller="Location" asp-action="Index">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <span>Localidades</span>
+                </a>
+
+                <a asp-controller="Device" asp-action="Index">
+                    <i class="fa-solid fa-tablet-screen-button"></i>
+                    <span>Devices</span>
+                </a>
+
+                <a asp-controller="Role" asp-action="Index">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span>Roles</span>
+                </a>
+
+                <a asp-controller="ViewCatalog" asp-action="Index">
+                    <i class="fa-solid fa-table-list"></i>
+                    <span>Catálogo</span>
+                </a>
             </nav>
         </aside>
 
@@ -76,10 +96,13 @@
                         @HttpContextAccessor.HttpContext?.User?.Identity?.Name
                     </span>
 
-                    <a asp-controller="Account" asp-action="Logout" class="logout">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                        Logout
-                    </a>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="logout-form">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="logout">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                            Logout
+                        </button>
+                    </form>
                 </div>
             </header>
 

@@ -1,0 +1,41 @@
+﻿@model Trackii.Models.Admin.Device.DeviceEditVm
+
+@{
+    ViewData["Title"] = "Editar Device";
+}
+
+<h2>Editar Device</h2>
+
+<form asp-action="Edit" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div class="mb-3">
+        <label asp-for="DeviceUid" class="form-label"></label>
+        <input asp-for="DeviceUid" class="form-control" />
+        <span asp-validation-for="DeviceUid" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="LocationId" class="form-label">Location</label>
+        <select asp-for="LocationId"
+                asp-items="ViewBag.Locations"
+                class="form-select">
+            <option value="">-- Selecciona --</option>
+        </select>
+        <span asp-validation-for="LocationId" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

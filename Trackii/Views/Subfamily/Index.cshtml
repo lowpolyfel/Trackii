@@ -144,6 +144,7 @@
                                 <!-- IMPORTANTE: respetamos tu endpoint real -->
                                 <form method="post" action="/Admin/Subfamily/Toggle/@r.Id" class="inline-form">
                                     @Html.AntiForgeryToken()
+                                    <input type="hidden" name="active" value="@(r.Active ? 0 : 1)" />
                                     @if (r.Active)
                                     {
                                         <button type="submit" class="btn-chip danger">Desactivar</button>

@@ -101,6 +101,17 @@ body {
     text-decoration: none;
     color: var(--danger);
     font-size: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+}
+
+.logout-form {
+    margin: 0;
 }
 
 /* Content */

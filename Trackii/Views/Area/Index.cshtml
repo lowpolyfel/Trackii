@@ -78,9 +78,19 @@
                             <td class="text-right">
                                 <a asp-action="Edit"
                                    asp-route-id="@row.Id"
-                                   class="btn-icon">
+                                   class="btn-icon"
+                                   title="Editar">
                                     <i class="fa-solid fa-pen"></i>
                                 </a>
+
+                                <form action="/Admin/Area/Toggle" method="post" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@row.Id" />
+                                    <input type="hidden" name="active" value="@(row.Active ? 0 : 1)" />
+                                    <button type="submit" class="btn-chip @(row.Active ? "danger" : "success")">
+                                        @(row.Active ? "Desactivar" : "Activar")
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                     }

@@ -1,0 +1,62 @@
+﻿@model Trackii.Models.Admin.Device.DeviceEditVm
+
+@{
+    ViewData["Title"] = "Nuevo Device";
+    var locations = ViewBag.Locations as List<(uint Id, string Name)> ?? new();
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Nuevo Device</h2>
+            <p class="subtitle">Registra un dispositivo y su localidad</p>
+        </div>
+
+        <a href="/Admin/Device" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
+
+    <form method="post" class="form">
+        @Html.AntiForgeryToken()
+
+        <div class="form-grid">
+            <div class="form-field">
+                <label asp-for="DeviceUid"></label>
+                <input asp-for="DeviceUid" class="input" placeholder="Ej. ANDROID-001" />
+                <span asp-validation-for="DeviceUid" class="field-error"></span>
+            </div>
+
+            <div class="form-field">
+                <label asp-for="Name"></label>
+                <input asp-for="Name" class="input" placeholder="Nombre descriptivo (opcional)" />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+
+            <div class="form-field">
+                <label asp-for="LocationId">Localidad</label>
+                <select asp-for="LocationId" class="input">
+                    <option value="">Selecciona una localidad</option>
+                    @foreach (var l in locations)
+                    {
+                        <option value="@l.Id">@l.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="LocationId" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Guardar
+            </button>
+            <a href="/Admin/Device" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

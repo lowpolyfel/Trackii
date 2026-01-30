@@ -71,6 +71,8 @@ builder.Services.AddControllersWithViews(options =>
 // =====================
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<LobbyService>();
+builder.Services.AddScoped<ViewCatalogService>();
 
 builder.Services.AddScoped<AreaService>();
 builder.Services.AddScoped<FamilyService>();
@@ -80,6 +82,7 @@ builder.Services.AddScoped<RoleService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<Trackii.Services.Admin.RouteService>();
 builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<DeviceService>();
 builder.Services.AddScoped<DeviceActivationApiService>();
 
 // =====================

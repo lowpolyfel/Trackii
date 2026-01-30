@@ -1,4 +1,7 @@
-﻿@{
+﻿@using System.Text.Json
+@model Trackii.Models.Lobby.LobbyVm
+
+@{
     ViewData["Title"] = "Lobby";
 }
 
@@ -13,7 +16,7 @@
             </div>
             <div class="kpi-content">
                 <div class="kpi-title">Areas</div>
-                <div class="kpi-value">12</div>
+                <div class="kpi-value">@Model.AreasCount</div>
             </div>
         </a>
 
@@ -23,7 +26,7 @@
             </div>
             <div class="kpi-content">
                 <div class="kpi-title">Families</div>
-                <div class="kpi-value">34</div>
+                <div class="kpi-value">@Model.FamiliesCount</div>
             </div>
         </a>
 
@@ -33,7 +36,7 @@
             </div>
             <div class="kpi-content">
                 <div class="kpi-title">Subfamilies</div>
-                <div class="kpi-value">87</div>
+                <div class="kpi-value">@Model.SubfamiliesCount</div>
             </div>
         </a>
 
@@ -43,7 +46,47 @@
             </div>
             <div class="kpi-content">
                 <div class="kpi-title">Products</div>
-                <div class="kpi-value">142</div>
+                <div class="kpi-value">@Model.ProductsCount</div>
+            </div>
+        </a>
+
+        <a asp-controller="Route" asp-action="Index" class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-route"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Routes</div>
+                <div class="kpi-value">@Model.RoutesCount</div>
+            </div>
+        </a>
+
+        <a asp-controller="Location" asp-action="Index" class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-location-dot"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Localidades</div>
+                <div class="kpi-value">@Model.LocationsCount</div>
+            </div>
+        </a>
+
+        <a asp-controller="User" asp-action="Index" class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Users</div>
+                <div class="kpi-value">@Model.UsersCount</div>
+            </div>
+        </a>
+
+        <a asp-controller="Role" asp-action="Index" class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-user-shield"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Roles</div>
+                <div class="kpi-value">@Model.RolesCount</div>
             </div>
         </a>
 
@@ -53,13 +96,28 @@
     <div class="chart-grid">
 
         <div class="card">
-            <h3>Distribución por Área</h3>
+            <h3>Productos por Área</h3>
             <canvas id="areaChart"></canvas>
         </div>
 
         <div class="card">
             <h3>Estado de Productos</h3>
             <canvas id="productChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Órdenes de Trabajo</h3>
+            <canvas id="workOrderChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>WIP por Estado</h3>
+            <canvas id="wipChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Usuarios por Rol</h3>
+            <canvas id="roleChart"></canvas>
         </div>
 
     </div>
@@ -70,15 +128,27 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+        const areaLabels = @Html.Raw(JsonSerializer.Serialize(Model.AreaProductChart.Labels));
+        const areaValues = @Html.Raw(JsonSerializer.Serialize(Model.AreaProductChart.Values));
+        const productLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductStatusChart.Labels));
+        const productValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductStatusChart.Values));
+        const workOrderLabels = @Html.Raw(JsonSerializer.Serialize(Model.WorkOrderStatusChart.Labels));
+        const workOrderValues = @Html.Raw(JsonSerializer.Serialize(Model.WorkOrderStatusChart.Values));
+        const wipLabels = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Labels));
+        const wipValues = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Values));
+        const roleLabels = @Html.Raw(JsonSerializer.Serialize(Model.UsersByRoleChart.Labels));
+        const roleValues = @Html.Raw(JsonSerializer.Serialize(Model.UsersByRoleChart.Values));
+
         const areaCtx = document.getElementById('areaChart');
         new Chart(areaCtx, {
             type: 'bar',
             data: {
-                labels: ['Assembly', 'Test', 'Packaging', 'Warehouse'],
+                labels: areaLabels,
                 datasets: [{
-                    label: 'Items',
-                    data: [12, 19, 7, 5],
-                    borderWidth: 1
+                    label: 'Productos',
+                    data: areaValues,
+                    borderWidth: 1,
+                    backgroundColor: '#93c5fd'
                 }]
             },
             options: {
@@ -93,14 +163,68 @@
         new Chart(productCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Active', 'Inactive'],
+                labels: productLabels,
                 datasets: [{
-                    data: [120, 22],
+                    data: productValues,
+                    backgroundColor: ['#22c55e', '#f87171'],
                     borderWidth: 0
                 }]
             },
             options: {
                 responsive: true
+            }
+        });
+
+        const workOrderCtx = document.getElementById('workOrderChart');
+        new Chart(workOrderCtx, {
+            type: 'bar',
+            data: {
+                labels: workOrderLabels,
+                datasets: [{
+                    label: 'Órdenes',
+                    data: workOrderValues,
+                    backgroundColor: '#fbbf24'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        const wipCtx = document.getElementById('wipChart');
+        new Chart(wipCtx, {
+            type: 'pie',
+            data: {
+                labels: wipLabels,
+                datasets: [{
+                    data: wipValues,
+                    backgroundColor: ['#60a5fa', '#a78bfa', '#34d399', '#f87171']
+                }]
+            },
+            options: {
+                responsive: true
+            }
+        });
+
+        const roleCtx = document.getElementById('roleChart');
+        new Chart(roleCtx, {
+            type: 'bar',
+            data: {
+                labels: roleLabels,
+                datasets: [{
+                    label: 'Usuarios',
+                    data: roleValues,
+                    backgroundColor: '#38bdf8'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                }
             }
         });
     </script>

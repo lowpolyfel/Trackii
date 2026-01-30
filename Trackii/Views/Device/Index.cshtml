@@ -1,25 +1,25 @@
-﻿@model Trackii.Models.Admin.Role.RoleListVm
+﻿@model Trackii.Models.Admin.Device.DeviceListVm
 
 @{
-    ViewData["Title"] = "Roles";
+    ViewData["Title"] = "Devices";
 }
 
 <div class="card">
 
     <div class="page-header">
         <div>
-            <h2>Roles</h2>
-            <p class="subtitle">Administración de roles y permisos</p>
+            <h2>Devices</h2>
+            <p class="subtitle">Administración de dispositivos y sus ubicaciones</p>
         </div>
 
-        <a href="/Admin/Role/Create" class="btn btn-primary">
+        <a href="/Admin/Device/Create" class="btn btn-primary">
             <i class="fa-solid fa-plus"></i>
-            Nuevo Rol
+            Nuevo Device
         </a>
     </div>
 
-    <form method="get" action="/Admin/Role" class="filters">
-        <input type="text" name="search" value="@Model.Search" placeholder="Buscar..." />
+    <form method="get" action="/Admin/Device" class="filters">
+        <input type="text" name="search" value="@Model.Search" placeholder="Buscar por UID o nombre..." />
 
         <label class="checkbox">
             <input type="checkbox" name="showInactive" value="true" @(Model.ShowInactive ? "checked" : "") />
@@ -29,19 +29,13 @@
         <button type="submit" class="btn btn-secondary">Filtrar</button>
     </form>
 
-    @if (TempData["Error"] != null)
-    {
-        <div class="alert error">
-            <i class="fa-solid fa-circle-exclamation"></i>
-            @TempData["Error"]
-        </div>
-    }
-
     <div class="table-wrapper">
         <table class="table">
             <thead>
                 <tr>
+                    <th>UID</th>
                     <th>Nombre</th>
+                    <th>Localidad</th>
                     <th>Estado</th>
                     <th class="text-right">Acciones</th>
                 </tr>
@@ -50,17 +44,19 @@
                 @if (!Model.Items.Any())
                 {
                     <tr>
-                        <td colspan="3" class="empty">No hay roles registrados</td>
+                        <td colspan="5" class="empty">No hay dispositivos registrados</td>
                     </tr>
                 }
                 else
                 {
-                    foreach (var r in Model.Items)
+                    foreach (var row in Model.Items)
                     {
                         <tr>
-                            <td>@r.Name</td>
+                            <td>@row.DeviceUid</td>
+                            <td>@(string.IsNullOrWhiteSpace(row.Name) ? "-" : row.Name)</td>
+                            <td>@row.LocationName</td>
                             <td>
-                                @if (r.Active)
+                                @if (row.Active)
                                 {
                                     <span class="badge success">Activo</span>
                                 }
@@ -70,15 +66,16 @@
                                 }
                             </td>
                             <td class="text-right">
-                                <a href="/Admin/Role/Edit/@r.Id" class="btn-icon" title="Editar">
+                                <a href="/Admin/Device/Edit/@row.Id" class="btn-icon" title="Editar">
                                     <i class="fa-solid fa-pen"></i>
                                 </a>
 
-                                <form method="post" action="/Admin/Role/Toggle" class="inline-form">
+                                <form method="post" action="/Admin/Device/Toggle" class="inline-form">
                                     @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@r.Id" />
-                                    <button type="submit" class="btn-chip @(r.Active ? "danger" : "success")">
-                                        @(r.Active ? "Desactivar" : "Activar")
+                                    <input type="hidden" name="id" value="@row.Id" />
+                                    <input type="hidden" name="active" value="@(row.Active ? 0 : 1)" />
+                                    <button type="submit" class="btn-chip @(row.Active ? "danger" : "success")">
+                                        @(row.Active ? "Desactivar" : "Activar")
                                     </button>
                                 </form>
                             </td>
@@ -100,7 +97,7 @@
                 }
                 else
                 {
-                    <a class="page" href="/Admin/Role?page=@i&search=@Model.Search&showInactive=@(Model.ShowInactive ? "true" : "")">
+                    <a class="page" href="/Admin/Device?page=@i&search=@Model.Search&showInactive=@(Model.ShowInactive ? "true" : "")">
                         @i
                     </a>
                 }

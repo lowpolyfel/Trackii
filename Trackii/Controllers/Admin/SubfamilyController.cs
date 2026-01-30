@@ -114,9 +114,14 @@ public class SubfamilyController : Controller
     // ===================== TOGGLE =====================
     [HttpPost("Toggle/{id:long}")]
     [ValidateAntiForgeryToken]
-    public IActionResult Toggle(uint id)
+    public IActionResult Toggle(uint id, int active)
     {
-        _svc.SetActive(id, true); // el service valida padre activo
+        var ok = _svc.SetActive(id, active == 1); // el service valida padre activo
+        if (!ok)
+        {
+            TempData["Error"] = "No se puede activar la Subfamilia porque la Family está inactiva.";
+        }
+
         return RedirectToAction(nameof(Index));
     }
 }
