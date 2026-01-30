@@ -13,10 +13,11 @@ namespace Trackii.Controllers.Api;
 public class ScanApiController : ControllerBase
 {
     private readonly ScanApiService _scan;
-
-    public ScanApiController(ScanApiService scan)
+    private readonly ProductLookupService _lookupSvc;
+    public ScanApiController(ScanApiService scanSvc, ProductLookupService lookupSvc)
     {
-        _scan = scan;
+        _scan = scanSvc;
+        _lookupSvc = lookupSvc;
     }
 
     // GET /api/v1/scan/resolve?deviceId=1&lot=1234567&partNumber=ABC
@@ -83,5 +84,26 @@ public class ScanApiController : ControllerBase
             NextStep = r.NextStep,
             NextLocation = r.NextLocation
         });
+    }
+
+    [HttpGet("product/{partNumber}")]
+    public IActionResult GetProductInfo(string partNumber)
+    {
+        try
+        {
+            // Decodificar URL por si el no. de parte tiene simbolos especiales
+            var decoded = System.Net.WebUtility.UrlDecode(partNumber);
+
+            var info = _lookupSvc.GetProductInfo(decoded);
+
+            if (info == null)
+                return NotFound(new { message = "Número de parte no encontrado" });
+
+            return Ok(info);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 }

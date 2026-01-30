@@ -508,6 +508,8 @@ public class ScanApiService
             tx.Rollback();
             throw;
         }
+
+
     }
 
     // =========================================================

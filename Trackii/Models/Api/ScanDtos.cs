@@ -50,3 +50,10 @@ public class ScanResolveResponse
     public uint SuggestedQty { get; set; }
     public uint MaxQty { get; set; }
 }
+public class ProductInfoResponseDto
+{
+    public string PartNumber { get; set; } = "";
+    public string Family { get; set; } = "";
+    public string SubFamily { get; set; } = "";
+    public string Area { get; set; } = "";
+}
