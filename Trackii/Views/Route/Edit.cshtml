@@ -1,18 +1,20 @@
-﻿@model Trackii.Models.Admin.User.UserEditVm
+﻿@model Trackii.Models.Admin.Route.RouteEditVm
+
 @{
-    ViewData["Title"] = "Editar Usuario";
-    var roles = ViewBag.Roles as List<(uint Id, string Name)> ?? new();
+    ViewData["Title"] = "Editar Ruta";
+    var subfamilies = ViewBag.Subfamilies as List<(uint Id, string Name)> ?? new();
+    var locations = ViewBag.Locations as List<(uint Id, string Name)> ?? new();
 }
 
 <div class="card">
 
     <div class="page-header">
         <div>
-            <h2>Editar Usuario</h2>
-            <p class="subtitle">Puedes cambiar rol/estado y (opcional) contraseña</p>
+            <h2>Editar Ruta</h2>
+            <p class="subtitle">Actualiza el nombre y reordena los pasos</p>
         </div>
 
-        <a href="/Admin/User" class="btn btn-secondary">
+        <a href="/Admin/Route" class="btn btn-secondary">
             <i class="fa-solid fa-arrow-left"></i>
             Volver
         </a>
@@ -20,59 +22,89 @@
 
     <div asp-validation-summary="ModelOnly" class="field-error"></div>
 
-    <!-- Nota: el action es la misma URL /Admin/User/Edit/{id} porque el controller usa [HttpPost("Edit/{id:long}")] -->
-    <form method="post" class="form">
+    <form method="post" action="/Admin/Route/Save" class="form" id="routeForm">
         @Html.AntiForgeryToken()
 
         <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="Version" />
 
         <div class="form-grid">
 
             <div class="form-field">
-                <label asp-for="Username"></label>
-                <input asp-for="Username" class="input" />
-                <span asp-validation-for="Username" class="field-error"></span>
-            </div>
-
-            <div class="form-field">
-                <label>Rol</label>
-                <select asp-for="RoleId" class="input">
-                    @foreach (var r in roles)
+                <label for="SubfamilyId">Subfamily</label>
+                <select id="SubfamilyId" name="SubfamilyId" class="input" required>
+                    <option value="">-- Selecciona Subfamily --</option>
+                    @foreach (var s in subfamilies)
                     {
-                        if (r.Id == Model.RoleId)
+                        if (s.Id == Model.SubfamilyId)
                         {
-                            <option value="@r.Id" selected="selected">@r.Name</option>
+                            <option value="@s.Id" selected="selected">@s.Name</option>
                         }
                         else
                         {
-                            <option value="@r.Id">@r.Name</option>
+                            <option value="@s.Id">@s.Name</option>
                         }
                     }
                 </select>
-                <span asp-validation-for="RoleId" class="field-error"></span>
+                <span asp-validation-for="SubfamilyId" class="field-error"></span>
             </div>
 
             <div class="form-field">
-                <label asp-for="Active">Activo</label>
-                <label class="checkbox" style="gap:10px;">
-                    @if (Model.Active)
-                    {
-                        <input asp-for="Active" type="checkbox" checked="checked" />
-                    }
-                    else
-                    {
-                        <input asp-for="Active" type="checkbox" />
-                    }
-                    <span class="muted">Permite acceso al sistema</span>
-                </label>
+                <label asp-for="Name"></label>
+                <input asp-for="Name" class="input" />
+                <span asp-validation-for="Name" class="field-error"></span>
             </div>
 
             <div class="form-field">
-                <label asp-for="NewPassword">Nueva contraseña (opcional)</label>
-                <input asp-for="NewPassword" type="password" class="input" />
-                <span asp-validation-for="NewPassword" class="field-error"></span>
+                <label>Versión</label>
+                <input class="input" value="@Model.Version" readonly />
             </div>
 
+        </div>
+
+        <div class="form-field full">
+            <label>Pasos de la ruta</label>
+            <div class="route-step-controls">
+                <select id="routeLocationSelect" class="input">
+                    <option value="">-- Selecciona Location --</option>
+                    @foreach (var l in locations)
+                    {
+                        <option value="@l.Id">@l.Name</option>
+                    }
+                </select>
+                <button type="button" class="btn btn-secondary" id="addRouteStep">
+                    <i class="fa-solid fa-plus"></i>
+                    Agregar paso
+                </button>
+            </div>
+            <div class="route-step-hint" id="routeStepHint">Puedes mover los pasos con las flechas.</div>
+            <ol class="route-steps" id="routeSteps">
+                @if (Model.Steps.Any())
+                {
+                    for (var i = 0; i < Model.Steps.Count; i++)
+                    {
+                        var step = Model.Steps[i];
+                        <li class="route-step" data-location-id="@step.LocationId">
+                            <span class="route-step-number">@(i + 1).</span>
+                            <span class="route-step-name">@step.LocationName</span>
+                            <input type="hidden" data-field="LocationId" name="Steps[@i].LocationId" value="@step.LocationId" />
+                            <input type="hidden" data-field="StepNumber" name="Steps[@i].StepNumber" value="@step.StepNumber" />
+                            <div class="route-step-actions">
+                                <button type="button" class="btn-chip" data-action="up" title="Subir">
+                                    <i class="fa-solid fa-arrow-up"></i>
+                                </button>
+                                <button type="button" class="btn-chip" data-action="down" title="Bajar">
+                                    <i class="fa-solid fa-arrow-down"></i>
+                                </button>
+                                <button type="button" class="btn-chip danger" data-action="remove" title="Eliminar">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </li>
+                    }
+                }
+                <li class="route-step empty" id="routeStepsEmpty">No hay pasos añadidos.</li>
+            </ol>
         </div>
 
         <div class="form-actions">
@@ -80,7 +112,7 @@
                 <i class="fa-solid fa-floppy-disk"></i>
                 Guardar
             </button>
-            <a href="/Admin/User" class="btn btn-secondary">Cancelar</a>
+            <a href="/Admin/Route" class="btn btn-secondary">Cancelar</a>
         </div>
     </form>
 
@@ -88,4 +120,99 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const stepsList = document.getElementById("routeSteps");
+            const emptyItem = document.getElementById("routeStepsEmpty");
+            const addButton = document.getElementById("addRouteStep");
+            const locationSelect = document.getElementById("routeLocationSelect");
+            const hint = document.getElementById("routeStepHint");
+
+            function updateIndexes() {
+                const items = stepsList.querySelectorAll(".route-step[data-location-id]");
+                items.forEach((item, index) => {
+                    const number = item.querySelector(".route-step-number");
+                    number.textContent = `${index + 1}.`;
+                    item.querySelectorAll("input[data-field]").forEach(input => {
+                        const field = input.getAttribute("data-field");
+                        input.name = `Steps[${index}].${field}`;
+                        if (field === "StepNumber") {
+                            input.value = index + 1;
+                        }
+                    });
+                });
+                emptyItem.style.display = items.length ? "none" : "list-item";
+            }
+
+            function addStep(locationId, locationName) {
+                const existing = stepsList.querySelector(`.route-step[data-location-id="${locationId}"]`);
+                if (existing) {
+                    hint.textContent = "Ese Location ya está agregado.";
+                    return;
+                }
+
+                const li = document.createElement("li");
+                li.className = "route-step";
+                li.dataset.locationId = locationId;
+
+                li.innerHTML = `
+                    <span class="route-step-number"></span>
+                    <span class="route-step-name">${locationName}</span>
+                    <input type="hidden" data-field="LocationId" value="${locationId}" />
+                    <input type="hidden" data-field="StepNumber" value="0" />
+                    <div class="route-step-actions">
+                        <button type="button" class="btn-chip" data-action="up" title="Subir">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                        <button type="button" class="btn-chip" data-action="down" title="Bajar">
+                            <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                        <button type="button" class="btn-chip danger" data-action="remove" title="Eliminar">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                stepsList.appendChild(li);
+                updateIndexes();
+            }
+
+            addButton.addEventListener("click", () => {
+                const option = locationSelect.options[locationSelect.selectedIndex];
+                const locationId = option.value;
+                const locationName = option.text;
+                if (!locationId) {
+                    hint.textContent = "Selecciona una Location antes de agregar.";
+                    return;
+                }
+                addStep(locationId, locationName);
+            });
+
+            stepsList.addEventListener("click", (event) => {
+                const button = event.target.closest("button[data-action]");
+                if (!button) return;
+                const action = button.dataset.action;
+                const item = button.closest(".route-step");
+                if (!item) return;
+
+                if (action === "remove") {
+                    item.remove();
+                }
+                if (action === "up") {
+                    const prev = item.previousElementSibling;
+                    if (prev && prev.dataset.locationId) {
+                        stepsList.insertBefore(item, prev);
+                    }
+                }
+                if (action === "down") {
+                    const next = item.nextElementSibling;
+                    if (next) {
+                        stepsList.insertBefore(next, item);
+                    }
+                }
+                updateIndexes();
+            });
+
+            updateIndexes();
+        })();
+    </script>
 }
