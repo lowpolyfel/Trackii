@@ -1,15 +1,42 @@
 ﻿@model Trackii.Models.Admin.Role.RoleEditVm
+@{
+    ViewData["Title"] = "Nuevo Rol";
+}
 
-<h2>Nuevo Role</h2>
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Nuevo Rol</h2>
+            <p class="subtitle">Define un nuevo rol para el sistema</p>
+        </div>
 
-<form method="post">
-    @Html.AntiForgeryToken()
+        <a href="/Admin/Role" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
 
-    <label>Nombre</label><br />
-    <input asp-for="Name" />
-    <span asp-validation-for="Name"></span>
-    <br /><br />
+    <form method="post" class="form">
+        @Html.AntiForgeryToken()
 
-    <button type="submit">Guardar</button>
-    <a href="/Admin/Role">Cancelar</a>
-</form>
+        <div class="form-grid">
+            <div class="form-field">
+                <label asp-for="Name"></label>
+                <input asp-for="Name" class="input" placeholder="Ej. Admin / Supervisor" />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Guardar
+            </button>
+            <a href="/Admin/Role" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
