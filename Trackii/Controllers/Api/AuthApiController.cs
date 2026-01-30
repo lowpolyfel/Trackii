@@ -1,87 +1,49 @@
-﻿using System.Security.Claims;
-using Microsoft.AspNetCore.Identity;
-using MySql.Data.MySqlClient;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Trackii.Models.Api;
+using Trackii.Services;
+using Trackii.Services.Api;
 
-namespace Trackii.Services;
+namespace Trackii.Controllers.Api;
 
-public class AuthService
+[ApiController]
+[AllowAnonymous]
+[Route("api/v1/auth")]
+public class AuthApiController : ControllerBase
 {
-    private readonly string _conn;
-    private readonly PasswordHasher<string> _hasher = new();
+    private readonly AuthService _auth;
+    private readonly JwtTokenService _jwt;
 
-    public AuthService(IConfiguration cfg)
+    public AuthApiController(AuthService auth, JwtTokenService jwt)
     {
-        _conn = cfg.GetConnectionString("TrackiiDb")
-            ?? throw new Exception("Connection string TrackiiDb no configurada");
+        _auth = auth;
+        _jwt = jwt;
     }
 
-    // Para MVC (cookies) - se queda igual
-    public ClaimsPrincipal? Login(string username, string passwordPlain)
+    // POST /api/v1/auth/login
+    [HttpPost("login")]
+    public ActionResult<LoginResponse> Login([FromBody] LoginRequest req)
     {
-        var info = ValidateUser(username, passwordPlain);
-        if (info == null) return null;
+        if (req == null) return BadRequest("request requerido");
 
-        var claims = new List<Claim>
+        var username = (req.Username ?? "").Trim();
+        var password = req.Password ?? "";
+
+        if (username.Length == 0) return BadRequest("username requerido");
+        if (password.Length == 0) return BadRequest("password requerido");
+
+        var info = _auth.ValidateUser(username, password);
+        if (info == null)
+            return Unauthorized(new { error = "INVALID_CREDENTIALS" });
+
+        var token = _jwt.CreateToken(info.Value.UserId, info.Value.Username, info.Value.Role);
+
+        return Ok(new LoginResponse
         {
-            new Claim(ClaimTypes.Name, info.Value.Username),
-            new Claim(ClaimTypes.Role, info.Value.Role)
-        };
-
-        var identity = new ClaimsIdentity(claims, "Cookies");
-        return new ClaimsPrincipal(identity);
-    }
-
-    // Para API/JWT - NUEVO
-    public (uint UserId, string Username, string Role)? ValidateUser(string username, string passwordPlain)
-    {
-        using var cn = new MySqlConnection(_conn);
-        cn.Open();
-
-        using var cmd = new MySqlCommand(@"
-            SELECT u.id, u.username, u.password, u.active, r.name AS role
-            FROM `user` u
-            JOIN `role` r ON r.id = u.role_id
-            WHERE u.username=@u
-            LIMIT 1", cn);
-
-        cmd.Parameters.AddWithValue("@u", username);
-
-        using var rd = cmd.ExecuteReader();
-        if (!rd.Read()) return null;
-
-        var active = rd.GetBoolean("active");
-        if (!active) return null;
-
-        var userId = Convert.ToUInt32(rd.GetUInt32("id"));
-        var dbUsername = rd.GetString("username");
-        var dbHash = rd.GetString("password");
-        var role = rd.GetString("role");
-
-        PasswordVerificationResult verify;
-
-        try
-        {
-            verify = _hasher.VerifyHashedPassword(dbUsername, dbHash, passwordPlain);
-        }
-        catch (FormatException)
-        {
-            return null;
-        }
-
-        if (verify == PasswordVerificationResult.Failed)
-            return null;
-
-        if (verify == PasswordVerificationResult.SuccessRehashNeeded)
-        {
-            var newHash = _hasher.HashPassword(dbUsername, passwordPlain);
-
-            rd.Close();
-            using var up = new MySqlCommand("UPDATE `user` SET password=@p WHERE username=@u", cn);
-            up.Parameters.AddWithValue("@p", newHash);
-            up.Parameters.AddWithValue("@u", dbUsername);
-            up.ExecuteNonQuery();
-        }
-
-        return (userId, dbUsername, role);
+            Token = token.Token,
+            UserId = info.Value.UserId,
+            Role = info.Value.Role,
+            ExpiresAtUtc = token.ExpiresUtc
+        });
     }
 }

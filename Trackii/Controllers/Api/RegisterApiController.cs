@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization; // <--- IMPORTANTE
+using Microsoft.AspNetCore.Mvc;
 using Trackii.Models.Api;
 using Trackii.Services.Api;
 
 namespace Trackii.Controllers.Api;
 
 [ApiController]
+[AllowAnonymous]
 [Route("api/v1/register")]
 public class RegisterApiController : ControllerBase
 {

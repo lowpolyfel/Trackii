@@ -6,6 +6,9 @@ public class RegisterRequestDto
     public string DeviceUid { get; set; } = "";
     public string? DeviceName { get; set; }
     public string Password { get; set; } = "";
+
+    // AGREGE ESTO: Para recibir la ubicación seleccionada
+    public uint LocationId { get; set; }
 }
 
 public class RegisterResponseDto

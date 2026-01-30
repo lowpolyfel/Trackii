@@ -1,91 +1,83 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using MySql.Data.MySqlClient;
 using Trackii.Models.Api;
-using Trackii.Services.Api;
 
 namespace Trackii.Controllers.Api;
 
 [ApiController]
-[Route("api/v1/device")]
+[Route("api")]
 public class DeviceApiController : ControllerBase
 {
-    private readonly DeviceActivationApiService _activation;
-    private readonly DeviceApiService _device;
+    private readonly IConfiguration _config;
 
-    public DeviceApiController(
-        DeviceActivationApiService activation,
-        DeviceApiService device)
+    public DeviceApiController(IConfiguration config)
     {
-        _activation = activation;
-        _device = device;
+        _config = config;
     }
 
-    // 1) Activación por token (Dar de alta) - NO requiere login
-    // POST /api/v1/device/activate
-    [HttpPost("activate")]
-    [AllowAnonymous]
-    public ActionResult<DeviceActivationResponse> Activate(
-        [FromBody] DeviceActivationRequest req)
+    private MySqlConnection GetConn()
+        => new MySqlConnection(_config.GetConnectionString("TrackiiDb"));
+
+    // ==========================
+    // GET: api/locations
+    // ==========================
+    [HttpGet("locations")]
+    public IActionResult GetLocations()
     {
-        if (req == null)
-            return BadRequest("request requerido");
+        var list = new List<LocationDto>();
 
-        if (string.IsNullOrWhiteSpace(req.Token))
-            return BadRequest("token requerido");
+        using var conn = GetConn();
+        conn.Open();
 
-        if (string.IsNullOrWhiteSpace(req.AndroidId))
-            return BadRequest("androidId requerido");
+        var cmd = new MySqlCommand(
+            "SELECT id, name FROM location WHERE active = 1 ORDER BY name",
+            conn);
 
-        var result = _activation.Activate(
-            req.Token.Trim(),
-            req.AndroidId.Trim());
-
-        if (!result.Ok)
-            return Unauthorized(result.Reason);
-
-        return Ok(result);
-    }
-
-    // 2) Bind de localidad (después de activar + login)
-    // POST /api/v1/device/bind
-    [HttpPost("bind")]
-    [Authorize(AuthenticationSchemes = "ApiBearer")]
-    public ActionResult<DeviceBindResponse> Bind(
-        [FromBody] DeviceBindRequest req)
-    {
-        if (req == null)
-            return BadRequest("request requerido");
-
-        if (string.IsNullOrWhiteSpace(req.DeviceUid))
-            return BadRequest("deviceUid requerido");
-
-        if (req.LocationId <= 0)
-            return BadRequest("locationId requerido");
-
-        var (deviceId, locationId, locationName) =
-            _device.Bind(req.DeviceUid.Trim(), req.LocationId);
-
-        return Ok(new DeviceBindResponse
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
         {
-            DeviceId = deviceId,
-            LocationId = locationId,
-            LocationName = locationName
-        });
+            list.Add(new LocationDto
+            {
+                Id = rd.GetUInt32("id"),
+                Name = rd.GetString("name")
+            });
+        }
+
+        return Ok(list);
     }
 
-    // 3) Status para header de la app (device + location)
-    // GET /api/v1/device/{deviceId}
-    [HttpGet("{deviceId:int}")]
-    [Authorize(AuthenticationSchemes = "ApiBearer")]
-    public ActionResult<DeviceStatusResponse> Get(int deviceId)
+    // ==========================
+    // POST: api/devices/register
+    // ==========================
+    [HttpPost("devices/register")]
+    public IActionResult RegisterDevice([FromBody] RegisterDeviceRequest req)
     {
-        if (deviceId <= 0)
-            return BadRequest("deviceId inválido");
+        if (string.IsNullOrWhiteSpace(req.DeviceUid))
+            return BadRequest("DeviceUid requerido");
 
-        var info = _device.GetStatus((uint)deviceId);
-        if (info == null)
-            return NotFound();
+        using var conn = GetConn();
+        conn.Open();
 
-        return Ok(info);
+        // ¿Ya existe?
+        var check = new MySqlCommand(
+            "SELECT id FROM devices WHERE device_uid = @uid",
+            conn);
+        check.Parameters.AddWithValue("@uid", req.DeviceUid);
+
+        var exists = check.ExecuteScalar();
+        if (exists != null)
+            return Conflict("Dispositivo ya registrado");
+
+        var cmd = new MySqlCommand(@"
+            INSERT INTO devices (device_uid, location_id, name, active)
+            VALUES (@uid, @loc, @name, 1)", conn);
+
+        cmd.Parameters.AddWithValue("@uid", req.DeviceUid);
+        cmd.Parameters.AddWithValue("@loc", req.LocationId);
+        cmd.Parameters.AddWithValue("@name", req.DeviceName);
+
+        cmd.ExecuteNonQuery();
+
+        return Ok();
     }
 }

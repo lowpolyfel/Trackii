@@ -22,7 +22,7 @@ public class RegisterApiService
 
         try
         {
-            // 1) Validar token provisioning
+            // 1. Validar token
             var tokenCmd = cn.CreateCommand();
             tokenCmd.Transaction = tx;
             tokenCmd.CommandText = "SELECT 1 FROM tokens WHERE code=@code";
@@ -31,7 +31,7 @@ public class RegisterApiService
             if (tokenCmd.ExecuteScalar() == null)
                 throw new Exception("Token inválido");
 
-            // 2) Resolver role Piso
+            // 2. Resolver rol Piso
             var roleCmd = cn.CreateCommand();
             roleCmd.Transaction = tx;
             roleCmd.CommandText = "SELECT id FROM role WHERE name='Piso' AND active=1";
@@ -41,19 +41,19 @@ public class RegisterApiService
 
             var roleId = Convert.ToUInt32(roleIdObj);
 
-            // 3) Username automático (Variante B)
+            // 3. Username
             var username = $"PISO-{dto.DeviceUid}";
 
-            // 4) Evitar doble registro
+            // 4. Verificar usuario existente
             var existsUserCmd = cn.CreateCommand();
             existsUserCmd.Transaction = tx;
             existsUserCmd.CommandText = "SELECT 1 FROM user WHERE username=@u LIMIT 1";
             existsUserCmd.Parameters.AddWithValue("@u", username);
 
             if (existsUserCmd.ExecuteScalar() != null)
-                throw new Exception("Este dispositivo ya está registrado");
+                throw new Exception("Este dispositivo ya está registrado (usuario existente)");
 
-            // 5) Crear usuario
+            // 5. Crear Usuario
             var hasher = new PasswordHasher<string>();
             var hash = hasher.HashPassword(username, dto.Password);
 
@@ -70,18 +70,20 @@ public class RegisterApiService
 
             var userId = (uint)userCmd.LastInsertedId;
 
-            // 6) Crear / upsert device SIN localidad
+            // 6. Crear/Actualizar Device con LOCATION_ID
             var deviceCmd = cn.CreateCommand();
             deviceCmd.Transaction = tx;
             deviceCmd.CommandText = """
                 INSERT INTO devices (device_uid, name, location_id, active)
-                VALUES (@uid, @name, NULL, 1)
+                VALUES (@uid, @name, @locId, 1)
                 ON DUPLICATE KEY UPDATE
                     name = VALUES(name),
+                    location_id = VALUES(location_id),
                     active = 1
             """;
             deviceCmd.Parameters.AddWithValue("@uid", dto.DeviceUid);
             deviceCmd.Parameters.AddWithValue("@name", (object?)dto.DeviceName ?? DBNull.Value);
+            deviceCmd.Parameters.AddWithValue("@locId", dto.LocationId); // <--- AQUI SE GUARDA
             deviceCmd.ExecuteNonQuery();
 
             uint deviceId;
@@ -99,9 +101,7 @@ public class RegisterApiService
                 getDevId.Parameters.AddWithValue("@uid", dto.DeviceUid);
 
                 var devIdObj = getDevId.ExecuteScalar();
-                if (devIdObj == null)
-                    throw new Exception("No se pudo resolver el DeviceId");
-
+                if (devIdObj == null) throw new Exception("Error recuperando Device ID");
                 deviceId = Convert.ToUInt32(devIdObj);
             }
 
@@ -112,7 +112,7 @@ public class RegisterApiService
                 UserId = userId,
                 DeviceId = deviceId,
                 Username = username,
-                Jwt = "" // Login se hace después
+                Jwt = ""
             };
         }
         catch
