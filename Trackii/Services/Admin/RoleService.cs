@@ -134,4 +134,24 @@ public class RoleService
         cmd.ExecuteNonQuery();
         return true;
     }
+   
+
+    // VALIDACIÓN DE DUPLICADOS
+    public bool Exists(string name, uint? id = null)
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        var query = "SELECT COUNT(*) FROM role WHERE name = @n";
+
+        if (id.HasValue)
+            query += " AND id != @id";
+
+        using var cmd = new MySqlCommand(query, cn);
+        cmd.Parameters.AddWithValue("@n", name);
+        if (id.HasValue)
+            cmd.Parameters.AddWithValue("@id", id.Value);
+
+        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+    }
 }

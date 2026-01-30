@@ -1,83 +1,146 @@
 ﻿@model Trackii.Models.Admin.Family.FamilyListVm
 
-<h2>Families</h2>
+@{
+    ViewData["Title"] = "Families";
+}
 
-<form method="get" action="/Admin/Family">
-    <select name="areaId">
-        <option value="">-- Área --</option>
-        @foreach (var a in Model.Areas)
-        {
-            if (Model.AreaId == a.Id)
+<div class="card">
+
+    <div class="page-header">
+        <div>
+            <h2>Families</h2>
+            <p class="subtitle">Administración de familias por área</p>
+        </div>
+
+        <a href="/Admin/Family/Create" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i>
+            Nueva Family
+        </a>
+    </div>
+
+    <form method="get" action="/Admin/Family" class="filters">
+
+        <select name="areaId" class="input">
+            <option value="">Todas las áreas</option>
+            @foreach (var a in Model.Areas)
             {
-                <option value="@a.Id" selected>@a.Name</option>
+                if (Model.AreaId == a.Id)
+                {
+                    <option value="@a.Id" selected="selected">@a.Name</option>
+                }
+                else
+                {
+                    <option value="@a.Id">@a.Name</option>
+                }
+            }
+        </select>
+
+        <input type="text" name="search" value="@Model.Search" placeholder="Buscar por nombre..." />
+
+        <label class="checkbox">
+            @if (Model.ShowInactive)
+            {
+                <input type="checkbox" name="showInactive" value="true" checked="checked" />
             }
             else
             {
-                <option value="@a.Id">@a.Name</option>
+                <input type="checkbox" name="showInactive" value="true" />
             }
-        }
-    </select>
+            Mostrar inactivas
+        </label>
 
-    <input name="search" value="@Model.Search" placeholder="Buscar..." />
+        <button type="submit" class="btn btn-secondary">
+            Filtrar
+        </button>
+    </form>
 
-    <label>
-        <input type="checkbox" name="showInactive" value="true"
-               @(Model.ShowInactive ? "checked" : "") />
-        Ver inactivos
-    </label>
-
-    <button type="submit">Filtrar</button>
-    <a href="/Admin/Family/Create">Nuevo</a>
-</form>
-
-@if (TempData["Error"] != null)
-{
-    <div style="color:red; font-weight:bold;">
-        @TempData["Error"]
-    </div>
-}
-
-<table border="1" cellpadding="5">
-    <tr>
-        <th>Área</th>
-        <th>Nombre</th>
-        <th>Activo</th>
-        <th></th>
-    </tr>
-@foreach (var f in Model.Items)
-{
-    <tr>
-        <td>@f.AreaName</td>
-        <td>@f.Name</td>
-        <td>@f.Active</td>
-        <td>
-            <a href="/Admin/Family/Edit/@f.Id">Editar</a>
-            <form action="/Admin/Family/Toggle" method="post" style="display:inline">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="id" value="@f.Id" />
-                    <input type="hidden" name="active" value="@(f.Active ? 0 : 1)" />
-                    <button type="submit">
-                    @(f.Active ? "Desactivar" : "Activar")
-                </button>
-            </form>
-        </td>
-    </tr>
-}
-</table>
-
-@if (Model.TotalPages > 1)
-{
-    <div>
-@for (int i = 1; i <= Model.TotalPages; i++)
-{
-    if (i == Model.Page)
+    @if (TempData["Error"] != null)
     {
-        <strong>@i</strong>
+        <div class="alert error">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            @TempData["Error"]
+        </div>
+    }
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Área</th>
+                    <th>Nombre</th>
+                    <th>Estado</th>
+                    <th class="text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="empty">No hay families registradas</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var f in Model.Items)
+                    {
+                        <tr>
+                            <td>@f.AreaName</td>
+                            <td>@f.Name</td>
+                            <td>
+                                @if (f.Active)
+                                {
+                                    <span class="badge success">Activa</span>
+                                }
+                                else
+                                {
+                                    <span class="badge danger">Inactiva</span>
+                                }
+                            </td>
+                            <td class="text-right">
+                                <a href="/Admin/Family/Edit/@f.Id" class="btn-icon" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+
+                                <form action="/Admin/Family/Toggle" method="post" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@f.Id" />
+                                    <input type="hidden" name="active" value="@(f.Active ? 0 : 1)" />
+                                    <button type="submit" class="btn-chip @(f.Active ? "danger" : "success")">
+                                        @(f.Active ? "Desactivar" : "Activar")
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page"
+                       href="/Admin/Family?page=@i&areaId=@Model.AreaId&search=@Model.Search&showInactive=@Model.ShowInactive">@i</a>
+                }
+            }
+        </div>
     }
     else
     {
-        <a href="/Admin/Family?page=@i&areaId=@Model.AreaId&search=@Model.Search&showInactive=@Model.ShowInactive">@i</a>
+        <div class="pagination">
+            Página @Model.Page de @Model.TotalPages
+        </div>
     }
-}
-    </div>
-}
+
+</div>

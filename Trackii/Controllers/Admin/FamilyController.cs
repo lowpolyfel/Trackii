@@ -40,8 +40,27 @@ public class FamilyController : Controller
             return View(vm);
         }
 
-        _svc.Create(vm);
-        return RedirectToAction(nameof(Index));
+        // 1. VALIDACIÓN DUPLICADOS (La que ya tenías)
+        if (_svc.Exists(vm.Name))
+        {
+            ModelState.AddModelError("Name", "Este nombre de Familia ya existe.");
+            ViewBag.Areas = _svc.GetActiveAreas();
+            return View(vm);
+        }
+
+        // 2. INTENTO DE CREACIÓN (Con validación de Área Activa)
+        try
+        {
+            _svc.Create(vm);
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            // Captura si el Área está inactiva y muestra el error
+            ModelState.AddModelError("", ex.Message);
+            ViewBag.Areas = _svc.GetActiveAreas();
+            return View(vm);
+        }
     }
 
     [HttpGet("Edit/{id:long}")]
@@ -66,10 +85,27 @@ public class FamilyController : Controller
             return View(vm);
         }
 
-        _svc.Update(vm);
-        return RedirectToAction(nameof(Index));
-    }
+        // 1. VALIDACIÓN DUPLICADOS (La que ya tenías)
+        if (_svc.Exists(vm.Name, id))
+        {
+            ModelState.AddModelError("Name", "Este nombre de Familia ya existe.");
+            ViewBag.Areas = _svc.GetActiveAreas();
+            return View(vm);
+        }
 
+        // 2. INTENTO DE ACTUALIZACIÓN (Con validación de Área Activa)
+        try
+        {
+            _svc.Update(vm);
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            ViewBag.Areas = _svc.GetActiveAreas();
+            return View(vm);
+        }
+    }
     [HttpPost("Toggle")]
     [ValidateAntiForgeryToken]
     public IActionResult Toggle(uint id, int active)

@@ -2,23 +2,106 @@
     ViewData["Title"] = "Lobby";
 }
 
-<h2>Trackii – Lobby</h2>
+<div class="dashboard">
 
-<p>Selecciona un módulo:</p>
+    <!-- KPI CARDS -->
+    <div class="kpi-grid">
 
-<ul>
-    <li><a href="/Admin/Area">Administración de Áreas</a></li>
-    <li><a href="/Admin/Family">Administración de Families</a></li>
-    <li><a href="/Admin/Subfamily">Administración de Subfamilies</a></li>
-    <li><a href="/Admin/Location">Administración de Localidades</a></li>
-    <li><a href="/Admin/Role">Administración de Roles</a></li>
-    <li><a href="/Admin/Route">Administración de Rutas</a></li>
+        <a asp-controller="Area" asp-action="Index" class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Areas</div>
+                <div class="kpi-value">12</div>
+            </div>
+        </a>
 
-    <li><a href="/Admin/User">Administración de Usuarios</a></li>
-</ul>
+        <a asp-controller="Family" asp-action="Index" class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-diagram-project"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Families</div>
+                <div class="kpi-value">34</div>
+            </div>
+        </a>
 
-<hr />
+        <a asp-controller="Subfamily" asp-action="Index" class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-sitemap"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Subfamilies</div>
+                <div class="kpi-value">87</div>
+            </div>
+        </a>
 
-<form asp-controller="Account" asp-action="Logout" method="post">
-    <button type="submit">Cerrar sesión</button>
-</form>
+        <a asp-controller="Product" asp-action="Index" class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-box"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Products</div>
+                <div class="kpi-value">142</div>
+            </div>
+        </a>
+
+    </div>
+
+    <!-- CHARTS -->
+    <div class="chart-grid">
+
+        <div class="card">
+            <h3>Distribución por Área</h3>
+            <canvas id="areaChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Estado de Productos</h3>
+            <canvas id="productChart"></canvas>
+        </div>
+
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const areaCtx = document.getElementById('areaChart');
+        new Chart(areaCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Assembly', 'Test', 'Packaging', 'Warehouse'],
+                datasets: [{
+                    label: 'Items',
+                    data: [12, 19, 7, 5],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        const productCtx = document.getElementById('productChart');
+        new Chart(productCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Active', 'Inactive'],
+                datasets: [{
+                    data: [120, 22],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true
+            }
+        });
+    </script>
+}

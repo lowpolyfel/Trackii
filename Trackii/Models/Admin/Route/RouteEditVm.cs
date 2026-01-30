@@ -1,4 +1,6 @@
-﻿namespace Trackii.Models.Admin.Route;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Trackii.Models.Admin.Route;
 
 public class RouteEditVm
 {
@@ -8,8 +10,9 @@ public class RouteEditVm
 
     public string Name { get; set; } = string.Empty;
 
-    // Se genera automáticamente por subfamilia (100, 200, 300...)
+    [Required, MaxLength(20)]
     public string Version { get; set; } = string.Empty;
+    public bool Active { get; set; }
 
     // Lista ordenada (solo seleccionados)
     public List<RouteStepVm> Steps { get; set; } = new();

@@ -1,49 +1,97 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+﻿@using Microsoft.AspNetCore.Identity
+@inject IHttpContextAccessor HttpContextAccessor
+
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Trackii</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Trackii.styles.css" asp-append-version="true" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Trackii</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                    </ul>
-                </div>
+
+    <div class="app-shell">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="logo">Trackii</span>
             </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+
+            <nav class="sidebar-nav">
+                <a asp-controller="Lobby" asp-action="Index">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Lobby</span>
+                </a>
+
+                <a asp-controller="Area" asp-action="Index">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Areas</span>
+                </a>
+
+                <a asp-controller="Family" asp-action="Index">
+                    <i class="fa-solid fa-diagram-project"></i>
+                    <span>Families</span>
+                </a>
+
+                <a asp-controller="Subfamily" asp-action="Index">
+                    <i class="fa-solid fa-sitemap"></i>
+                    <span>Subfamilies</span>
+                </a>
+
+                <a asp-controller="Product" asp-action="Index">
+                    <i class="fa-solid fa-box"></i>
+                    <span>Products</span>
+                </a>
+
+                <a asp-controller="Route" asp-action="Index">
+                    <i class="fa-solid fa-route"></i>
+                    <span>Routes</span>
+                </a>
+
+                <a asp-controller="User" asp-action="Index">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Users</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN -->
+        <div class="main">
+
+            <!-- HEADER -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    @ViewData["Title"]
+                </div>
+
+                <div class="topbar-right">
+                    <span class="user">
+                        <i class="fa-solid fa-user"></i>
+                        @HttpContextAccessor.HttpContext?.User?.Identity?.Name
+                    </span>
+
+                    <a asp-controller="Account" asp-action="Logout" class="logout">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        Logout
+                    </a>
+                </div>
+            </header>
+
+            <!-- CONTENT -->
+            <main class="content">
+                @RenderBody()
+            </main>
+
+        </div>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - Trackii - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
+    @RenderSection("Scripts", required: false)
+
 </body>
 </html>

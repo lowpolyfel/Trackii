@@ -1,34 +1,69 @@
 ﻿@model Trackii.Models.Admin.Product.ProductEditVm
 
-<h2>Editar Product</h2>
+@{
+    ViewData["Title"] = "Editar Product";
+    var subfamilies = ViewBag.Subfamilies as List<(uint Id, string Name)> ?? new();
+}
 
-<form method="post" action="/Admin/Product/Edit/@Model.Id">
-    @Html.AntiForgeryToken()
+<div class="card">
 
-    <input type="hidden" asp-for="Id" />
+    <div class="page-header">
+        <div>
+            <h2>Editar Product</h2>
+            <p class="subtitle">Actualiza la Subfamily y/o el Part Number</p>
+        </div>
 
-    <label>Subfamily</label><br />
-    <select asp-for="SubfamilyId">
-        @foreach (var s in ViewBag.Subfamilies as List<(uint Id, string Name)>)
-        {
-            if (Model.SubfamilyId == s.Id)
-            {
-                <option value="@s.Id" selected>@s.Name</option>
-            }
-            else
-            {
-                <option value="@s.Id">@s.Name</option>
-            }
-        }
-    </select>
-    <span asp-validation-for="SubfamilyId"></span>
-    <br /><br />
+        <a href="/Admin/Product" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
 
-    <label>Part Number</label><br />
-    <input asp-for="PartNumber" />
-    <span asp-validation-for="PartNumber"></span>
-    <br /><br />
+    <form method="post" action="/Admin/Product/Edit/@Model.Id" class="form">
+        @Html.AntiForgeryToken()
 
-    <button type="submit">Guardar</button>
-    <a href="/Admin/Product">Cancelar</a>
-</form>
+        <input type="hidden" name="Id" value="@Model.Id" />
+
+        <div class="form-grid">
+
+            <div class="form-field">
+                <label for="SubfamilyId">Subfamily</label>
+                <select id="SubfamilyId" name="SubfamilyId" class="input">
+                    @foreach (var s in subfamilies)
+                    {
+                        if (Model.SubfamilyId == s.Id)
+                        {
+                            <option value="@s.Id" selected="selected">@s.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    }
+                </select>
+                <span asp-validation-for="SubfamilyId" class="field-error"></span>
+            </div>
+
+            <div class="form-field">
+                <label asp-for="PartNumber"></label>
+                <input asp-for="PartNumber" class="input" />
+                <span asp-validation-for="PartNumber" class="field-error"></span>
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Guardar
+            </button>
+
+            <a href="/Admin/Product" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

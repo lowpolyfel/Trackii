@@ -3,18 +3,44 @@
     ViewData["Title"] = "Nueva Area";
 }
 
-<h2>Nueva Area</h2>
+<div class="card">
 
-<form method="post" action="/Admin/Area/Create">
-    @Html.AntiForgeryToken()
+    <div class="page-header">
+        <div>
+            <h2>Nueva Area</h2>
+            <p class="subtitle">Crea una nueva área para organizar Families/Subfamilies/Products</p>
+        </div>
 
-    <label>Nombre</label><br />
-    <input asp-for="Name" />
-    <span asp-validation-for="Name"></span><br /><br />
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
 
-    <button type="submit">Guardar</button>
-    <a href="/Admin/Area">Cancelar</a>
-</form>
+    <form method="post" asp-action="Create" class="form">
+        @Html.AntiForgeryToken()
+
+        <div class="form-grid">
+            <div class="form-field">
+                <label asp-for="Name"></label>
+                <input asp-for="Name" class="input" placeholder="Ej. Assembly / Test / Packaging" />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Guardar
+            </button>
+
+            <a asp-action="Index" class="btn btn-secondary">
+                Cancelar
+            </a>
+        </div>
+    </form>
+
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

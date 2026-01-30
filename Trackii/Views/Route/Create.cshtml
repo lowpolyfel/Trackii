@@ -1,140 +1,66 @@
-﻿@model Trackii.Models.Admin.Route.RouteEditVm
+﻿@model Trackii.Models.Admin.User.UserCreateVm
 @{
-    var subfamilies = ViewBag.Subfamilies as List<(uint Id, string Name)> ?? new();
-    var locations = ViewBag.Locations as List<(uint Id, string Name)> ?? new();
+    ViewData["Title"] = "Nuevo Usuario";
+    var roles = ViewBag.Roles as List<(uint Id, string Name)> ?? new();
 }
 
-<h2>Crear Ruta</h2>
+<div class="card">
 
-@if (!string.IsNullOrWhiteSpace(Model.Error))
-{
-    <div style="color:red;">@Model.Error</div>
-}
+    <div class="page-header">
+        <div>
+            <h2>Nuevo Usuario</h2>
+            <p class="subtitle">Crea un usuario y asígnale un rol</p>
+        </div>
 
-<form method="post" action="/Admin/Route/Save">
-    @Html.AntiForgeryToken()
-
-    <label>Subfamily</label><br />
-    <select name="SubfamilyId" required>
-        <option value="">(Selecciona)</option>
-        @foreach (var sf in subfamilies)
-        {
-            <option value="@sf.Id">@sf.Name</option>
-        }
-    </select>
-    <br /><br />
-
-    <label>Nombre</label><br />
-    <input name="Name" value="@Model.Name" />
-    <br /><br />
-
-    <h3>Pasos (selecciona Locations)</h3>
-
-    <div id="locationsPanel">
-        @foreach (var loc in locations)
-        {
-            <label style="display:inline-block; margin-right:12px;">
-                <input type="checkbox" class="loc-check" data-id="@loc.Id" data-name="@loc.Name" />
-                @loc.Name
-            </label>
-        }
+        <a href="/Admin/User" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
     </div>
 
-    <h4>Orden actual</h4>
-    <div id="selectedSteps"></div>
+    <div asp-validation-summary="ModelOnly" class="field-error"></div>
 
-    <div id="stepsHidden"></div>
+    <form method="post" class="form">
+        @Html.AntiForgeryToken()
 
-    <br />
-    <button type="submit">Guardar</button>
-    <a href="/Admin/Route">Cancelar</a>
-</form>
+        <div class="form-grid">
 
-<script>
-    (function () {
-        // Array de { locationId, name }
-        let steps = [];
+            <div class="form-field">
+                <label asp-for="Username"></label>
+                <input asp-for="Username" class="input" />
+                <span asp-validation-for="Username" class="field-error"></span>
+            </div>
 
-        const selectedStepsDiv = document.getElementById("selectedSteps");
-        const hiddenDiv = document.getElementById("stepsHidden");
-
-        function render() {
-            // Render lista ordenada con botones subir/bajar/quitar
-            let html = "";
-            if (steps.length === 0) {
-                html = "<div>(Sin pasos todavía)</div>";
-            } else {
-                html += "<table border='1' cellpadding='6' cellspacing='0'>";
-                html += "<tr><th>#</th><th>Location</th><th>Acciones</th></tr>";
-                steps.forEach((s, idx) => {
-                    html += "<tr>";
-                    html += "<td>" + (idx + 1) + "</td>";
-                    html += "<td>" + s.name + "</td>";
-                    html += "<td>";
-                    html += "<button type='button' data-act='up' data-idx='" + idx + "'>↑</button> ";
-                    html += "<button type='button' data-act='down' data-idx='" + idx + "'>↓</button> ";
-                    html += "<button type='button' data-act='remove' data-idx='" + idx + "'>Quitar</button>";
-                    html += "</td>";
-                    html += "</tr>";
-                });
-                html += "</table>";
-            }
-            selectedStepsDiv.innerHTML = html;
-
-            // Hidden inputs para model binding: Steps[i].LocationId y Steps[i].StepNumber
-            let h = "";
-            steps.forEach((s, idx) => {
-                h += "<input type='hidden' name='Steps[" + idx + "].LocationId' value='" + s.locationId + "' />";
-                h += "<input type='hidden' name='Steps[" + idx + "].StepNumber' value='" + (idx + 1) + "' />";
-            });
-            hiddenDiv.innerHTML = h;
-
-            // Sincroniza checkboxes
-            document.querySelectorAll(".loc-check").forEach(ch => {
-                const id = parseInt(ch.getAttribute("data-id"));
-                ch.checked = steps.some(x => x.locationId === id);
-            });
-        }
-
-        // Checkbox: agrega al final o quita
-        document.querySelectorAll(".loc-check").forEach(ch => {
-            ch.addEventListener("change", function () {
-                const id = parseInt(this.getAttribute("data-id"));
-                const name = this.getAttribute("data-name");
-
-                if (this.checked) {
-                    if (!steps.some(x => x.locationId === id)) {
-                        steps.push({ locationId: id, name: name });
+            <div class="form-field">
+                <label>Rol</label>
+                <select asp-for="RoleId" class="input">
+                    @foreach (var r in roles)
+                    {
+                        <option value="@r.Id">@r.Name</option>
                     }
-                } else {
-                    steps = steps.filter(x => x.locationId !== id);
-                }
-                render();
-            });
-        });
+                </select>
+                <span asp-validation-for="RoleId" class="field-error"></span>
+            </div>
 
-        // Acciones en tabla
-        selectedStepsDiv.addEventListener("click", function (e) {
-            const btn = e.target.closest("button");
-            if (!btn) return;
+            <div class="form-field">
+                <label asp-for="Password"></label>
+                <input asp-for="Password" type="password" class="input" />
+                <span asp-validation-for="Password" class="field-error"></span>
+            </div>
 
-            const act = btn.getAttribute("data-act");
-            const idx = parseInt(btn.getAttribute("data-idx"));
+        </div>
 
-            if (act === "remove") {
-                steps.splice(idx, 1);
-            } else if (act === "up" && idx > 0) {
-                const tmp = steps[idx - 1];
-                steps[idx - 1] = steps[idx];
-                steps[idx] = tmp;
-            } else if (act === "down" && idx < steps.length - 1) {
-                const tmp = steps[idx + 1];
-                steps[idx + 1] = steps[idx];
-                steps[idx] = tmp;
-            }
-            render();
-        });
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Crear
+            </button>
+            <a href="/Admin/User" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
 
-        render();
-    })();
-</script>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

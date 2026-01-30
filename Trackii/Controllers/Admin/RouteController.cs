@@ -5,8 +5,8 @@ using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize]
-[Route("Admin/[controller]")]
+[Authorize(Roles = "Admin")]
+[Route("Admin/Route")]
 public class RouteController : Controller
 {
     private readonly RouteService _service;
@@ -24,10 +24,10 @@ public class RouteController : Controller
     }
 
     [HttpGet("")]
-    public IActionResult Index(uint? subfamilyId, string? search, bool showInactive = false, int page = 1, int pageSize = 10)
+    public IActionResult Index(uint? subfamilyId, string? search, bool showInactive = false, int page = 1)
     {
         LoadLookups(subfamilyId);
-        var vm = _service.GetPaged(subfamilyId, search, showInactive, page, pageSize);
+        var vm = _service.GetPaged(subfamilyId, search, showInactive, page, 10);
         return View(vm);
     }
 
@@ -52,12 +52,16 @@ public class RouteController : Controller
     {
         try
         {
+            // Validaciones manuales básicas si ModelState falla por listas dinámicas
+            if (vm.SubfamilyId == 0) ModelState.AddModelError("SubfamilyId", "Requerido");
+
             _service.Save(vm);
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
         {
-            vm.Error = ex.Message;
+            // Error de negocio (ej: WIP activo)
+            ModelState.AddModelError("", ex.Message);
             LoadLookups(vm.SubfamilyId);
             return View(vm.Id == 0 ? "Create" : "Edit", vm);
         }
@@ -70,12 +74,12 @@ public class RouteController : Controller
         try
         {
             _service.Activate(id);
-            return RedirectToAction(nameof(Index));
+            TempData["Success"] = "Ruta activada correctamente.";
         }
         catch (Exception ex)
         {
             TempData["Error"] = ex.Message;
-            return RedirectToAction(nameof(Index));
         }
+        return RedirectToAction(nameof(Index));
     }
 }

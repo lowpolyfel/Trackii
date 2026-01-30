@@ -36,6 +36,13 @@ public class AreaController : Controller
         if (!ModelState.IsValid)
             return View(vm);
 
+        // Validación de duplicados
+        if (_svc.Exists(vm.Name))
+        {
+            ModelState.AddModelError("Name", "Este nombre de Área ya existe.");
+            return View(vm);
+        }
+
         _svc.Create(vm);
         return RedirectToAction(nameof(Index));
     }
@@ -57,18 +64,24 @@ public class AreaController : Controller
         if (!ModelState.IsValid)
             return View(vm);
 
+        // Validación de duplicados
+        if (_svc.Exists(vm.Name, id))
+        {
+            ModelState.AddModelError("Name", "Este nombre de Área ya existe.");
+            return View(vm);
+        }
+
         _svc.Update(vm);
         return RedirectToAction(nameof(Index));
     }
 
+    // CORREGIDO: Ahora coincide con el formulario de tu Index.cshtml
     [HttpPost("Toggle")]
     [ValidateAntiForgeryToken]
     public IActionResult Toggle(uint id, int active)
     {
-        var isActive = active == 1;
+        bool isActive = (active == 1);
         _svc.SetActive(id, isActive);
         return RedirectToAction(nameof(Index));
     }
-
-
 }

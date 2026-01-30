@@ -1,60 +1,144 @@
 ﻿@model Trackii.Models.Admin.User.UserListVm
 
-<h2>Usuarios</h2>
+@{
+    ViewData["Title"] = "Users";
+}
 
-<form method="get" action="/Admin/User">
-    <input name="search" value="@Model.Search" placeholder="Buscar username..." />
+<div class="card">
 
-    <label>
-        <input type="checkbox" name="showInactive" value="true"
-               @(Model.ShowInactive ? "checked" : "") />
-        Ver inactivos
-    </label>
+    <div class="page-header">
+        <div>
+            <h2>Users</h2>
+            <p class="subtitle">Administración de usuarios y roles</p>
+        </div>
 
-    <button type="submit">Filtrar</button>
-    <a href="/Admin/User/Create">Nuevo</a>
-</form>
+        <a href="/Admin/User/Create" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i>
+            Nuevo Usuario
+        </a>
+    </div>
 
-<table border="1" cellpadding="5">
-    <tr>
-        <th>Username</th>
-        <th>Role</th>
-        <th>Activo</th>
-        <th></th>
-    </tr>
-
-    @foreach (var u in Model.Rows)
+    @if (TempData["Error"] != null)
     {
-        <tr>
-            <td>@u.Username</td>
-            <td>@u.Role</td>
-            <td>@u.Active</td>
-            <td>
-                <a href="/Admin/User/Edit/@u.Id">Editar</a>
-
-                <form method="post" action="/Admin/User/Toggle" style="display:inline">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" value="@u.Id" />
-                    <button type="submit">@(u.Active ? "Desactivar" : "Activar")</button>
-                </form>
-            </td>
-        </tr>
+        <div class="alert error">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            @TempData["Error"]
+        </div>
     }
-</table>
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert success">
+            <i class="fa-solid fa-circle-check"></i>
+            @TempData["Success"]
+        </div>
+    }
 
-@if (Model.TotalPages > 1)
-{
-    <div>
-        @for (int i = 1; i <= Model.TotalPages; i++)
-        {
-            if (i == Model.Page)
+    <form method="get" action="/Admin/User" class="filters">
+        <input type="text"
+               name="search"
+               value="@Model.Search"
+               placeholder="Buscar username..." />
+
+        <label class="checkbox">
+            @if (Model.ShowInactive)
             {
-                <strong>@i</strong>
+                <input type="checkbox" name="showInactive" value="true" checked="checked" onchange="this.form.submit()" />
             }
             else
             {
-                <a href="/Admin/User?page=@i&search=@Model.Search&showInactive=@(Model.ShowInactive ? "true" : "")">@i</a>
+                <input type="checkbox" name="showInactive" value="true" onchange="this.form.submit()" />
             }
-        }
+            Ver inactivos
+        </label>
+
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+        <a href="/Admin/User" class="btn btn-secondary">Limpiar</a>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Estado</th>
+                    <th class="text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                @if (!Model.Rows.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="empty">No hay usuarios registrados</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var u in Model.Rows)
+                    {
+                        <tr>
+                            <td>@u.Username</td>
+                            <td>@u.Role</td>
+                            <td>
+                                @if (u.Active)
+                                {
+                                    <span class="badge success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge danger">Inactivo</span>
+                                }
+                            </td>
+                            <td class="text-right">
+                                <a href="/Admin/User/Edit/@u.Id" class="btn-chip">
+                                    <i class="fa-solid fa-pen"></i>
+                                    Editar
+                                </a>
+
+                                <form method="post" action="/Admin/User/Toggle" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    @if (u.Active)
+                                    {
+                                        <button type="submit" class="btn-chip danger">Desactivar</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" class="btn-chip success">Activar</button>
+                                    }
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+
+            </tbody>
+        </table>
     </div>
-}
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page"
+                       href="/Admin/User?page=@i&search=@Model.Search&showInactive=@(Model.ShowInactive ? "true" : "")">
+                        @i
+                    </a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="pagination">Página @Model.Page de @Model.TotalPages</div>
+    }
+
+</div>

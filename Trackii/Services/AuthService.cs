@@ -15,7 +15,24 @@ public class AuthService
             ?? throw new Exception("Connection string TrackiiDb no configurada");
     }
 
+    // Para MVC (cookies) - se queda igual
     public ClaimsPrincipal? Login(string username, string passwordPlain)
+    {
+        var info = ValidateUser(username, passwordPlain);
+        if (info == null) return null;
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, info.Value.Username),
+            new Claim(ClaimTypes.Role, info.Value.Role)
+        };
+
+        var identity = new ClaimsIdentity(claims, "Cookies");
+        return new ClaimsPrincipal(identity);
+    }
+
+    // Para API/JWT - NUEVO
+    public (uint UserId, string Username, string Role)? ValidateUser(string username, string passwordPlain)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
@@ -35,6 +52,7 @@ public class AuthService
         var active = rd.GetBoolean("active");
         if (!active) return null;
 
+        var userId = Convert.ToUInt32(rd.GetUInt32("id"));
         var dbUsername = rd.GetString("username");
         var dbHash = rd.GetString("password");
         var role = rd.GetString("role");
@@ -47,32 +65,23 @@ public class AuthService
         }
         catch (FormatException)
         {
-            // Hash inválido (bcrypt/plain/truncado). No tumbes el sistema.
             return null;
         }
 
         if (verify == PasswordVerificationResult.Failed)
             return null;
 
-        // (Opcional) si Identity recomienda rehash, actualiza
         if (verify == PasswordVerificationResult.SuccessRehashNeeded)
         {
             var newHash = _hasher.HashPassword(dbUsername, passwordPlain);
 
-            rd.Close(); // cerrar reader antes de actualizar
+            rd.Close();
             using var up = new MySqlCommand("UPDATE `user` SET password=@p WHERE username=@u", cn);
             up.Parameters.AddWithValue("@p", newHash);
             up.Parameters.AddWithValue("@u", dbUsername);
             up.ExecuteNonQuery();
         }
 
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, dbUsername),
-            new Claim(ClaimTypes.Role, role)
-        };
-
-        var identity = new ClaimsIdentity(claims, "Cookies");
-        return new ClaimsPrincipal(identity);
+        return (userId, dbUsername, role);
     }
 }

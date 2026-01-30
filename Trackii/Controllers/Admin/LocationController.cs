@@ -44,6 +44,13 @@ public class LocationController : Controller
         if (!ModelState.IsValid)
             return View(vm);
 
+        // VALIDACIÓN
+        if (_svc.Exists(vm.Name))
+        {
+            ModelState.AddModelError("Name", "Esta ubicación ya existe.");
+            return View(vm);
+        }
+
         _svc.Create(vm);
         return RedirectToAction(nameof(Index));
     }
@@ -65,6 +72,13 @@ public class LocationController : Controller
 
         if (!ModelState.IsValid)
             return View(vm);
+
+        // VALIDACIÓN
+        if (_svc.Exists(vm.Name, id))
+        {
+            ModelState.AddModelError("Name", "Esta ubicación ya existe.");
+            return View(vm);
+        }
 
         _svc.Update(vm);
         return RedirectToAction(nameof(Index));

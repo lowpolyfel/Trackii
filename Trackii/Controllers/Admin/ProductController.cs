@@ -54,8 +54,26 @@ public class ProductController : Controller
             return View(vm);
         }
 
-        _svc.Create(vm);
-        return RedirectToAction(nameof(Index));
+        // 1. VALIDACIÓN DUPLICADOS (Ya existente)
+        if (_svc.Exists(vm.PartNumber))
+        {
+            ModelState.AddModelError("PartNumber", "Este número de parte ya existe.");
+            ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
+            return View(vm);
+        }
+
+        // 2. INTENTO DE CREACIÓN (Con validación de Subfamilia Activa)
+        try
+        {
+            _svc.Create(vm);
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message); // "La Subfamilia seleccionada está inactiva"
+            ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
+            return View(vm);
+        }
     }
 
     [HttpGet("Edit/{id:long}")]
@@ -80,8 +98,26 @@ public class ProductController : Controller
             return View(vm);
         }
 
-        _svc.Update(vm);
-        return RedirectToAction(nameof(Index));
+        // 1. VALIDACIÓN DUPLICADOS (Ya existente)
+        if (_svc.Exists(vm.PartNumber, id))
+        {
+            ModelState.AddModelError("PartNumber", "Este número de parte ya existe.");
+            ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
+            return View(vm);
+        }
+
+        // 2. INTENTO DE ACTUALIZACIÓN (Con validación de Subfamilia Activa)
+        try
+        {
+            _svc.Update(vm);
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
+            return View(vm);
+        }
     }
 
     [HttpPost("Toggle")]

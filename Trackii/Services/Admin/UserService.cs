@@ -4,14 +4,11 @@ using Trackii.Models.Admin.User;
 
 namespace Trackii.Services.Admin
 {
-    // Maneja la tabla `user` (NO ASP.NET Identity).
-    // Hash: Microsoft.AspNetCore.Identity.PasswordHasher<string>
     public class UserService
     {
         private readonly string _conn;
         private readonly PasswordHasher<string> _hasher = new();
 
-        // Política simple (coherente con Identity por defecto)
         private const int MinLen = 6;
         private const bool RequireDigit = true;
         private const bool RequireLower = true;
@@ -140,30 +137,30 @@ namespace Trackii.Services.Admin
             if (string.IsNullOrWhiteSpace(vm.Username))
                 return new List<string> { "El username es requerido." };
 
+            // 1. Validar Password
             var pwdErrors = ValidatePassword(vm.Password);
             if (pwdErrors.Count > 0)
                 return pwdErrors;
+
+            // 2. Validar Duplicado MANUALMENTE antes de intentar insertar
+            if (Exists(vm.Username))
+            {
+                return new List<string> { "Ya existe un usuario con ese username." };
+            }
 
             var hash = _hasher.HashPassword(vm.Username, vm.Password);
 
             using var cn = new MySqlConnection(_conn);
             cn.Open();
 
-            try
-            {
-                using var cmd = new MySqlCommand(@"
-                    INSERT INTO user (username, password, role_id, active)
-                    VALUES (@u, @p, @r, 1)", cn);
+            using var cmd = new MySqlCommand(@"
+                INSERT INTO user (username, password, role_id, active)
+                VALUES (@u, @p, @r, 1)", cn);
 
-                cmd.Parameters.AddWithValue("@u", vm.Username);
-                cmd.Parameters.AddWithValue("@p", hash);
-                cmd.Parameters.AddWithValue("@r", vm.RoleId);
-                await cmd.ExecuteNonQueryAsync();
-            }
-            catch (MySqlException ex) when (ex.Number == 1062)
-            {
-                return new List<string> { "Ya existe un usuario con ese username." };
-            }
+            cmd.Parameters.AddWithValue("@u", vm.Username);
+            cmd.Parameters.AddWithValue("@p", hash);
+            cmd.Parameters.AddWithValue("@r", vm.RoleId);
+            await cmd.ExecuteNonQueryAsync();
 
             return new();
         }
@@ -174,6 +171,12 @@ namespace Trackii.Services.Admin
             vm.Username = (vm.Username ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(vm.Username))
                 return new List<string> { "El username es requerido." };
+
+            // 1. Validar Duplicado MANUALMENTE (excluyendo el id actual)
+            if (Exists(vm.Username, vm.Id))
+            {
+                return new List<string> { "Ya existe un usuario con ese username." };
+            }
 
             string? newHash = null;
 
@@ -200,22 +203,15 @@ namespace Trackii.Services.Admin
 
             sql += " WHERE id=@id";
 
-            try
-            {
-                using var cmd = new MySqlCommand(sql, cn);
-                cmd.Parameters.AddWithValue("@u", vm.Username);
-                cmd.Parameters.AddWithValue("@r", vm.RoleId);
-                cmd.Parameters.AddWithValue("@a", vm.Active);
-                cmd.Parameters.AddWithValue("@id", vm.Id);
-                if (newHash != null)
-                    cmd.Parameters.AddWithValue("@p", newHash);
+            using var cmd = new MySqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@u", vm.Username);
+            cmd.Parameters.AddWithValue("@r", vm.RoleId);
+            cmd.Parameters.AddWithValue("@a", vm.Active);
+            cmd.Parameters.AddWithValue("@id", vm.Id);
+            if (newHash != null)
+                cmd.Parameters.AddWithValue("@p", newHash);
 
-                await cmd.ExecuteNonQueryAsync();
-            }
-            catch (MySqlException ex) when (ex.Number == 1062)
-            {
-                return new List<string> { "Ya existe un usuario con ese username." };
-            }
+            await cmd.ExecuteNonQueryAsync();
 
             return new();
         }
@@ -233,7 +229,21 @@ namespace Trackii.Services.Admin
             cmd.ExecuteNonQuery();
         }
 
-        // ================= PASSWORD RULES =================
+        // ================= HELPERS PRIVADOS =================
+        private bool Exists(string username, uint? id = null)
+        {
+            using var cn = new MySqlConnection(_conn);
+            cn.Open();
+            var query = "SELECT COUNT(*) FROM user WHERE username = @u";
+            if (id.HasValue) query += " AND id != @id";
+
+            using var cmd = new MySqlCommand(query, cn);
+            cmd.Parameters.AddWithValue("@u", username);
+            if (id.HasValue) cmd.Parameters.AddWithValue("@id", id.Value);
+
+            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        }
+
         private static List<string> ValidatePassword(string? password)
         {
             var errors = new List<string>();

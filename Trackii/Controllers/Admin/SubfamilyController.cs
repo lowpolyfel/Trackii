@@ -5,8 +5,8 @@ using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize(Roles = "Admin")]
-[Route("Admin/Subfamily")]
+[Authorize]
+[Route("Admin/[controller]")]
 public class SubfamilyController : Controller
 {
     private readonly SubfamilyService _svc;
@@ -22,17 +22,10 @@ public class SubfamilyController : Controller
         uint? areaId,
         uint? familyId,
         string? search,
-        bool? showInactive,
+        bool showInactive = false,
         int page = 1)
     {
-        var vm = _svc.GetPaged(
-            areaId,
-            familyId,
-            search,
-            showInactive ?? false,
-            page,
-            10);
-
+        var vm = _svc.GetPaged(areaId, familyId, search, showInactive, page, 10);
         return View(vm);
     }
 
@@ -54,8 +47,26 @@ public class SubfamilyController : Controller
             return View(vm);
         }
 
-        _svc.Create(vm);
-        return RedirectToAction(nameof(Index));
+        // 1. VALIDACIÓN DUPLICADOS (La que ya tenías)
+        if (_svc.Exists(vm.Name))
+        {
+            ModelState.AddModelError("Name", "Este nombre de Subfamilia ya existe.");
+            ViewBag.Families = _svc.GetActiveFamilies();
+            return View(vm);
+        }
+
+        // 2. INTENTO DE CREACIÓN (Con validación de Familia Activa)
+        try
+        {
+            _svc.Create(vm);
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message); // "La Familia seleccionada está inactiva"
+            ViewBag.Families = _svc.GetActiveFamilies();
+            return View(vm);
+        }
     }
 
     // ===================== EDIT =====================
@@ -71,33 +82,41 @@ public class SubfamilyController : Controller
 
     [HttpPost("Edit/{id:long}")]
     [ValidateAntiForgeryToken]
-    public IActionResult Edit(uint id, SubfamilyEditVm vm)
+    public IActionResult Edit(SubfamilyEditVm vm)
     {
-        if (id != vm.Id) return BadRequest();
-
         if (!ModelState.IsValid)
         {
             ViewBag.Families = _svc.GetActiveFamilies();
             return View(vm);
         }
 
-        _svc.Update(vm);
-        return RedirectToAction(nameof(Index));
-    }
-
-    // ===================== TOGGLE =====================
-    [HttpPost("Toggle")]
-    [ValidateAntiForgeryToken]
-    public IActionResult Toggle(uint id, int active)
-    {
-        var ok = _svc.SetActive(id, active == 1);
-
-        if (!ok)
+        // 1. VALIDACIÓN DUPLICADOS (La que ya tenías)
+        if (_svc.Exists(vm.Name, vm.Id))
         {
-            TempData["Error"] =
-                "No se puede activar la Subfamily porque la Family está inactiva.";
+            ModelState.AddModelError("Name", "Este nombre de Subfamilia ya existe.");
+            ViewBag.Families = _svc.GetActiveFamilies();
+            return View(vm);
         }
 
+        // 2. INTENTO DE ACTUALIZACIÓN (Con validación de Familia Activa)
+        try
+        {
+            _svc.Update(vm);
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            ViewBag.Families = _svc.GetActiveFamilies();
+            return View(vm);
+        }
+    }
+    // ===================== TOGGLE =====================
+    [HttpPost("Toggle/{id:long}")]
+    [ValidateAntiForgeryToken]
+    public IActionResult Toggle(uint id)
+    {
+        _svc.SetActive(id, true); // el service valida padre activo
         return RedirectToAction(nameof(Index));
     }
 }

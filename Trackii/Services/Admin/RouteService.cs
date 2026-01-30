@@ -13,7 +13,9 @@ public class RouteService
         _conn = cfg.GetConnectionString("TrackiiDb")!;
     }
 
-    // Lookups
+    // ==========================================
+    // LOOKUPS (Listas para los Select)
+    // ==========================================
     public List<(uint Id, string Name)> GetActiveSubfamilies()
     {
         var list = new List<(uint, string)>();
@@ -56,7 +58,9 @@ public class RouteService
         return list;
     }
 
-    // Listado paginado
+    // ==========================================
+    // INDEX / LISTADO
+    // ==========================================
     public RouteListVm GetPaged(uint? subfamilyId, string? search, bool showInactive, int page, int pageSize)
     {
         var vm = new RouteListVm
@@ -76,12 +80,8 @@ public class RouteService
         if (subfamilyId.HasValue) where += " AND r.subfamily_id = @sf ";
         if (!string.IsNullOrWhiteSpace(search)) where += " AND (r.name LIKE @q OR r.version LIKE @q) ";
 
-        // Count
-        using (var countCmd = new MySqlCommand($@"
-            SELECT COUNT(*)
-            FROM route r
-            {where}
-        ", cn))
+        // 1. Contar Total
+        using (var countCmd = new MySqlCommand($@"SELECT COUNT(*) FROM route r {where}", cn))
         {
             if (subfamilyId.HasValue) countCmd.Parameters.AddWithValue("@sf", subfamilyId.Value);
             if (!string.IsNullOrWhiteSpace(search)) countCmd.Parameters.AddWithValue("@q", "%" + search.Trim() + "%");
@@ -89,12 +89,13 @@ public class RouteService
             vm.Total = Convert.ToInt32(countCmd.ExecuteScalar());
         }
 
+        // 2. Calcular Paginación
         vm.TotalPages = (int)Math.Ceiling(vm.Total / (double)vm.PageSize);
         if (vm.TotalPages <= 0) vm.TotalPages = 1;
         if (vm.Page > vm.TotalPages) vm.Page = vm.TotalPages;
-
         var offset = (vm.Page - 1) * vm.PageSize;
 
+        // 3. Obtener Datos
         using var cmd = new MySqlCommand($@"
             SELECT
                 r.id,
@@ -137,10 +138,12 @@ public class RouteService
         return vm;
     }
 
+    // ==========================================
+    // GET FOR CREATE / EDIT
+    // ==========================================
     public RouteEditVm GetForCreate()
     {
-        // Version se calculará al guardar (según SubfamilyId).
-        return new RouteEditVm();
+        return new RouteEditVm(); // Vacío, listo para llenar
     }
 
     public RouteEditVm GetForEdit(uint id)
@@ -150,22 +153,19 @@ public class RouteService
 
         var vm = new RouteEditVm { Id = id };
 
-        using (var cmd = new MySqlCommand(@"
-            SELECT id, subfamily_id, name, version
-            FROM route
-            WHERE id = @id
-        ", cn))
+        // Cargar cabecera
+        using (var cmd = new MySqlCommand("SELECT id, subfamily_id, name, version FROM route WHERE id = @id", cn))
         {
             cmd.Parameters.AddWithValue("@id", id);
             using var rd = cmd.ExecuteReader();
-            if (!rd.Read())
-                throw new InvalidOperationException("Ruta no encontrada.");
+            if (!rd.Read()) throw new InvalidOperationException("Ruta no encontrada.");
 
             vm.SubfamilyId = rd.GetUInt32("subfamily_id");
             vm.Name = rd.GetString("name");
             vm.Version = rd.GetString("version");
         }
 
+        // Cargar pasos
         using (var stepsCmd = new MySqlCommand(@"
             SELECT rs.step_number, rs.location_id, l.name AS location_name
             FROM route_step rs
@@ -190,7 +190,9 @@ public class RouteService
         return vm;
     }
 
-    // Activa una ruta histórica (y desactiva la actual activa) con validación de WIP
+    // ==========================================
+    // ACTIVATE (Lógica Crítica)
+    // ==========================================
     public void Activate(uint id)
     {
         using var cn = new MySqlConnection(_conn);
@@ -200,7 +202,8 @@ public class RouteService
         uint subfamilyId;
         bool targetActive;
 
-        using (var cmd = new MySqlCommand(@"SELECT subfamily_id, active FROM route WHERE id=@id", cn, tx))
+        // 1. Obtener info de la ruta que queremos activar
+        using (var cmd = new MySqlCommand("SELECT subfamily_id, active FROM route WHERE id=@id", cn, tx))
         {
             cmd.Parameters.AddWithValue("@id", id);
             using var rd = cmd.ExecuteReader();
@@ -211,18 +214,13 @@ public class RouteService
 
         if (targetActive)
         {
-            tx.Commit();
+            tx.Commit(); // Ya estaba activa, no hacemos nada
             return;
         }
 
-        // Ruta activa actual
+        // 2. Verificar WIP en la ruta activa ACTUAL (si existe)
         uint? currentActiveId = null;
-        using (var cmd = new MySqlCommand(@"
-            SELECT id
-            FROM route
-            WHERE subfamily_id=@sf AND active=1
-            LIMIT 1
-        ", cn, tx))
+        using (var cmd = new MySqlCommand("SELECT id FROM route WHERE subfamily_id=@sf AND active=1 LIMIT 1", cn, tx))
         {
             cmd.Parameters.AddWithValue("@sf", subfamilyId);
             var obj = cmd.ExecuteScalar();
@@ -231,68 +229,69 @@ public class RouteService
 
         if (currentActiveId.HasValue)
         {
-            var wipCount = CountWipInRoute(cn, tx, currentActiveId.Value);
-            if (wipCount > 0)
-                throw new InvalidOperationException("No se puede cambiar la ruta activa: hay WIP en proceso en la ruta activa actual.");
+            if (CountWipInRoute(cn, tx, currentActiveId.Value) > 0)
+                throw new InvalidOperationException("No se puede cambiar la ruta activa: hay piezas (WIP) en proceso en la ruta actual.");
         }
 
-        // Desactiva todas y activa objetivo
-        using (var off = new MySqlCommand(@"UPDATE route SET active=0 WHERE subfamily_id=@sf", cn, tx))
+        // 3. Desactivar TODAS las rutas de esa subfamilia
+        using (var off = new MySqlCommand("UPDATE route SET active=0 WHERE subfamily_id=@sf", cn, tx))
         {
             off.Parameters.AddWithValue("@sf", subfamilyId);
             off.ExecuteNonQuery();
         }
-        using (var on = new MySqlCommand(@"UPDATE route SET active=1 WHERE id=@id", cn, tx))
+
+        // 4. Activar la ruta seleccionada
+        using (var on = new MySqlCommand("UPDATE route SET active=1 WHERE id=@id", cn, tx))
         {
             on.Parameters.AddWithValue("@id", id);
             on.ExecuteNonQuery();
         }
 
+        // 5. IMPORTANTE: Actualizar el puntero en la tabla SUBFAMILY
+        using (var ptr = new MySqlCommand("UPDATE subfamily SET active_route_id=@rid WHERE id=@sf", cn, tx))
+        {
+            ptr.Parameters.AddWithValue("@rid", id);
+            ptr.Parameters.AddWithValue("@sf", subfamilyId);
+            ptr.ExecuteNonQuery();
+        }
+
         tx.Commit();
     }
+    // ... dentro de RouteService.cs ...
 
     public void Save(RouteEditVm vm)
     {
-        if (vm.SubfamilyId == 0)
-            throw new InvalidOperationException("Selecciona una Subfamily.");
-
+        if (vm.SubfamilyId == 0) throw new InvalidOperationException("Selecciona una Subfamily.");
         vm.Name = (vm.Name ?? "").Trim();
-        if (string.IsNullOrWhiteSpace(vm.Name))
-            throw new InvalidOperationException("El nombre es requerido.");
+        if (string.IsNullOrWhiteSpace(vm.Name)) throw new InvalidOperationException("El nombre es requerido.");
 
-        // Normaliza steps: sin duplicados, orden por StepNumber (y re-secuencia)
-        var steps = vm.Steps
-            .Where(s => s.LocationId != 0)
-            .OrderBy(s => s.StepNumber)
-            .ToList();
+        // Limpiar y ordenar steps
+        var steps = vm.Steps.Where(s => s.LocationId != 0).OrderBy(s => s.StepNumber).ToList();
 
-        // Si no mandaron StepNumber (por algún motivo), lo reasignamos por orden actual:
+        // Asignar orden secuencial si viene vacío
         if (steps.Count > 0 && steps.All(s => s.StepNumber == 0))
         {
-            for (int i = 0; i < steps.Count; i++)
-                steps[i].StepNumber = i + 1;
+            for (int i = 0; i < steps.Count; i++) steps[i].StepNumber = i + 1;
         }
 
-        // Deduplicar por LocationId conservando el primer orden
-        var seen = new HashSet<uint>();
+        // Deduplicar Locations consecutivos
         var finalSteps = new List<RouteStepVm>();
+        var seen = new HashSet<uint>();
         foreach (var s in steps)
         {
-            if (seen.Add(s.LocationId))
-                finalSteps.Add(s);
+            if (seen.Add(s.LocationId)) finalSteps.Add(s);
         }
         steps = finalSteps;
 
-        if (steps.Count < 1)
-            throw new InvalidOperationException("La ruta debe tener al menos 1 paso (Location).");
+        if (steps.Count < 1) throw new InvalidOperationException("La ruta debe tener al menos 1 paso (Location).");
 
         using var cn = new MySqlConnection(_conn);
         cn.Open();
         using var tx = cn.BeginTransaction();
 
-        // Reglas: no puedes crear ruta para subfamily inactiva o cuyo family/area esté inactiva
+        // Validar que la Subfamily/Family/Area estén activas
         using (var chk = new MySqlCommand(@"
-            SELECT COUNT(*)
+            SELECT COUNT(*) 
             FROM subfamily sf
             JOIN family f ON f.id = sf.id_family
             JOIN area a ON a.id = f.id_area
@@ -300,40 +299,29 @@ public class RouteService
         ", cn, tx))
         {
             chk.Parameters.AddWithValue("@sf", vm.SubfamilyId);
-            var ok = Convert.ToInt32(chk.ExecuteScalar());
-            if (ok == 0)
-                throw new InvalidOperationException("No puedes asignar ruta: la Subfamily (o su Family/Area) está inactiva.");
+            if (Convert.ToInt32(chk.ExecuteScalar()) == 0)
+                throw new InvalidOperationException("No puedes asignar ruta: la Subfamily (o su padre) está inactiva.");
         }
 
+        // ================= CREACION =================
         if (vm.Id == 0)
         {
-            // Antes de crear una nueva ruta activa, valida que se pueda desactivar la actual (si existe)
+            // (Mismo código de creación que ya tenías, funciona bien)
             uint? currentActiveId = null;
-            using (var cmd = new MySqlCommand(@"
-                SELECT id
-                FROM route
-                WHERE subfamily_id=@sf AND active=1
-                LIMIT 1
-            ", cn, tx))
+            using (var cmd = new MySqlCommand("SELECT id FROM route WHERE subfamily_id=@sf AND active=1 LIMIT 1", cn, tx))
             {
                 cmd.Parameters.AddWithValue("@sf", vm.SubfamilyId);
                 var obj = cmd.ExecuteScalar();
                 if (obj != null) currentActiveId = Convert.ToUInt32(obj);
             }
 
-            if (currentActiveId.HasValue)
-            {
-                var wipCount = CountWipInRoute(cn, tx, currentActiveId.Value);
-                if (wipCount > 0)
-                    throw new InvalidOperationException("No se puede crear una nueva ruta activa: hay WIP en proceso en la ruta activa actual.");
-            }
+            if (currentActiveId.HasValue && CountWipInRoute(cn, tx, currentActiveId.Value) > 0)
+                throw new InvalidOperationException("No se puede crear nueva versión: hay WIP en la ruta activa actual.");
 
-            // Generar version: MAX(version numeric) + 100
             var nextVersion = GetNextVersion(cn, tx, vm.SubfamilyId);
             vm.Version = nextVersion.ToString();
 
-            // Desactivar todas las rutas de esa subfamily (histórico) y esta será la activa
-            using (var off = new MySqlCommand(@"UPDATE route SET active=0 WHERE subfamily_id=@sf", cn, tx))
+            using (var off = new MySqlCommand("UPDATE route SET active=0 WHERE subfamily_id=@sf", cn, tx))
             {
                 off.Parameters.AddWithValue("@sf", vm.SubfamilyId);
                 off.ExecuteNonQuery();
@@ -351,63 +339,105 @@ public class RouteService
                 vm.Id = (uint)ins.LastInsertedId;
             }
 
+            using (var ptr = new MySqlCommand("UPDATE subfamily SET active_route_id=@rid WHERE id=@sf", cn, tx))
+            {
+                ptr.Parameters.AddWithValue("@rid", vm.Id);
+                ptr.Parameters.AddWithValue("@sf", vm.SubfamilyId);
+                ptr.ExecuteNonQuery();
+            }
+
             InsertSteps(cn, tx, vm.Id, steps);
         }
+        // ================= EDICION (ACTUALIZADO) =================
         else
         {
-            // Si la ruta está activa y tiene WIP, no permitimos modificar pasos (ni rearmar flujo)
             var isActive = false;
-            using (var st = new MySqlCommand(@"SELECT active FROM route WHERE id=@id", cn, tx))
+            uint oldSubfamilyId = 0;
+
+            // Obtener estado actual antes de editar
+            using (var st = new MySqlCommand("SELECT active, subfamily_id FROM route WHERE id=@id", cn, tx))
             {
                 st.Parameters.AddWithValue("@id", vm.Id);
-                isActive = Convert.ToBoolean(st.ExecuteScalar());
+                using var rd = st.ExecuteReader();
+                if (rd.Read())
+                {
+                    isActive = rd.GetBoolean("active");
+                    oldSubfamilyId = rd.GetUInt32("subfamily_id");
+                }
             }
 
-            if (isActive)
+            // Si está activa y tiene WIP, solo permitimos cambio de Nombre, NO de pasos NI de subfamilia
+            if (isActive && CountWipInRoute(cn, tx, vm.Id) > 0)
             {
-                var wipCount = CountWipInRoute(cn, tx, vm.Id);
-                if (wipCount > 0)
-                    throw new InvalidOperationException("No se pueden cambiar pasos: hay WIP en proceso en esta ruta activa.");
+                if (oldSubfamilyId != vm.SubfamilyId)
+                    throw new InvalidOperationException("No se puede cambiar la Subfamilia: hay WIP en proceso en esta ruta activa.");
+
+                // Solo permitimos cambiar el nombre y pasos si son iguales (lo cual el user podría intentar pero fallará al intentar borrar pasos)
+                // Para simplificar: Si hay WIP, bloqueamos cambios estructurales.
+                throw new InvalidOperationException("No se puede editar una ruta activa con WIP en proceso. Desactívala primero o termina las órdenes.");
             }
 
+            // Si cambiamos de subfamilia
+            if (oldSubfamilyId != vm.SubfamilyId)
+            {
+                // Si esta ruta ERA la activa de la vieja subfamilia, debemos limpiar el puntero en la vieja subfamilia
+                if (isActive)
+                {
+                    using (var cleanOld = new MySqlCommand("UPDATE subfamily SET active_route_id=NULL WHERE id=@oldSf AND active_route_id=@rid", cn, tx))
+                    {
+                        cleanOld.Parameters.AddWithValue("@oldSf", oldSubfamilyId);
+                        cleanOld.Parameters.AddWithValue("@rid", vm.Id);
+                        cleanOld.ExecuteNonQuery();
+                    }
+                    // Y al moverla, dejará de ser activa en la NUEVA (para no romper la nueva si ya tiene activa)
+                    // O podemos decidir que se vuelva la activa de la nueva.
+                    // REGLA: Al mover, pasa a ser INACTIVA en la nueva subfamilia para evitar conflictos.
+                    isActive = false;
+
+                    // Recalcular versión para la nueva subfamilia
+                    var nextVersion = GetNextVersion(cn, tx, vm.SubfamilyId);
+                    vm.Version = nextVersion.ToString();
+                }
+            }
+
+            // Actualizar Datos (Nombre, Subfamily, Active, Version si cambió)
             using (var upd = new MySqlCommand(@"
-                UPDATE route
-                SET name=@n
-                WHERE id=@id
-            ", cn, tx))
+                UPDATE route 
+                SET name=@n, subfamily_id=@sf, active=@act, version=@ver
+                WHERE id=@id", cn, tx))
             {
                 upd.Parameters.AddWithValue("@n", vm.Name);
+                upd.Parameters.AddWithValue("@sf", vm.SubfamilyId);
+                upd.Parameters.AddWithValue("@act", isActive); // Forzamos false si se movió de familia
+                upd.Parameters.AddWithValue("@ver", vm.Version); // Actualizamos versión si se recalculó
                 upd.Parameters.AddWithValue("@id", vm.Id);
                 upd.ExecuteNonQuery();
             }
 
-            using (var del = new MySqlCommand(@"DELETE FROM route_step WHERE route_id=@id", cn, tx))
+            // Reemplazar pasos
+            using (var del = new MySqlCommand("DELETE FROM route_step WHERE route_id=@id", cn, tx))
             {
                 del.Parameters.AddWithValue("@id", vm.Id);
                 del.ExecuteNonQuery();
             }
-
             InsertSteps(cn, tx, vm.Id, steps);
         }
 
         tx.Commit();
     }
-
+    // ==========================================
+    // HELPERS PRIVADOS
+    // ==========================================
     private static void InsertSteps(MySqlConnection cn, MySqlTransaction tx, uint routeId, List<RouteStepVm> steps)
     {
-        // Re-secuencia estricta 1..N
-        for (int i = 0; i < steps.Count; i++)
-            steps[i].StepNumber = i + 1;
-
         for (int i = 0; i < steps.Count; i++)
         {
             using var ins = new MySqlCommand(@"
                 INSERT INTO route_step (route_id, step_number, location_id)
                 VALUES (@r, @sn, @loc)
             ", cn, tx);
-
             ins.Parameters.AddWithValue("@r", routeId);
-            ins.Parameters.AddWithValue("@sn", steps[i].StepNumber);
+            ins.Parameters.AddWithValue("@sn", i + 1); // Forzamos 1,2,3...
             ins.Parameters.AddWithValue("@loc", steps[i].LocationId);
             ins.ExecuteNonQuery();
         }
@@ -416,28 +446,21 @@ public class RouteService
     private static int CountWipInRoute(MySqlConnection cn, MySqlTransaction tx, uint routeId)
     {
         using var cmd = new MySqlCommand(@"
-            SELECT COUNT(*)
-            FROM wip_item wi
+            SELECT COUNT(*) FROM wip_item wi
             JOIN route_step rs ON rs.id = wi.current_step_id
-            WHERE rs.route_id = @rid
-              AND wi.status IN ('ACTIVE','HOLD')
+            WHERE rs.route_id = @rid AND wi.status IN ('ACTIVE','HOLD')
         ", cn, tx);
-
         cmd.Parameters.AddWithValue("@rid", routeId);
         return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
     private static int GetNextVersion(MySqlConnection cn, MySqlTransaction tx, uint subfamilyId)
     {
-        // version es varchar(20), guardamos "100","200"... pero calculamos numérico
         using var cmd = new MySqlCommand(@"
             SELECT COALESCE(MAX(CAST(version AS UNSIGNED)), 0)
-            FROM route
-            WHERE subfamily_id=@sf
+            FROM route WHERE subfamily_id=@sf
         ", cn, tx);
-
         cmd.Parameters.AddWithValue("@sf", subfamilyId);
-        var max = Convert.ToInt32(cmd.ExecuteScalar());
-        return max + 100;
+        return Convert.ToInt32(cmd.ExecuteScalar()) + 100;
     }
 }

@@ -47,19 +47,22 @@ public class ProductService
         if (subfamilyId.HasValue) where += " AND s.id = @subfamily ";
         if (!string.IsNullOrWhiteSpace(search)) where += " AND p.part_number LIKE @search ";
 
-        using var countCmd = new MySqlCommand($@"
+        // COUNT
+        using (var countCmd = new MySqlCommand($@"
             SELECT COUNT(*)
             FROM product p
             JOIN subfamily s ON s.id = p.id_subfamily
             JOIN family f ON f.id = s.id_family
             JOIN area a ON a.id = f.id_area
-            {where}", cn);
+            {where}", cn))
+        {
+            AddFilters(countCmd, areaId, familyId, subfamilyId, search);
+            var total = Convert.ToInt32(countCmd.ExecuteScalar());
+            vm.TotalPages = (int)Math.Ceiling(total / (double)pageSize);
+        }
 
-        AddFilters(countCmd, areaId, familyId, subfamilyId, search);
-        var total = Convert.ToInt32(countCmd.ExecuteScalar());
-        vm.TotalPages = (int)Math.Ceiling(total / (double)pageSize);
-
-        using var cmd = new MySqlCommand($@"
+        // DATA
+        using (var cmd = new MySqlCommand($@"
             SELECT p.id, p.part_number, p.active,
                    s.name AS subfamily,
                    f.name AS family,
@@ -70,24 +73,25 @@ public class ProductService
             JOIN area a ON a.id = f.id_area
             {where}
             ORDER BY a.name, f.name, s.name, p.part_number
-            LIMIT @off,@lim", cn);
-
-        AddFilters(cmd, areaId, familyId, subfamilyId, search);
-        cmd.Parameters.AddWithValue("@off", (page - 1) * pageSize);
-        cmd.Parameters.AddWithValue("@lim", pageSize);
-
-        using var rd = cmd.ExecuteReader();
-        while (rd.Read())
+            LIMIT @off,@lim", cn))
         {
-            vm.Items.Add(new ProductListVm.Row
+            AddFilters(cmd, areaId, familyId, subfamilyId, search);
+            cmd.Parameters.AddWithValue("@off", (page - 1) * pageSize);
+            cmd.Parameters.AddWithValue("@lim", pageSize);
+
+            using var rd = cmd.ExecuteReader();
+            while (rd.Read())
             {
-                Id = rd.GetUInt32("id"),
-                PartNumber = rd.GetString("part_number"),
-                Active = rd.GetBoolean("active"),
-                Subfamily = rd.GetString("subfamily"),
-                Family = rd.GetString("family"),
-                Area = rd.GetString("area")
-            });
+                vm.Items.Add(new ProductListVm.Row
+                {
+                    Id = rd.GetUInt32("id"),
+                    PartNumber = rd.GetString("part_number"),
+                    Active = rd.GetBoolean("active"),
+                    Subfamily = rd.GetString("subfamily"),
+                    Family = rd.GetString("family"),
+                    Area = rd.GetString("area")
+                });
+            }
         }
 
         return vm;
@@ -114,10 +118,20 @@ public class ProductService
         };
     }
 
+    // ===================== CREATE (Con Validación) =====================
     public void Create(ProductEditVm vm)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
+
+        // VALIDACIÓN: Padre (Subfamilia) activa
+        using (var check = new MySqlCommand("SELECT active FROM subfamily WHERE id=@sid", cn))
+        {
+            check.Parameters.AddWithValue("@sid", vm.SubfamilyId);
+            var active = check.ExecuteScalar();
+            if (active == null || !Convert.ToBoolean(active))
+                throw new Exception("No se puede crear: La Subfamilia seleccionada está inactiva.");
+        }
 
         using var cmd = new MySqlCommand(@"
             INSERT INTO product (id_subfamily, part_number, active)
@@ -128,10 +142,20 @@ public class ProductService
         cmd.ExecuteNonQuery();
     }
 
+    // ===================== UPDATE (Con Validación) =====================
     public void Update(ProductEditVm vm)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
+
+        // VALIDACIÓN: Padre (Subfamilia) activa
+        using (var check = new MySqlCommand("SELECT active FROM subfamily WHERE id=@sid", cn))
+        {
+            check.Parameters.AddWithValue("@sid", vm.SubfamilyId);
+            var active = check.ExecuteScalar();
+            if (active == null || !Convert.ToBoolean(active))
+                throw new Exception("No se puede actualizar: La Subfamilia seleccionada está inactiva.");
+        }
 
         using var cmd = new MySqlCommand(@"
             UPDATE product
@@ -144,7 +168,7 @@ public class ProductService
         cmd.ExecuteNonQuery();
     }
 
-    // ===================== TOGGLE =====================
+    // ===================== TOGGLE (Con Validación) =====================
     public bool SetActive(uint id, bool active)
     {
         using var cn = new MySqlConnection(_conn);
@@ -152,6 +176,7 @@ public class ProductService
 
         if (active)
         {
+            // VALIDACIÓN: Padre (Subfamilia) activa antes de activar
             using var chk = new MySqlCommand(@"
                 SELECT s.active
                 FROM product p
@@ -159,11 +184,13 @@ public class ProductService
                 WHERE p.id=@id", cn);
 
             chk.Parameters.AddWithValue("@id", id);
-            if (!Convert.ToBoolean(chk.ExecuteScalar()))
-                return false;
+            var parentActive = chk.ExecuteScalar();
+            if (parentActive == null || !Convert.ToBoolean(parentActive))
+                return false; // Padre inactivo
         }
         else
         {
+            // VALIDACIÓN: No desactivar si tiene WIP o WorkOrders
             using var dep = new MySqlCommand(@"
                 SELECT
                   (SELECT COUNT(*) FROM work_order WHERE product_id=@id) +
@@ -173,7 +200,7 @@ public class ProductService
 
             dep.Parameters.AddWithValue("@id", id);
             if (Convert.ToInt32(dep.ExecuteScalar()) > 0)
-                return false;
+                return false; // Está en uso
         }
 
         using var cmd = new MySqlCommand(
@@ -264,5 +291,23 @@ public class ProductService
         if (subfamilyId.HasValue) cmd.Parameters.AddWithValue("@subfamily", subfamilyId);
         if (!string.IsNullOrWhiteSpace(search))
             cmd.Parameters.AddWithValue("@search", $"%{search}%");
+    }
+
+    // VALIDACIÓN DE DUPLICADOS
+    public bool Exists(string partNumber, uint? id = null)
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        var query = "SELECT COUNT(*) FROM product WHERE part_number = @p";
+        if (id.HasValue)
+            query += " AND id != @id";
+
+        using var cmd = new MySqlCommand(query, cn);
+        cmd.Parameters.AddWithValue("@p", partNumber);
+        if (id.HasValue)
+            cmd.Parameters.AddWithValue("@id", id.Value);
+
+        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
     }
 }

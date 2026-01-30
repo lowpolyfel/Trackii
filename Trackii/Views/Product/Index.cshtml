@@ -1,137 +1,192 @@
 ﻿@model Trackii.Models.Admin.Product.ProductListVm
 
-<h2>Products</h2>
-
-<form method="get" action="/Admin/Product">
-
-    <!-- Área -->
-    <select name="areaId">
-        <option value="">-- Área --</option>
-        @foreach (var a in Model.Areas)
-        {
-            if (Model.AreaId == a.Id)
-            {
-                <option value="@a.Id" selected>@a.Name</option>
-            }
-            else
-            {
-                <option value="@a.Id">@a.Name</option>
-            }
-        }
-    </select>
-
-    <!-- Family -->
-    <select name="familyId">
-        <option value="">-- Family --</option>
-        @foreach (var f in Model.Families)
-        {
-            if (Model.FamilyId == f.Id)
-            {
-                <option value="@f.Id" selected>@f.Name</option>
-            }
-            else
-            {
-                <option value="@f.Id">@f.Name</option>
-            }
-        }
-    </select>
-
-    <!-- Subfamily -->
-    <select name="subfamilyId">
-        <option value="">-- Subfamily --</option>
-        @foreach (var s in Model.Subfamilies)
-        {
-            if (Model.SubfamilyId == s.Id)
-            {
-                <option value="@s.Id" selected>@s.Name</option>
-            }
-            else
-            {
-                <option value="@s.Id">@s.Name</option>
-            }
-        }
-    </select>
-
-    <input name="search"
-           value="@Model.Search"
-           placeholder="Part number..." />
-
-    <label>
-        <input type="checkbox"
-               name="showInactive"
-               value="true"
-               @(Model.ShowInactive ? "checked" : "") />
-        Ver inactivos
-    </label>
-
-    <button type="submit">Filtrar</button>
-    <a href="/Admin/Product/Create">Nuevo</a>
-</form>
-
-@if (TempData["Error"] != null)
-{
-    <div style="color:red; font-weight:bold;">
-        @TempData["Error"]
-    </div>
+@{
+    ViewData["Title"] = "Products";
 }
 
-<table border="1" cellpadding="5">
-    <tr>
-        <th>Área</th>
-        <th>Family</th>
-        <th>Subfamily</th>
-        <th>Part Number</th>
-        <th>Activo</th>
-        <th></th>
-    </tr>
+<div class="card">
 
-    @foreach (var p in Model.Items)
+    <div class="page-header">
+        <div>
+            <h2>Products</h2>
+            <p class="subtitle">Administración de productos por jerarquía (Área → Family → Subfamily)</p>
+        </div>
+
+        <a href="/Admin/Product/Create" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i>
+            Nuevo Product
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
     {
-        <tr>
-            <td>@p.Area</td>
-            <td>@p.Family</td>
-            <td>@p.Subfamily</td>
-            <td>@p.PartNumber</td>
-            <td>@p.Active</td>
-            <td>
-                <a href="/Admin/Product/Edit/@p.Id">Editar</a>
-
-                <form action="/Admin/Product/Toggle"
-                      method="post"
-                      style="display:inline">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" value="@p.Id" />
-                    <input type="hidden" name="active"
-                           value="@(p.Active ? 0 : 1)" />
-                    <button type="submit">
-                        @(p.Active ? "Desactivar" : "Activar")
-                    </button>
-                </form>
-            </td>
-        </tr>
+        <div class="alert error">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            @TempData["Error"]
+        </div>
     }
-</table>
 
-@if (Model.TotalPages > 1)
-{
-    <div>
-        @for (int i = 1; i <= Model.TotalPages; i++)
-        {
-            if (i == Model.Page)
+    <form method="get" action="/Admin/Product" class="filters">
+
+        <select name="areaId" class="input" onchange="this.form.submit()">
+            <option value="">-- Área --</option>
+            @foreach (var a in Model.Areas)
             {
-                <strong>@i</strong>
+                if (Model.AreaId == a.Id)
+                {
+                    <option value="@a.Id" selected="selected">@a.Name</option>
+                }
+                else
+                {
+                    <option value="@a.Id">@a.Name</option>
+                }
+            }
+        </select>
+
+        <select name="familyId" class="input" onchange="this.form.submit()">
+            <option value="">-- Family --</option>
+            @foreach (var f in Model.Families)
+            {
+                if (Model.FamilyId == f.Id)
+                {
+                    <option value="@f.Id" selected="selected">@f.Name</option>
+                }
+                else
+                {
+                    <option value="@f.Id">@f.Name</option>
+                }
+            }
+        </select>
+
+        <select name="subfamilyId" class="input" onchange="this.form.submit()">
+            <option value="">-- Subfamily --</option>
+            @foreach (var s in Model.Subfamilies)
+            {
+                if (Model.SubfamilyId == s.Id)
+                {
+                    <option value="@s.Id" selected="selected">@s.Name</option>
+                }
+                else
+                {
+                    <option value="@s.Id">@s.Name</option>
+                }
+            }
+        </select>
+
+        <input type="text"
+               name="search"
+               value="@Model.Search"
+               placeholder="Part number..." />
+
+        <label class="checkbox">
+            @if (Model.ShowInactive)
+            {
+                <input type="checkbox" name="showInactive" value="true" checked="checked" onchange="this.form.submit()" />
             }
             else
             {
-                <a href="/Admin/Product?page=@i
-                             &areaId=@Model.AreaId
-                             &familyId=@Model.FamilyId
-                             &subfamilyId=@Model.SubfamilyId
-                             &search=@Model.Search
-                             &showInactive=@(Model.ShowInactive ? "true" : "")">
-                    @i
-                </a>
+                <input type="checkbox" name="showInactive" value="true" onchange="this.form.submit()" />
             }
-        }
+            Ver inactivos
+        </label>
+
+        <button type="submit" class="btn btn-secondary">
+            Filtrar
+        </button>
+
+        <a href="/Admin/Product" class="btn btn-secondary">
+            Limpiar
+        </a>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Part Number</th>
+                    <th>Subfamily</th>
+                    <th>Family</th>
+                    <th>Área</th>
+                    <th>Estado</th>
+                    <th class="text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="empty">No hay products registrados</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var p in Model.Items)
+                    {
+                        <tr>
+                            <td>@p.PartNumber</td>
+                            <td>@p.Subfamily</td>
+                            <td>@p.Family</td>
+                            <td>@p.Area</td>
+                            <td>
+                                @if (p.Active)
+                                {
+                                    <span class="badge success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge danger">Inactivo</span>
+                                }
+                            </td>
+                            <td class="text-right">
+                                <a href="/Admin/Product/Edit/@p.Id" class="btn-icon" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+
+                                <form method="post" action="/Admin/Product/Toggle" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@p.Id" />
+                                    <input type="hidden" name="active" value="@(p.Active ? 0 : 1)" />
+                                    @if (p.Active)
+                                    {
+                                        <button type="submit" class="btn-chip danger">Desactivar</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" class="btn-chip success">Activar</button>
+                                    }
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+
+            </tbody>
+        </table>
     </div>
-}
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page"
+                       href="/Admin/Product?page=@i&areaId=@Model.AreaId&familyId=@Model.FamilyId&subfamilyId=@Model.SubfamilyId&search=@Model.Search&showInactive=@Model.ShowInactive">@i</a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="pagination">
+            Página @Model.Page de @Model.TotalPages
+        </div>
+    }
+
+</div>

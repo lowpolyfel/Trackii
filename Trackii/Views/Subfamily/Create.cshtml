@@ -1,26 +1,61 @@
 ﻿@model Trackii.Models.Admin.Subfamily.SubfamilyEditVm
 
-<h2>Nueva Subfamily</h2>
+@{
+    ViewData["Title"] = "Nueva Subfamily";
+    var families = ViewBag.Families as List<(uint Id, string Name)> ?? new();
+}
 
-<form method="post" action="/Admin/Subfamily/Create">
-    @Html.AntiForgeryToken()
+<div class="card">
 
-    <label>Family</label><br />
-    <select asp-for="FamilyId">
-        <option value="">-- Selecciona Family --</option>
-        @foreach (var f in ViewBag.Families as List<(uint Id, string Name)>)
-        {
-            <option value="@f.Id">@f.Name</option>
-        }
-    </select>
-    <span asp-validation-for="FamilyId"></span>
-    <br /><br />
+    <div class="page-header">
+        <div>
+            <h2>Nueva Subfamily</h2>
+            <p class="subtitle">Selecciona la Family (el Área se deriva de la Family)</p>
+        </div>
 
-    <label>Nombre</label><br />
-    <input asp-for="Name" />
-    <span asp-validation-for="Name"></span>
-    <br /><br />
+        <a href="/Admin/Subfamily" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
 
-    <button type="submit">Guardar</button>
-    <a href="/Admin/Subfamily">Cancelar</a>
-</form>
+    <form method="post" action="/Admin/Subfamily/Create" class="form">
+        @Html.AntiForgeryToken()
+
+        <div class="form-grid">
+
+            <div class="form-field">
+                <label for="FamilyId">Family</label>
+                <select id="FamilyId" name="FamilyId" class="input">
+                    <option value="">-- Selecciona Family --</option>
+                    @foreach (var f in families)
+                    {
+                        <option value="@f.Id">@f.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="FamilyId" class="field-error"></span>
+            </div>
+
+            <div class="form-field">
+                <label asp-for="Name"></label>
+                <input asp-for="Name" class="input" />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Guardar
+            </button>
+
+            <a href="/Admin/Subfamily" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

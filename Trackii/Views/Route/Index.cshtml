@@ -1,87 +1,163 @@
 ﻿@model Trackii.Models.Admin.Route.RouteListVm
+
 @{
+    ViewData["Title"] = "Routes";
     var subfamilies = ViewBag.Subfamilies as List<(uint Id, string Name)> ?? new();
-    var err = TempData["Error"] as string;
 }
 
-<h2>Rutas</h2>
+<div class="card">
 
-@if (!string.IsNullOrWhiteSpace(err))
-{
-    <div style="color:red;">@err</div>
-}
+    <div class="page-header">
+        <div>
+            <h2>Routes</h2>
+            <p class="subtitle">Gestión de rutas versionadas por Subfamily</p>
+        </div>
 
-<form method="get" action="/Admin/Route">
-    <label>Subfamily:</label>
-    <select name="subfamilyId">
-        <option value="">(Todas)</option>
-        @foreach (var sf in subfamilies)
-        {
-            var sel = Model.SubfamilyId.HasValue && Model.SubfamilyId.Value == sf.Id ? "selected" : "";
-            <option value="@sf.Id" selected="@sel">@sf.Name</option>
-        }
-    </select>
+        <a href="/Admin/Route/Create" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i>
+            Nueva Ruta
+        </a>
+    </div>
 
-    <input type="text" name="search" placeholder="Buscar..." value="@Model.Search" />
-    <label>
-        <input type="checkbox" name="showInactive" value="true" @(Model.ShowInactive ? "checked" : "") />
-        Ver inactivas
-    </label>
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert error">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            @TempData["Error"]
+        </div>
+    }
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert success">
+            <i class="fa-solid fa-circle-check"></i>
+            @TempData["Success"]
+        </div>
+    }
 
-    <input type="hidden" name="pageSize" value="@Model.PageSize" />
-    <button type="submit">Filtrar</button>
-    <a href="/Admin/Route/Create">Nuevo</a>
-</form>
+    <form method="get" action="/Admin/Route" class="filters">
 
-<table border="1" cellpadding="6" cellspacing="0">
-    <thead>
-        <tr>
-            <th>Nombre</th>
-            <th>Subfamily</th>
-            <th>Versión</th>
-            <th>Pasos</th>
-            <th>Activo</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var r in Model.Items)
-        {
-            <tr>
-                <td>@r.Name</td>
-                <td>@r.Subfamily</td>
-                <td>@r.Version</td>
-                <td>@r.StepsSummary</td>
-                <td>@r.Active</td>
-                <td>
-                    <a href="/Admin/Route/Edit/@r.Id">Editar</a>
-                    @if (!r.Active)
+        <select name="subfamilyId" class="input" onchange="this.form.submit()">
+            <option value="">Todas las subfamilies</option>
+            @foreach (var s in subfamilies)
+            {
+                if (Model.SubfamilyId == s.Id)
+                {
+                    <option value="@s.Id" selected="selected">@s.Name</option>
+                }
+                else
+                {
+                    <option value="@s.Id">@s.Name</option>
+                }
+            }
+        </select>
+
+        <input type="text"
+               name="search"
+               value="@Model.Search"
+               placeholder="Buscar (nombre o versión)..." />
+
+        <label class="checkbox">
+            @if (Model.ShowInactive)
+            {
+                <input type="checkbox" name="showInactive" value="true" checked="checked" onchange="this.form.submit()" />
+            }
+            else
+            {
+                <input type="checkbox" name="showInactive" value="true" onchange="this.form.submit()" />
+            }
+            Ver historial
+        </label>
+
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+        <a href="/Admin/Route" class="btn btn-secondary">Limpiar</a>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Subfamily</th>
+                    <th>Nombre Ruta</th>
+                    <th>Versión</th>
+                    <th>Estado</th>
+                    <th>Flujo</th>
+                    <th class="text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="empty">No hay rutas registradas</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
                     {
-                        <form method="post" action="/Admin/Route/Activate/@r.Id" style="display:inline;">
-                            @Html.AntiForgeryToken()
-                            <button type="submit">Activar</button>
-                        </form>
+                        <tr>
+                            <td>@item.Subfamily</td>
+                            <td>@item.Name</td>
+                            <td><span class="badge info">@item.Version</span></td>
+                            <td>
+                                @if (item.Active)
+                                {
+                                    <span class="badge success">ACTIVA</span>
+                                }
+                                else
+                                {
+                                    <span class="badge">HISTÓRICO</span>
+                                }
+                            </td>
+                            <td>
+                                <small class="muted">@item.StepsSummary</small>
+                            </td>
+                            <td class="text-right">
+                                <a href="/Admin/Route/Edit/@item.Id" class="btn-chip">
+                                    <i class="fa-solid fa-pen"></i>
+                                    Editar / Ver
+                                </a>
+
+                                @if (!item.Active)
+                                {
+                                    <form action="/Admin/Route/Activate/@item.Id"
+                                          method="post"
+                                          class="inline-form"
+                                          onsubmit="return confirm('¿Seguro que deseas activar esta versión antigua? La actual dejará de funcionar.');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-chip success">
+                                            <i class="fa-solid fa-rotate-left"></i>
+                                            Restaurar
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
                     }
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+                }
+            </tbody>
+        </table>
+    </div>
 
-<div style="margin-top:12px;">
-    Página @Model.Page de @Model.TotalPages | Total: @Model.Total
-</div>
-
-<div style="margin-top:8px;">
-    @if (Model.Page > 1)
+    @if (Model.TotalPages > 1)
     {
-        <a href="/Admin/Route?subfamilyId=@Model.SubfamilyId&search=@Model.Search&showInactive=@Model.ShowInactive&page=@(Model.Page - 1)&pageSize=@Model.PageSize">Anterior</a>
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page" href="@Url.Action("Index", new { subfamilyId = Model.SubfamilyId, search = Model.Search, showInactive = Model.ShowInactive, page = i })">@i</a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="pagination">Página @Model.Page de @Model.TotalPages</div>
     }
 
-    <span style="margin:0 10px;"></span>
-
-    @if (Model.Page < Model.TotalPages)
-    {
-        <a href="/Admin/Route?subfamilyId=@Model.SubfamilyId&search=@Model.Search&showInactive=@Model.ShowInactive&page=@(Model.Page + 1)&pageSize=@Model.PageSize">Siguiente</a>
-    }
 </div>

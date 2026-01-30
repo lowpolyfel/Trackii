@@ -35,6 +35,13 @@ public class RoleController : Controller
     {
         if (!ModelState.IsValid) return View(vm);
 
+        // VALIDACIÓN
+        if (_svc.Exists(vm.Name))
+        {
+            ModelState.AddModelError("Name", "Este rol ya existe.");
+            return View(vm);
+        }
+
         _svc.Create(vm);
         return RedirectToAction(nameof(Index));
     }
@@ -54,6 +61,14 @@ public class RoleController : Controller
         if (id != vm.Id) return BadRequest();
         if (!ModelState.IsValid) return View(vm);
 
+        // VALIDACIÓN DUPLICADO
+        if (_svc.Exists(vm.Name, id))
+        {
+            ModelState.AddModelError("Name", "Este rol ya existe.");
+            return View(vm);
+        }
+
+        // Validación de uso (la que ya tenías)
         if (!_svc.Update(vm))
             TempData["Error"] = "No se puede editar un Role en uso.";
 

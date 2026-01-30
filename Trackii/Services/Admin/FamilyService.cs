@@ -126,10 +126,28 @@ public class FamilyService
         };
     }
 
+    // ==========================================
+    // CREATE (Validación Padre)
+    // ==========================================
     public void Create(FamilyEditVm vm)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
+
+        // VALIDACIÓN: Verificar que el Área esté activa
+        using (var check = new MySqlCommand("SELECT active FROM area WHERE id = @aid", cn))
+        {
+            check.Parameters.AddWithValue("@aid", vm.AreaId);
+            var isActive = Convert.ToBoolean(check.ExecuteScalar());
+            if (!isActive)
+            {
+                throw new Exception("No se puede crear la Familia porque el Área seleccionada está inactiva.");
+            }
+        }
+
+        // VALIDACIÓN: Duplicados
+        if (Exists(cn, vm.Name, null))
+            throw new Exception("Ya existe una Familia con este nombre.");
 
         using var cmd = new MySqlCommand(
             "INSERT INTO family (id_area, name, active) VALUES (@a, @n, 1)", cn);
@@ -138,10 +156,28 @@ public class FamilyService
         cmd.ExecuteNonQuery();
     }
 
+    // ==========================================
+    // UPDATE (Validación Padre)
+    // ==========================================
     public void Update(FamilyEditVm vm)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
+
+        // VALIDACIÓN: Verificar que el Área (nueva o actual) esté activa
+        using (var check = new MySqlCommand("SELECT active FROM area WHERE id = @aid", cn))
+        {
+            check.Parameters.AddWithValue("@aid", vm.AreaId);
+            var isActive = Convert.ToBoolean(check.ExecuteScalar());
+            if (!isActive)
+            {
+                throw new Exception("No se puede asignar un Área inactiva.");
+            }
+        }
+
+        // VALIDACIÓN: Duplicados
+        if (Exists(cn, vm.Name, vm.Id))
+            throw new Exception("Ya existe una Familia con este nombre.");
 
         using var cmd = new MySqlCommand(
             "UPDATE family SET id_area = @a, name = @n WHERE id = @id", cn);
@@ -151,39 +187,97 @@ public class FamilyService
         cmd.ExecuteNonQuery();
     }
 
+    // ==========================================
+    // SET ACTIVE (Cascada Bidireccional)
+    // ==========================================
     public bool SetActive(uint id, bool active)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
+        using var tx = cn.BeginTransaction();
 
         if (active)
         {
-            // Verificar que el Area esté activa
+            // VALIDACIÓN: Solo verificamos al padre (Área) si intentamos ACTIVAR
             using var check = new MySqlCommand(@"
-            SELECT a.active
-            FROM family f
-            JOIN area a ON a.id = f.id_area
-            WHERE f.id = @id
-        ", cn);
+                SELECT a.active
+                FROM family f
+                JOIN area a ON a.id = f.id_area
+                WHERE f.id = @id
+            ", cn, tx);
 
             check.Parameters.AddWithValue("@id", id);
-
             var areaActive = Convert.ToBoolean(check.ExecuteScalar());
-            if (!areaActive)
-            {
-                // NO permitir activar
-                return false;
-            }
+
+            if (!areaActive) return false; // El padre está inactivo, abortamos
         }
 
-        using var cmd = new MySqlCommand(
-            "UPDATE family SET active = @a WHERE id = @id", cn);
+        // 1. Actualizar la Familia
+        using (var cmd = new MySqlCommand(
+            "UPDATE family SET active = @a WHERE id = @id", cn, tx))
+        {
+            cmd.Parameters.AddWithValue("@a", active);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.ExecuteNonQuery();
+        }
 
-        cmd.Parameters.AddWithValue("@a", active);
-        cmd.Parameters.AddWithValue("@id", id);
-        cmd.ExecuteNonQuery();
+        // 2. CASCADA: Aplicar estado a hijos (Subfamilias, Productos, Rutas)
+        var val = active ? 1 : 0;
 
+        // A. Actualizar Subfamilias
+        using (var cmd = new MySqlCommand(
+            "UPDATE subfamily SET active = @val WHERE id_family = @id", cn, tx))
+        {
+            cmd.Parameters.AddWithValue("@val", val);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.ExecuteNonQuery();
+        }
+
+        // B. Actualizar Productos
+        using (var cmd = new MySqlCommand(@"
+            UPDATE product p 
+            JOIN subfamily s ON s.id = p.id_subfamily 
+            SET p.active = @val 
+            WHERE s.id_family = @id", cn, tx))
+        {
+            cmd.Parameters.AddWithValue("@val", val);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.ExecuteNonQuery();
+        }
+
+        // C. Actualizar Rutas
+        using (var cmd = new MySqlCommand(@"
+            UPDATE route r 
+            JOIN subfamily s ON s.id = r.subfamily_id 
+            SET r.active = @val 
+            WHERE s.id_family = @id", cn, tx))
+        {
+            cmd.Parameters.AddWithValue("@val", val);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.ExecuteNonQuery();
+        }
+
+        tx.Commit();
         return true;
     }
 
+    // Helper privado para duplicados
+    public bool Exists(string name, uint? id = null)
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+        return Exists(cn, name, id);
+    }
+
+    private bool Exists(MySqlConnection cn, string name, uint? id)
+    {
+        var query = "SELECT COUNT(*) FROM family WHERE name = @name";
+        if (id.HasValue) query += " AND id != @id";
+
+        using var cmd = new MySqlCommand(query, cn);
+        cmd.Parameters.AddWithValue("@name", name);
+        if (id.HasValue) cmd.Parameters.AddWithValue("@id", id.Value);
+
+        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+    }
 }
