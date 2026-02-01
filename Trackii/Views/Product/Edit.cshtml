@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Editar Product";
     var subfamilies = ViewBag.Subfamilies as List<(uint Id, string Name)> ?? new();
+    var selectedSubfamily = subfamilies.FirstOrDefault(s => s.Id == Model.SubfamilyId);
 }
 
 <div class="card">
@@ -27,20 +28,19 @@
         <div class="form-grid">
 
             <div class="form-field">
-                <label for="SubfamilyId">Subfamily</label>
-                <select id="SubfamilyId" name="SubfamilyId" class="input">
+                <label for="SubfamilyName">Subfamily</label>
+                <input id="SubfamilyName"
+                       class="input"
+                       list="subfamilyOptions"
+                       value="@selectedSubfamily.Name"
+                       placeholder="Pega o escribe la subfamilia..." />
+                <input type="hidden" id="SubfamilyId" name="SubfamilyId" value="@Model.SubfamilyId" />
+                <datalist id="subfamilyOptions">
                     @foreach (var s in subfamilies)
                     {
-                        if (Model.SubfamilyId == s.Id)
-                        {
-                            <option value="@s.Id" selected="selected">@s.Name</option>
-                        }
-                        else
-                        {
-                            <option value="@s.Id">@s.Name</option>
-                        }
+                        <option value="@s.Name" data-id="@s.Id"></option>
                     }
-                </select>
+                </datalist>
                 <span asp-validation-for="SubfamilyId" class="field-error"></span>
             </div>
 
@@ -66,4 +66,20 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const input = document.getElementById("SubfamilyName");
+            const hidden = document.getElementById("SubfamilyId");
+            const options = Array.from(document.getElementById("subfamilyOptions").options);
+
+            const sync = () => {
+                const value = input.value.trim();
+                const match = options.find((option) => option.value === value);
+                hidden.value = match ? match.dataset.id : "";
+            };
+
+            input.addEventListener("input", sync);
+            input.addEventListener("change", sync);
+        })();
+    </script>
 }
