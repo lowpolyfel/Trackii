@@ -1,41 +1,75 @@
 ﻿@model Trackii.Models.Admin.User.UserEditVm
 @{
+    ViewData["Title"] = "Editar Usuario";
     var roles = ViewBag.Roles as List<(uint Id, string Name)>;
 }
 
-<h2>Editar Usuario</h2>
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Editar Usuario</h2>
+            <p class="subtitle">Actualiza los datos del usuario y su rol.</p>
+        </div>
+        <a href="/Admin/User" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
 
-<form method="post">
-    @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="Id" />
+    <form method="post" class="form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
 
-    <label>Usuario</label><br />
-    <input asp-for="Username" />
-    <span asp-validation-for="Username"></span><br /><br />
+        <div class="form-grid">
+            <div class="form-field">
+                <label asp-for="Username"></label>
+                <input asp-for="Username" class="input" />
+                <span asp-validation-for="Username" class="field-error"></span>
+            </div>
 
-    <label>Rol</label><br />
-    <select asp-for="RoleId">
-        @foreach (var r in roles!)
-        {
-            if (r.Id == Model.RoleId)
-            {
-                <option value="@r.Id" selected>@r.Name</option>
-            }
-            else
-            {
-                <option value="@r.Id">@r.Name</option>
-            }
-        }
-    </select>
+            <div class="form-field">
+                <label asp-for="RoleId"></label>
+                <select asp-for="RoleId" class="input">
+                    @foreach (var r in roles!)
+                    {
+                        if (r.Id == Model.RoleId)
+                        {
+                            <option value="@r.Id" selected>@r.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@r.Id">@r.Name</option>
+                        }
+                    }
+                </select>
+                <span asp-validation-for="RoleId" class="field-error"></span>
+            </div>
 
-    <span asp-validation-for="RoleId"></span><br /><br />
+            <div class="form-field">
+                <label asp-for="Active"></label>
+                <label class="checkbox">
+                    <input asp-for="Active" type="checkbox" />
+                    Usuario activo
+                </label>
+            </div>
 
-    <label>Activo</label><br />
-    <input asp-for="Active" type="checkbox" /><br /><br />
+            <div class="form-field">
+                <label asp-for="NewPassword"></label>
+                <input asp-for="NewPassword" type="password" class="input" placeholder="Dejar vacío para mantenerla" />
+                <span asp-validation-for="NewPassword" class="field-error"></span>
+            </div>
+        </div>
 
-    <label>Nueva contraseña (opcional)</label><br />
-    <input asp-for="NewPassword" type="password" />
-    <span asp-validation-for="NewPassword"></span><br /><br />
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Guardar
+            </button>
+            <a href="/Admin/User" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
 
-    <button type="submit">Guardar</button>
-</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
