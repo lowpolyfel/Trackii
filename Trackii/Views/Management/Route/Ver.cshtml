@@ -1,0 +1,62 @@
+@model Trackii.Models.Admin.Route.RouteViewVm
+
+@{
+    ViewData["Title"] = "Ver Ruta";
+}
+
+<div class="card route-flow-view">
+    <div class="page-header">
+        <div>
+            <h2>Flujo de ruta</h2>
+            <p class="subtitle">Vista detallada y limpia del proceso completo.</p>
+        </div>
+
+        <a href="/Admin/Route" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
+
+    <div class="route-flow-header">
+        <div>
+            <h3>@Model.Name</h3>
+            <p class="muted">@Model.Subfamily</p>
+        </div>
+        <div class="route-flow-meta">
+            <span class="badge info">v @Model.Version</span>
+            @if (Model.Active)
+            {
+                <span class="badge success">ACTIVA</span>
+            }
+            else
+            {
+                <span class="badge">HISTÓRICO</span>
+            }
+        </div>
+    </div>
+
+    <div class="route-flow-board">
+        @if (!Model.Steps.Any())
+        {
+            <div class="route-flow-empty">
+                <i class="fa-regular fa-circle"></i>
+                No hay pasos configurados para esta ruta.
+            </div>
+        }
+        else
+        {
+            <ol class="route-flow-steps">
+                @foreach (var step in Model.Steps)
+                {
+                    <li class="route-flow-step">
+                        <div class="step-index">@step.StepNumber</div>
+                        <div class="step-content">
+                            <span class="step-title">@step.LocationName</span>
+                            <span class="step-subtitle">Estación @step.StepNumber</span>
+                        </div>
+                    </li>
+                }
+            </ol>
+        }
+    </div>
+</div>

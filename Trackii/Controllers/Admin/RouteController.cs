@@ -47,6 +47,13 @@ public class RouteController : Controller
         return View($"{ViewBase}Edit.cshtml", vm);
     }
 
+    [HttpGet("Ver/{id}")]
+    public IActionResult Ver(uint id)
+    {
+        var vm = _service.GetForView(id);
+        return View($"{ViewBase}Ver.cshtml", vm);
+    }
+
     [HttpPost("Save")]
     [ValidateAntiForgeryToken]
     public IActionResult Save(RouteEditVm vm)
