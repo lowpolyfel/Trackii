@@ -1,0 +1,61 @@
+﻿@model Trackii.Models.Admin.Route.RouteDeactivateVm
+
+@{
+    ViewData["Title"] = "Desactivar Ruta";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Desactivar Ruta</h2>
+            <p class="subtitle">Selecciona la ruta que quedará activa para esta subfamilia.</p>
+        </div>
+        <a href="/Admin/Route" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
+
+    <div class="alert error" asp-validation-summary="ModelOnly"></div>
+
+    <div class="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        Vas a desactivar <strong>@Model.RouteName</strong> en la subfamilia
+        <strong>@Model.SubfamilyName</strong>. Debes dejar otra ruta activa.
+    </div>
+
+    <form method="post" action="/Admin/Route/Deactivate/@Model.RouteId" class="form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="RouteId" value="@Model.RouteId" />
+
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="ReplacementRouteId">Ruta activa a dejar</label>
+                <select id="ReplacementRouteId" name="ReplacementRouteId" class="input" required>
+                    <option value="">-- Selecciona la ruta --</option>
+                    @foreach (var option in Model.Options)
+                    {
+                        var label = $"{option.Name} (v{option.Version})";
+                        if (option.Id == Model.ReplacementRouteId)
+                        {
+                            <option value="@option.Id" selected="selected">@label</option>
+                        }
+                        else
+                        {
+                            <option value="@option.Id">@label</option>
+                        }
+                    }
+                </select>
+                <span asp-validation-for="ReplacementRouteId" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-danger">
+                <i class="fa-solid fa-power-off"></i>
+                Desactivar y activar seleccionada
+            </button>
+            <a href="/Admin/Route" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>

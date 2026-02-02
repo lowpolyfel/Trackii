@@ -10,6 +10,7 @@ namespace Trackii.Controllers.Admin;
 public class DeviceController : Controller
 {
     private readonly DeviceService _svc;
+    private const string ViewBase = "~/Views/Management/Device/";
 
     public DeviceController(DeviceService svc)
     {
@@ -20,14 +21,14 @@ public class DeviceController : Controller
     public IActionResult Index(string? search, bool showInactive = false, int page = 1)
     {
         var vm = _svc.GetPaged(search, showInactive, page, 10);
-        return View(vm);
+        return View($"{ViewBase}Index.cshtml", vm);
     }
 
     [HttpGet("Create")]
     public IActionResult Create()
     {
         ViewBag.Locations = _svc.GetActiveLocations();
-        return View(new DeviceEditVm());
+        return View($"{ViewBase}Create.cshtml", new DeviceEditVm());
     }
 
     [HttpPost("Create")]
@@ -37,14 +38,14 @@ public class DeviceController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Locations = _svc.GetActiveLocations();
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
 
         if (_svc.ExistsDeviceUid(vm.DeviceUid))
         {
             ModelState.AddModelError("DeviceUid", "Este UID ya existe.");
             ViewBag.Locations = _svc.GetActiveLocations();
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
 
         _svc.Create(vm);
@@ -57,7 +58,7 @@ public class DeviceController : Controller
         var vm = _svc.GetById(id);
         if (vm == null) return NotFound();
         ViewBag.Locations = _svc.GetActiveLocations();
-        return View(vm);
+        return View($"{ViewBase}Edit.cshtml", vm);
     }
 
     [HttpPost("Edit/{id:long}")]
@@ -69,14 +70,14 @@ public class DeviceController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Locations = _svc.GetActiveLocations();
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         if (_svc.ExistsDeviceUid(vm.DeviceUid, id))
         {
             ModelState.AddModelError("DeviceUid", "Este UID ya existe.");
             ViewBag.Locations = _svc.GetActiveLocations();
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         _svc.Update(vm);

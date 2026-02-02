@@ -1,0 +1,166 @@
+﻿@model Trackii.Models.Admin.Product.ProductEditVm
+
+@{
+    ViewData["Title"] = "Editar Product";
+    var areas = ViewBag.Areas as List<(uint Id, string Name)> ?? new();
+    var families = ViewBag.Families as List<(uint Id, string Name, uint AreaId)> ?? new();
+    var subfamilies = ViewBag.Subfamilies as List<(uint Id, string Name, uint FamilyId)> ?? new();
+}
+
+<div class="card">
+
+    <div class="page-header">
+        <div>
+            <h2>Editar Product</h2>
+            <p class="subtitle">Actualiza Área, Family, Subfamily y/o el Part Number</p>
+        </div>
+
+        <a href="/Admin/Product" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
+
+    <form method="post" action="/Admin/Product/Edit/@Model.Id" class="form">
+        @Html.AntiForgeryToken()
+
+        <input type="hidden" name="Id" value="@Model.Id" />
+
+        <div class="form-grid">
+
+            <div class="form-field">
+                <label for="AreaId">Área</label>
+                <select id="AreaId" name="AreaId" class="input" required>
+                    <option value="">-- Selecciona Área --</option>
+                    @foreach (var a in areas)
+                    {
+                        if (Model.AreaId == a.Id)
+                        {
+                            <option value="@a.Id" selected="selected">@a.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@a.Id">@a.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="FamilyId">Family</label>
+                <select id="FamilyId" name="FamilyId" class="input" required>
+                    <option value="">-- Selecciona Family --</option>
+                    @foreach (var f in families)
+                    {
+                        if (Model.FamilyId == f.Id)
+                        {
+                            <option value="@f.Id" data-area-id="@f.AreaId" selected="selected">@f.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@f.Id" data-area-id="@f.AreaId">@f.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="SubfamilyId">Subfamily</label>
+                <select id="SubfamilyId" name="SubfamilyId" class="input" required>
+                    <option value="">-- Selecciona Subfamily --</option>
+                    @foreach (var s in subfamilies)
+                    {
+                        if (Model.SubfamilyId == s.Id)
+                        {
+                            <option value="@s.Id" data-family-id="@s.FamilyId" selected="selected">@s.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@s.Id" data-family-id="@s.FamilyId">@s.Name</option>
+                        }
+                    }
+                </select>
+                <span asp-validation-for="SubfamilyId" class="field-error"></span>
+            </div>
+
+            <div class="form-field">
+                <label asp-for="PartNumber"></label>
+                <input asp-for="PartNumber" class="input" />
+                <span asp-validation-for="PartNumber" class="field-error"></span>
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Guardar
+            </button>
+
+            <a href="/Admin/Product" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const areaSelect = document.getElementById("AreaId");
+            const familySelect = document.getElementById("FamilyId");
+            const subfamilySelect = document.getElementById("SubfamilyId");
+
+            const familyOptions = Array.from(familySelect.options);
+            const subfamilyOptions = Array.from(subfamilySelect.options);
+
+            const filterFamilies = () => {
+                const areaId = areaSelect.value;
+                familyOptions.forEach((option) => {
+                    if (!option.value) return;
+                    const matches = !areaId || option.dataset.areaId === areaId;
+                    option.hidden = !matches;
+                    option.disabled = !matches;
+                });
+
+                if (areaId && familySelect.selectedOptions.length)
+                {
+                    const current = familySelect.selectedOptions[0];
+                    if (current.value && current.dataset.areaId !== areaId)
+                    {
+                        familySelect.value = "";
+                    }
+                }
+            };
+
+            const filterSubfamilies = () => {
+                const familyId = familySelect.value;
+                subfamilyOptions.forEach((option) => {
+                    if (!option.value) return;
+                    const matches = !familyId || option.dataset.familyId === familyId;
+                    option.hidden = !matches;
+                    option.disabled = !matches;
+                });
+
+                if (familyId && subfamilySelect.selectedOptions.length)
+                {
+                    const current = subfamilySelect.selectedOptions[0];
+                    if (current.value && current.dataset.familyId !== familyId)
+                    {
+                        subfamilySelect.value = "";
+                    }
+                }
+            };
+
+            areaSelect.addEventListener("change", () => {
+                filterFamilies();
+                filterSubfamilies();
+            });
+
+            familySelect.addEventListener("change", filterSubfamilies);
+
+            filterFamilies();
+            filterSubfamilies();
+        })();
+    </script>
+}

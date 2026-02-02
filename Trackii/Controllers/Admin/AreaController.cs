@@ -10,6 +10,7 @@ namespace Trackii.Controllers.Admin;
 public class AreaController : Controller
 {
     private readonly AreaService _svc;
+    private const string ViewBase = "~/Views/Management/Area/";
 
     public AreaController(AreaService svc)
     {
@@ -20,13 +21,13 @@ public class AreaController : Controller
     public IActionResult Index(string? search, bool showInactive = false, int page = 1)
     {
         var vm = _svc.GetPaged(search, showInactive, page, 10);
-        return View(vm);
+        return View($"{ViewBase}Index.cshtml", vm);
     }
 
     [HttpGet("Create")]
     public IActionResult Create()
     {
-        return View(new AreaEditVm());
+        return View($"{ViewBase}Create.cshtml", new AreaEditVm());
     }
 
     [HttpPost("Create")]
@@ -34,13 +35,13 @@ public class AreaController : Controller
     public IActionResult Create(AreaEditVm vm)
     {
         if (!ModelState.IsValid)
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
 
         // Validación de duplicados
         if (_svc.Exists(vm.Name))
         {
             ModelState.AddModelError("Name", "Este nombre de Área ya existe.");
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
 
         _svc.Create(vm);
@@ -52,7 +53,7 @@ public class AreaController : Controller
     {
         var vm = _svc.GetById(id);
         if (vm == null) return NotFound();
-        return View(vm);
+        return View($"{ViewBase}Edit.cshtml", vm);
     }
 
     [HttpPost("Edit/{id:long}")]
@@ -62,13 +63,13 @@ public class AreaController : Controller
         if (id != vm.Id) return BadRequest();
 
         if (!ModelState.IsValid)
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
 
         // Validación de duplicados
         if (_svc.Exists(vm.Name, id))
         {
             ModelState.AddModelError("Name", "Este nombre de Área ya existe.");
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         _svc.Update(vm);

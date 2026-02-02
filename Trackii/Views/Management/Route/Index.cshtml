@@ -118,7 +118,14 @@
                                     Editar / Ver
                                 </a>
 
-                                @if (!item.Active)
+                                @if (item.Active)
+                                {
+                                    <a href="/Admin/Route/Deactivate/@item.Id" class="btn-chip danger">
+                                        <i class="fa-solid fa-power-off"></i>
+                                        Desactivar
+                                    </a>
+                                }
+                                else
                                 {
                                     <form action="/Admin/Route/Activate/@item.Id"
                                           method="post"

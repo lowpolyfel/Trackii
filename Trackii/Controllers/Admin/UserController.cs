@@ -10,6 +10,7 @@ namespace Trackii.Controllers.Admin
     public class UserController : Controller
     {
         private readonly UserService _service;
+        private const string ViewBase = "~/Views/Management/User/";
 
         public UserController(UserService service)
         {
@@ -20,14 +21,14 @@ namespace Trackii.Controllers.Admin
         public IActionResult Index(string? search, bool showInactive = false, int page = 1)
         {
             var vm = _service.GetPaged(search, showInactive, page, 10);
-            return View(vm);
+            return View($"{ViewBase}Index.cshtml", vm);
         }
 
         [HttpGet("Create")]
         public IActionResult Create()
         {
             LoadRoles();
-            return View(new UserCreateVm());
+            return View($"{ViewBase}Create.cshtml", new UserCreateVm());
         }
 
         [HttpPost("Create")]
@@ -37,7 +38,7 @@ namespace Trackii.Controllers.Admin
             if (!ModelState.IsValid)
             {
                 LoadRoles();
-                return View(vm);
+                return View($"{ViewBase}Create.cshtml", vm);
             }
 
             var errors = await _service.CreateAsync(vm);
@@ -47,7 +48,7 @@ namespace Trackii.Controllers.Admin
                     ModelState.AddModelError(nameof(vm.Password), err);
 
                 LoadRoles();
-                return View(vm);
+                return View($"{ViewBase}Create.cshtml", vm);
             }
 
             return RedirectToAction(nameof(Index));
@@ -61,7 +62,7 @@ namespace Trackii.Controllers.Admin
                 return NotFound();
 
             LoadRoles();
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         [HttpPost("Edit/{id:long}")]
@@ -74,7 +75,7 @@ namespace Trackii.Controllers.Admin
             if (!ModelState.IsValid)
             {
                 LoadRoles();
-                return View(vm);
+                return View($"{ViewBase}Edit.cshtml", vm);
             }
 
             var errors = await _service.UpdateAsync(vm);
@@ -84,7 +85,7 @@ namespace Trackii.Controllers.Admin
                     ModelState.AddModelError(nameof(vm.NewPassword), err);
 
                 LoadRoles();
-                return View(vm);
+                return View($"{ViewBase}Edit.cshtml", vm);
             }
 
             return RedirectToAction(nameof(Index));
