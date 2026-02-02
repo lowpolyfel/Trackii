@@ -499,6 +499,38 @@ body {
     border: 1px solid #e2e8f0;
 }
 
+.route-flow-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.summary-card {
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.summary-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.summary-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
 .route-flow-empty {
     display: flex;
     align-items: center;
@@ -508,21 +540,16 @@ body {
 }
 
 .route-flow-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
     border-radius: 16px;
     background: #fff;
     border: 1px solid #e2e8f0;
     overflow: hidden;
 }
 
-.route-flow-table-header,
-.route-flow-row {
-    display: grid;
-    grid-template-columns: 100px 1.6fr 1fr;
-    align-items: center;
-    gap: 12px;
-}
-
-.route-flow-table-header {
+.route-flow-table thead th {
     padding: 12px 16px;
     font-size: 12px;
     font-weight: 700;
@@ -530,26 +557,39 @@ body {
     letter-spacing: .04em;
     color: #475569;
     background: #f1f5f9;
+    text-align: left;
 }
 
-.route-flow-row {
+.route-flow-table thead th:first-child {
+    width: 90px;
+}
+
+.route-flow-table tbody td {
     padding: 14px 16px;
     border-top: 1px solid #e2e8f0;
-    transition: background .15s ease;
+    vertical-align: middle;
 }
 
-.route-flow-row:nth-child(even) {
+.route-flow-table tbody tr:nth-child(even) {
     background: #f8fafc;
 }
 
-.route-flow-row:hover {
+.route-flow-table tbody tr:hover {
     background: #eef2ff;
 }
 
-.route-flow-cell {
+.route-flow-table tbody tr {
+    transition: background .15s ease;
+}
+
+.route-flow-table tbody td {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.route-flow-table tbody td:first-child {
+    justify-content: center;
 }
 
 .route-flow-table .step-index {
@@ -572,6 +612,28 @@ body {
 .route-flow-table .step-subtitle {
     font-size: 12px;
     color: #64748b;
+}
+
+.route-flow-table .step-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.route-flow-table .step-detail {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    margin-right: 8px;
+}
+
+.route-flow-table .step-detail-value {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e3a8a;
+    background: rgba(59, 130, 246, 0.15);
 }
 
 /* Route steps */
