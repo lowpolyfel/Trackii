@@ -226,6 +226,11 @@ body {
     color: #111827;
 }
 
+.btn-danger {
+    background-color: #dc2626;
+    color: #fff;
+}
+
 .btn-icon {
     color: var(--accent);
     font-size: 14px;

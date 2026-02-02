@@ -9,6 +9,7 @@ namespace Trackii.Controllers;
 public class ViewCatalogController : Controller
 {
     private readonly ViewCatalogService _svc;
+    private const string ViewBase = "~/Views/Management/ViewCatalog/";
 
     public ViewCatalogController(ViewCatalogService svc)
     {
@@ -19,6 +20,6 @@ public class ViewCatalogController : Controller
     public IActionResult Index()
     {
         var vm = _svc.GetCatalog();
-        return View(vm);
+        return View($"{ViewBase}Index.cshtml", vm);
     }
 }

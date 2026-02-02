@@ -1,0 +1,61 @@
+﻿@model Trackii.Models.Admin.User.UserCreateVm
+@{
+    ViewData["Title"] = "Nuevo Usuario";
+    var roles = ViewBag.Roles as List<(uint Id, string Name)>;
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Nuevo Usuario</h2>
+            <p class="subtitle">Crea un usuario y asigna un rol.</p>
+        </div>
+        <a href="/Admin/User" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="alert error"></div>
+
+    <form method="post" class="form">
+        @Html.AntiForgeryToken()
+
+        <div class="form-grid">
+            <div class="form-field">
+                <label asp-for="Username"></label>
+                <input asp-for="Username" class="input" placeholder="Ej. usuario" />
+                <span asp-validation-for="Username" class="field-error"></span>
+            </div>
+
+            <div class="form-field">
+                <label asp-for="RoleId"></label>
+                <select asp-for="RoleId" class="input">
+                    @foreach (var r in roles!)
+                    {
+                        <option value="@r.Id">@r.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="RoleId" class="field-error"></span>
+            </div>
+
+            <div class="form-field">
+                <label asp-for="Password"></label>
+                <input asp-for="Password" type="password" class="input" />
+                <span asp-validation-for="Password" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Crear
+            </button>
+            <a href="/Admin/User" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

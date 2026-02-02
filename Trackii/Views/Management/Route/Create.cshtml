@@ -22,6 +22,11 @@
 
     <div asp-validation-summary="ModelOnly" class="field-error"></div>
 
+    <div class="alert">
+        <i class="fa-solid fa-circle-info"></i>
+        Al crear una nueva ruta, esta versión quedará activa y la anterior se desactivará automáticamente.
+    </div>
+
     <form method="post" action="/Admin/Route/Save" class="form" id="routeForm">
         @Html.AntiForgeryToken()
 
