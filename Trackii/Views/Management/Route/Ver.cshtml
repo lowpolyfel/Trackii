@@ -45,18 +45,29 @@
         }
         else
         {
-            <ol class="route-flow-steps">
-                @foreach (var step in Model.Steps)
-                {
-                    <li class="route-flow-step">
-                        <div class="step-index">@step.StepNumber</div>
-                        <div class="step-content">
-                            <span class="step-title">@step.LocationName</span>
-                            <span class="step-subtitle">Estación @step.StepNumber</span>
+            <div class="route-flow-table">
+                <div class="route-flow-table-header">
+                    <span>Orden</span>
+                    <span>Estación</span>
+                    <span>Detalle</span>
+                </div>
+                <div class="route-flow-table-body">
+                    @foreach (var step in Model.Steps)
+                    {
+                        <div class="route-flow-row">
+                            <div class="route-flow-cell">
+                                <span class="step-index">@step.StepNumber</span>
+                            </div>
+                            <div class="route-flow-cell">
+                                <span class="step-title">@step.LocationName</span>
+                            </div>
+                            <div class="route-flow-cell">
+                                <span class="step-subtitle">Estación @step.StepNumber</span>
+                            </div>
                         </div>
-                    </li>
-                }
-            </ol>
+                    }
+                </div>
+            </div>
         }
     </div>
 </div>
