@@ -190,6 +190,61 @@ public class RouteService
         return vm;
     }
 
+    public RouteViewVm GetForView(uint id)
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        var vm = new RouteViewVm { Id = id };
+
+        using (var cmd = new MySqlCommand(@"
+            SELECT
+                r.id,
+                r.name,
+                r.version,
+                r.active,
+                CONCAT(a.name,' / ', f.name,' / ', sf.name) AS subfamily
+            FROM route r
+            JOIN subfamily sf ON sf.id = r.subfamily_id
+            JOIN family f ON f.id = sf.id_family
+            JOIN area a ON a.id = f.id_area
+            WHERE r.id = @id
+        ", cn))
+        {
+            cmd.Parameters.AddWithValue("@id", id);
+            using var rd = cmd.ExecuteReader();
+            if (!rd.Read()) throw new InvalidOperationException("Ruta no encontrada.");
+
+            vm.Name = rd.GetString("name");
+            vm.Version = rd.GetString("version");
+            vm.Active = rd.GetBoolean("active");
+            vm.Subfamily = rd.GetString("subfamily");
+        }
+
+        using (var stepsCmd = new MySqlCommand(@"
+            SELECT rs.step_number, rs.location_id, l.name AS location_name
+            FROM route_step rs
+            JOIN location l ON l.id = rs.location_id
+            WHERE rs.route_id = @id
+            ORDER BY rs.step_number
+        ", cn))
+        {
+            stepsCmd.Parameters.AddWithValue("@id", id);
+            using var rd2 = stepsCmd.ExecuteReader();
+            while (rd2.Read())
+            {
+                vm.Steps.Add(new RouteStepVm
+                {
+                    StepNumber = (int)rd2.GetUInt32("step_number"),
+                    LocationId = rd2.GetUInt32("location_id"),
+                    LocationName = rd2.GetString("location_name")
+                });
+            }
+        }
+
+        return vm;
+    }
+
     // ==========================================
     // ACTIVATE (Lógica Crítica)
     // ==========================================

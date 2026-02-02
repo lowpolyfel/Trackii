@@ -80,7 +80,6 @@
                     <th>Nombre Ruta</th>
                     <th>Versión</th>
                     <th>Estado</th>
-                    <th>Flujo</th>
                     <th class="text-right">Acciones</th>
                 </tr>
             </thead>
@@ -88,7 +87,7 @@
                 @if (!Model.Items.Any())
                 {
                     <tr>
-                        <td colspan="6" class="empty">No hay rutas registradas</td>
+                        <td colspan="5" class="empty">No hay rutas registradas</td>
                     </tr>
                 }
                 else
@@ -110,34 +109,33 @@
                                 }
                             </td>
                             <td>
-                                <small class="muted">@item.StepsSummary</small>
-                            </td>
-                            <td class="text-right">
-                                <a href="/Admin/Route/Edit/@item.Id" class="btn-chip">
-                                    <i class="fa-solid fa-pen"></i>
-                                    Editar / Ver
-                                </a>
-
-                                @if (item.Active)
-                                {
-                                    <a href="/Admin/Route/Deactivate/@item.Id" class="btn-chip danger">
-                                        <i class="fa-solid fa-power-off"></i>
-                                        Desactivar
+                                <div class="route-actions">
+                                    <a href="/Admin/Route/Edit/@item.Id" class="icon-action" title="Editar">
+                                        <i class="fa-solid fa-pen"></i>
                                     </a>
-                                }
-                                else
-                                {
-                                    <form action="/Admin/Route/Activate/@item.Id"
-                                          method="post"
-                                          class="inline-form"
-                                          onsubmit="return confirm('¿Seguro que deseas activar esta versión antigua? La actual dejará de funcionar.');">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn-chip success">
-                                            <i class="fa-solid fa-rotate-left"></i>
-                                            Restaurar
-                                        </button>
-                                    </form>
-                                }
+                                    <a href="/Admin/Route/Ver/@item.Id" class="icon-action info" title="Ver flujo">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+
+                                    @if (item.Active)
+                                    {
+                                        <a href="/Admin/Route/Deactivate/@item.Id" class="icon-action danger" title="Desactivar">
+                                            <i class="fa-solid fa-power-off"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <form action="/Admin/Route/Activate/@item.Id"
+                                              method="post"
+                                              class="inline-form"
+                                              onsubmit="return confirm('¿Seguro que deseas activar esta versión antigua? La actual dejará de funcionar.');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="icon-action success" title="Restaurar">
+                                                <i class="fa-solid fa-rotate-left"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
                             </td>
                         </tr>
                     }
