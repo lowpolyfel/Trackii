@@ -1,0 +1,73 @@
+@model Trackii.Models.Admin.Route.RouteViewVm
+
+@{
+    ViewData["Title"] = "Ver Ruta";
+}
+
+<div class="card route-flow-view">
+    <div class="page-header">
+        <div>
+            <h2>Flujo de ruta</h2>
+            <p class="subtitle">Vista detallada y limpia del proceso completo.</p>
+        </div>
+
+        <a href="/Admin/Route" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
+
+    <div class="route-flow-header">
+        <div>
+            <h3>@Model.Name</h3>
+            <p class="muted">@Model.Subfamily</p>
+        </div>
+        <div class="route-flow-meta">
+            <span class="badge info">v @Model.Version</span>
+            @if (Model.Active)
+            {
+                <span class="badge success">ACTIVA</span>
+            }
+            else
+            {
+                <span class="badge">HISTÓRICO</span>
+            }
+        </div>
+    </div>
+
+    <div class="route-flow-board">
+        @if (!Model.Steps.Any())
+        {
+            <div class="route-flow-empty">
+                <i class="fa-regular fa-circle"></i>
+                No hay pasos configurados para esta ruta.
+            </div>
+        }
+        else
+        {
+            <div class="route-flow-table">
+                <div class="route-flow-table-header">
+                    <span>Orden</span>
+                    <span>Estación</span>
+                    <span>Detalle</span>
+                </div>
+                <div class="route-flow-table-body">
+                    @foreach (var step in Model.Steps)
+                    {
+                        <div class="route-flow-row">
+                            <div class="route-flow-cell">
+                                <span class="step-index">@step.StepNumber</span>
+                            </div>
+                            <div class="route-flow-cell">
+                                <span class="step-title">@step.LocationName</span>
+                            </div>
+                            <div class="route-flow-cell">
+                                <span class="step-subtitle">Estación @step.StepNumber</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
