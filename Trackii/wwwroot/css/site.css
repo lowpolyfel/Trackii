@@ -582,10 +582,8 @@ body {
     transition: background .15s ease;
 }
 
-.route-flow-table tbody td {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.route-flow-table tbody td:first-child {
+    text-align: center;
 }
 
 .route-flow-table tbody td:first-child {
@@ -625,6 +623,8 @@ body {
     font-weight: 600;
     color: #64748b;
     margin-right: 8px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .route-flow-table .step-detail-value {
@@ -634,6 +634,8 @@ body {
     font-weight: 600;
     color: #1e3a8a;
     background: rgba(59, 130, 246, 0.15);
+    display: inline-flex;
+    align-items: center;
 }
 
 /* Route steps */
