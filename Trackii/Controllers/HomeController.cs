@@ -8,6 +8,6 @@ public class HomeController : Controller
 {
     public IActionResult Index()
     {
-        return RedirectToAction("Index", "Lobby");
+        return RedirectToAction("Index", "Gerencia");
     }
 }

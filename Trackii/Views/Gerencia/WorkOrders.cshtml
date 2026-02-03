@@ -1,0 +1,174 @@
+@model Trackii.Models.Gerencia.GerenciaWorkOrdersVm
+
+@{
+    ViewData["Title"] = "Órdenes de Trabajo";
+}
+
+<div class="dashboard">
+    <div class="page-header">
+        <div>
+            <h2>Órdenes de trabajo</h2>
+            <p class="subtitle">Seguimiento de órdenes activas, en progreso, canceladas y demoradas</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a Gerencia
+        </a>
+    </div>
+
+    <div class="card">
+        <h3>Órdenes activas (OPEN)</h3>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>WO</th>
+                        <th>Producto</th>
+                        <th>Estado</th>
+                        <th>WIP</th>
+                        <th>Localidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.ActiveWorkOrders.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="empty">No hay órdenes activas</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.ActiveWorkOrders)
+                        {
+                            <tr>
+                                <td>@item.WoNumber</td>
+                                <td>@item.Product</td>
+                                <td>@item.Status</td>
+                                <td>@(item.WipItemId?.ToString() ?? "-")</td>
+                                <td>@(item.CurrentLocation ?? "-")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Órdenes en progreso (IN_PROGRESS)</h3>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>WO</th>
+                        <th>Producto</th>
+                        <th>Estado</th>
+                        <th>WIP</th>
+                        <th>WIP Estado</th>
+                        <th>Localidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.InProgressWorkOrders.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="empty">No hay órdenes en progreso</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.InProgressWorkOrders)
+                        {
+                            <tr>
+                                <td>@item.WoNumber</td>
+                                <td>@item.Product</td>
+                                <td>@item.Status</td>
+                                <td>@(item.WipItemId?.ToString() ?? "-")</td>
+                                <td>@(item.WipStatus ?? "-")</td>
+                                <td>@(item.CurrentLocation ?? "-")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Órdenes canceladas (CANCELLED)</h3>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>WO</th>
+                        <th>Producto</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.CancelledWorkOrders.Any())
+                    {
+                        <tr>
+                            <td colspan="3" class="empty">No hay órdenes canceladas</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.CancelledWorkOrders)
+                        {
+                            <tr>
+                                <td>@item.WoNumber</td>
+                                <td>@item.Product</td>
+                                <td>@item.Status</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Órdenes demoradas (+7 días)</h3>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>WO</th>
+                        <th>Producto</th>
+                        <th>Estado</th>
+                        <th>Días</th>
+                        <th>WIP</th>
+                        <th>WIP Estado</th>
+                        <th>Inicio WIP</th>
+                        <th>Localidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.DelayedWorkOrders.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="empty">No hay órdenes demoradas</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.DelayedWorkOrders)
+                        {
+                            <tr>
+                                <td>@item.WoNumber</td>
+                                <td>@item.Product</td>
+                                <td>@item.Status</td>
+                                <td>@item.DaysDelayed</td>
+                                <td>@item.WipItemId</td>
+                                <td>@item.WipStatus</td>
+                                <td>@item.WipCreatedAt?.ToString("yyyy-MM-dd")</td>
+                                <td>@(item.CurrentLocation ?? "-")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
