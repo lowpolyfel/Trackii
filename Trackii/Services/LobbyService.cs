@@ -38,10 +38,75 @@ public class LobbyService
         return vm;
     }
 
+    public AdminLobbyVm GetAdminDashboard()
+    {
+        var vm = new AdminLobbyVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        vm.AreasCount = CountTable(cn, "area");
+        vm.FamiliesCount = CountTable(cn, "family");
+        vm.SubfamiliesCount = CountTable(cn, "subfamily");
+        vm.ProductsCount = CountTable(cn, "product");
+        vm.RoutesCount = CountTable(cn, "route");
+        vm.LocationsCount = CountTable(cn, "location");
+        vm.UsersCount = CountTable(cn, "user");
+        vm.RolesCount = CountTable(cn, "role");
+
+        LoadActiveDevices(cn, vm);
+        LoadActiveUsers(cn, vm);
+
+        return vm;
+    }
+
     private static int CountTable(MySqlConnection cn, string table)
     {
         using var cmd = new MySqlCommand($"SELECT COUNT(*) FROM `{table}`", cn);
         return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    private static void LoadActiveDevices(MySqlConnection cn, AdminLobbyVm vm)
+    {
+        using var cmd = new MySqlCommand(@"
+            SELECT d.device_uid, COALESCE(d.name, '') AS device_name, l.name AS location_name
+            FROM devices d
+            JOIN location l ON l.id = d.location_id
+            WHERE d.active = 1
+            ORDER BY l.name, d.device_uid", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            vm.ActiveDevices.Add(new AdminLobbyVm.ActiveDeviceVm
+            {
+                DeviceUid = rd.GetString("device_uid"),
+                Name = rd.GetString("device_name"),
+                Location = rd.GetString("location_name")
+            });
+        }
+
+        vm.ActiveDevicesCount = vm.ActiveDevices.Count;
+    }
+
+    private static void LoadActiveUsers(MySqlConnection cn, AdminLobbyVm vm)
+    {
+        using var cmd = new MySqlCommand(@"
+            SELECT u.username, r.name AS role_name
+            FROM user u
+            JOIN role r ON r.id = u.role_id
+            WHERE u.active = 1
+            ORDER BY u.username", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            vm.ActiveUsers.Add(new AdminLobbyVm.ActiveUserVm
+            {
+                Username = rd.GetString("username"),
+                Role = rd.GetString("role_name")
+            });
+        }
     }
 
     private static void LoadAreaProductChart(MySqlConnection cn, LobbyVm.ChartVm chart)

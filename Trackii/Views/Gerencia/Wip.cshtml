@@ -1,0 +1,82 @@
+@using System.Text.Json
+@model Trackii.Models.Gerencia.GerenciaWipVm
+
+@{
+    ViewData["Title"] = "WIP detallado";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>WIP detallado</h2>
+            <p class="subtitle">Estado actual de las piezas en proceso</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a Gerencia
+        </a>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card chart-card">
+            <h3>WIP por estado</h3>
+            <canvas id="wipStatusChart"></canvas>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>WIP</th>
+                    <th>WO</th>
+                    <th>Estado</th>
+                    <th>Localidad</th>
+                    <th>Creado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.WipItems.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="empty">No hay WIP registrados</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.WipItems)
+                    {
+                        <tr>
+                            <td>@item.Id</td>
+                            <td>@item.WoNumber</td>
+                            <td>@item.Status</td>
+                            <td>@(item.CurrentLocation ?? "-")</td>
+                            <td>@item.CreatedAt.ToString("yyyy-MM-dd")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const wipLabels = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Labels));
+        const wipValues = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Values));
+
+        new Chart(document.getElementById('wipStatusChart'), {
+            type: 'pie',
+            data: {
+                labels: wipLabels,
+                datasets: [{
+                    data: wipValues,
+                    backgroundColor: ['#60a5fa', '#a78bfa', '#34d399', '#f87171']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    </script>
+}

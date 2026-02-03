@@ -98,9 +98,12 @@
                                 }
                             </td>
                             <td class="text-right">
-                                <a href="/Admin/Family/Edit/@f.Id" class="btn-icon" title="Editar">
-                                    <i class="fa-solid fa-pen"></i>
-                                </a>
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <a href="/Admin/Family/Edit/@f.Id" class="btn-icon" title="Editar">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </a>
+                                }
 
                                 <form action="/Admin/Family/Toggle" method="post" class="inline-form">
                                     @Html.AntiForgeryToken()
