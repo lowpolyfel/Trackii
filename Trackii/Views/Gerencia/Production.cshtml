@@ -1,0 +1,81 @@
+@using System.Text.Json
+@model Trackii.Models.Gerencia.GerenciaProductionVm
+
+@{
+    ViewData["Title"] = "Producción por Localidad";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Producción por localidad</h2>
+            <p class="subtitle">Detalle de piezas producidas por estación</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a Gerencia
+        </a>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card chart-card">
+            <h3>Producción total</h3>
+            <canvas id="productionDetailChart"></canvas>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Localidad</th>
+                    <th class="text-right">Piezas</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.ProductionByLocation.Any())
+                {
+                    <tr>
+                        <td colspan="2" class="empty">Sin datos de producción registrados</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.ProductionByLocation)
+                    {
+                        <tr>
+                            <td>@item.Location</td>
+                            <td class="text-right">@item.QtyProduced</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const productionLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Labels));
+        const productionValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Values));
+
+        new Chart(document.getElementById('productionDetailChart'), {
+            type: 'bar',
+            data: {
+                labels: productionLabels,
+                datasets: [{
+                    label: 'Piezas producidas',
+                    data: productionValues,
+                    backgroundColor: '#93c5fd'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
+}

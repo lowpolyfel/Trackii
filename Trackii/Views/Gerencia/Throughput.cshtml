@@ -1,0 +1,83 @@
+@using System.Text.Json
+@model Trackii.Models.Gerencia.GerenciaThroughputVm
+
+@{
+    ViewData["Title"] = "Throughput diario";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Throughput diario</h2>
+            <p class="subtitle">Producción acumulada de los últimos 14 días</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a Gerencia
+        </a>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card chart-card">
+            <h3>Piezas producidas por día</h3>
+            <canvas id="throughputChart"></canvas>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Día</th>
+                    <th class="text-right">Piezas</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="2" class="empty">Sin datos de producción</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.Day.ToString("yyyy-MM-dd")</td>
+                            <td class="text-right">@item.QtyProduced</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const throughputLabels = @Html.Raw(JsonSerializer.Serialize(Model.DailyThroughputChart.Labels));
+        const throughputValues = @Html.Raw(JsonSerializer.Serialize(Model.DailyThroughputChart.Values));
+
+        new Chart(document.getElementById('throughputChart'), {
+            type: 'line',
+            data: {
+                labels: throughputLabels,
+                datasets: [{
+                    label: 'Piezas',
+                    data: throughputValues,
+                    borderColor: '#38bdf8',
+                    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
+}

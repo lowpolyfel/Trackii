@@ -1,0 +1,40 @@
+@model Trackii.Models.Engineering.UnregisteredPartCreateVm
+
+@{
+    ViewData["Title"] = "Registrar parte";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Registrar parte</h2>
+            <p class="subtitle">Agregar un part number pendiente</p>
+        </div>
+        <a asp-controller="UnregisteredParts" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
+
+    <form method="post" class="form-grid" action="/Engineering/UnregisteredParts/Create">
+        @Html.AntiForgeryToken()
+
+        <div>
+            <label asp-for="PartNumber"></label>
+            <input asp-for="PartNumber" />
+            <span asp-validation-for="PartNumber" class="text-danger"></span>
+        </div>
+
+        <div>
+            <label asp-for="CreatedAt"></label>
+            <input asp-for="CreatedAt" type="datetime-local" />
+            <span asp-validation-for="CreatedAt" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

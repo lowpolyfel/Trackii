@@ -5,15 +5,33 @@ using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Engineering,Ingenieria")]
 [Route("Admin/Product")]
 public class ProductController : Controller
 {
     private readonly ProductService _svc;
+    private const string ViewBase = "~/Views/Management/Product/";
 
     public ProductController(ProductService svc)
     {
         _svc = svc;
+    }
+
+    private void LoadLookups(ProductEditVm vm)
+    {
+        if (vm.SubfamilyId != 0 && (!vm.AreaId.HasValue || !vm.FamilyId.HasValue))
+        {
+            var parents = _svc.GetParentsForSubfamily(vm.SubfamilyId);
+            if (parents.HasValue)
+            {
+                vm.AreaId ??= parents.Value.AreaId;
+                vm.FamilyId ??= parents.Value.FamilyId;
+            }
+        }
+
+        ViewBag.Areas = _svc.GetActiveAreas();
+        ViewBag.Families = _svc.GetActiveFamiliesWithArea();
+        ViewBag.Subfamilies = _svc.GetActiveSubfamiliesWithFamily();
     }
 
     [HttpGet("")]
@@ -34,14 +52,19 @@ public class ProductController : Controller
             page,
             10);
 
-        return View(vm);
+        return View($"{ViewBase}Index.cshtml", vm);
     }
 
     [HttpGet("Create")]
-    public IActionResult Create()
+    public IActionResult Create(string? partNumber)
     {
-        ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
-        return View(new ProductEditVm());
+        var vm = new ProductEditVm();
+        if (!string.IsNullOrWhiteSpace(partNumber))
+        {
+            vm.PartNumber = partNumber;
+        }
+        LoadLookups(vm);
+        return View($"{ViewBase}Create.cshtml", vm);
     }
 
     [HttpPost("Create")]
@@ -50,16 +73,16 @@ public class ProductController : Controller
     {
         if (!ModelState.IsValid)
         {
-            ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
-            return View(vm);
+            LoadLookups(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
 
         // 1. VALIDACIÓN DUPLICADOS (Ya existente)
         if (_svc.Exists(vm.PartNumber))
         {
             ModelState.AddModelError("PartNumber", "Este número de parte ya existe.");
-            ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
-            return View(vm);
+            LoadLookups(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
 
         // 2. INTENTO DE CREACIÓN (Con validación de Subfamilia Activa)
@@ -71,39 +94,41 @@ public class ProductController : Controller
         catch (Exception ex)
         {
             ModelState.AddModelError("", ex.Message); // "La Subfamilia seleccionada está inactiva"
-            ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
-            return View(vm);
+            LoadLookups(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
     }
 
     [HttpGet("Edit/{id:long}")]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(uint id)
     {
         var vm = _svc.GetById(id);
         if (vm == null) return NotFound();
 
-        ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
-        return View(vm);
+        LoadLookups(vm);
+        return View($"{ViewBase}Edit.cshtml", vm);
     }
 
     [HttpPost("Edit/{id:long}")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(uint id, ProductEditVm vm)
     {
         if (id != vm.Id) return BadRequest();
 
         if (!ModelState.IsValid)
         {
-            ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
-            return View(vm);
+            LoadLookups(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         // 1. VALIDACIÓN DUPLICADOS (Ya existente)
         if (_svc.Exists(vm.PartNumber, id))
         {
             ModelState.AddModelError("PartNumber", "Este número de parte ya existe.");
-            ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
-            return View(vm);
+            LoadLookups(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         // 2. INTENTO DE ACTUALIZACIÓN (Con validación de Subfamilia Activa)
@@ -115,8 +140,8 @@ public class ProductController : Controller
         catch (Exception ex)
         {
             ModelState.AddModelError("", ex.Message);
-            ViewBag.Subfamilies = _svc.GetActiveSubfamilies();
-            return View(vm);
+            LoadLookups(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
     }
 

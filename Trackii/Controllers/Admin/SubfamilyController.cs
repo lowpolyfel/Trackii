@@ -5,11 +5,12 @@ using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize]
+[Authorize(Roles = "Admin,Engineering,Ingenieria")]
 [Route("Admin/[controller]")]
 public class SubfamilyController : Controller
 {
     private readonly SubfamilyService _svc;
+    private const string ViewBase = "~/Views/Management/Subfamily/";
 
     public SubfamilyController(SubfamilyService svc)
     {
@@ -26,7 +27,7 @@ public class SubfamilyController : Controller
         int page = 1)
     {
         var vm = _svc.GetPaged(areaId, familyId, search, showInactive, page, 10);
-        return View(vm);
+        return View($"{ViewBase}Index.cshtml", vm);
     }
 
     // ===================== CREATE =====================
@@ -34,7 +35,7 @@ public class SubfamilyController : Controller
     public IActionResult Create()
     {
         ViewBag.Families = _svc.GetActiveFamilies();
-        return View(new SubfamilyEditVm());
+        return View($"{ViewBase}Create.cshtml", new SubfamilyEditVm());
     }
 
     [HttpPost("Create")]
@@ -44,7 +45,7 @@ public class SubfamilyController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Families = _svc.GetActiveFamilies();
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
 
         // 1. VALIDACIÓN DUPLICADOS (La que ya tenías)
@@ -52,7 +53,7 @@ public class SubfamilyController : Controller
         {
             ModelState.AddModelError("Name", "Este nombre de Subfamilia ya existe.");
             ViewBag.Families = _svc.GetActiveFamilies();
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
 
         // 2. INTENTO DE CREACIÓN (Con validación de Familia Activa)
@@ -65,29 +66,31 @@ public class SubfamilyController : Controller
         {
             ModelState.AddModelError("", ex.Message); // "La Familia seleccionada está inactiva"
             ViewBag.Families = _svc.GetActiveFamilies();
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
     }
 
     // ===================== EDIT =====================
     [HttpGet("Edit/{id:long}")]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(uint id)
     {
         var vm = _svc.GetById(id);
         if (vm == null) return NotFound();
 
         ViewBag.Families = _svc.GetActiveFamilies();
-        return View(vm);
+        return View($"{ViewBase}Edit.cshtml", vm);
     }
 
     [HttpPost("Edit/{id:long}")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(SubfamilyEditVm vm)
     {
         if (!ModelState.IsValid)
         {
             ViewBag.Families = _svc.GetActiveFamilies();
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         // 1. VALIDACIÓN DUPLICADOS (La que ya tenías)
@@ -95,7 +98,7 @@ public class SubfamilyController : Controller
         {
             ModelState.AddModelError("Name", "Este nombre de Subfamilia ya existe.");
             ViewBag.Families = _svc.GetActiveFamilies();
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         // 2. INTENTO DE ACTUALIZACIÓN (Con validación de Familia Activa)
@@ -108,7 +111,7 @@ public class SubfamilyController : Controller
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Families = _svc.GetActiveFamilies();
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
     }
     // ===================== TOGGLE =====================

@@ -1,0 +1,157 @@
+@model Trackii.Models.Lobby.AdminLobbyVm
+
+@{
+    ViewData["Title"] = "Lobby Administrador";
+}
+
+<div class="dashboard">
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Areas</div>
+                <div class="kpi-value">@Model.AreasCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-diagram-project"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Families</div>
+                <div class="kpi-value">@Model.FamiliesCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-sitemap"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Subfamilies</div>
+                <div class="kpi-value">@Model.SubfamiliesCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-box"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Products</div>
+                <div class="kpi-value">@Model.ProductsCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-route"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Routes</div>
+                <div class="kpi-value">@Model.RoutesCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-location-dot"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Localidades</div>
+                <div class="kpi-value">@Model.LocationsCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Usuarios</div>
+                <div class="kpi-value">@Model.UsersCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-tablet-screen-button"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Dispositivos activos</div>
+                <div class="kpi-value">@Model.ActiveDevicesCount</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card">
+            <h3>Dispositivos activos</h3>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>UID</th>
+                            <th>Nombre</th>
+                            <th>Localidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.ActiveDevices.Any())
+                        {
+                            <tr>
+                                <td colspan="3" class="empty">No hay dispositivos activos</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var device in Model.ActiveDevices)
+                            {
+                                <tr>
+                                    <td>@device.DeviceUid</td>
+                                    <td>@(string.IsNullOrWhiteSpace(device.Name) ? "-" : device.Name)</td>
+                                    <td>@device.Location</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Usuarios activos</h3>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Rol</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.ActiveUsers.Any())
+                        {
+                            <tr>
+                                <td colspan="2" class="empty">No hay usuarios activos</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var user in Model.ActiveUsers)
+                            {
+                                <tr>
+                                    <td>@user.Username</td>
+                                    <td>@user.Role</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

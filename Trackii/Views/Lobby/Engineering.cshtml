@@ -1,0 +1,109 @@
+@model Trackii.Models.Engineering.EngineeringLobbyVm
+
+@{
+    ViewData["Title"] = "Lobby Ingeniería";
+}
+
+<div class="dashboard">
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Partes sin registrar (activas)</div>
+                <div class="kpi-value">@Model.ActiveUnregisteredCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-clipboard-list"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Total registradas</div>
+                <div class="kpi-value">@Model.TotalUnregisteredCount</div>
+            </div>
+        </div>
+
+        <a class="kpi-card" asp-controller="UnregisteredParts" asp-action="Index">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-file-circle-plus"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Gestionar partes</div>
+                <div class="kpi-value">Ver listado</div>
+            </div>
+        </a>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card">
+            <h3>Partes activas con mayor antigüedad</h3>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Part Number</th>
+                            <th>Creación</th>
+                            <th class="text-right">Días</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.OldestUnregistered.Any())
+                        {
+                            <tr>
+                                <td colspan="3" class="empty">Sin registros activos</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var item in Model.OldestUnregistered)
+                            {
+                                <tr>
+                                    <td>@item.PartNumber</td>
+                                    <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td class="text-right">@item.AgeDays</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Últimas partes registradas</h3>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Part Number</th>
+                            <th>Creación</th>
+                            <th class="text-right">Días</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.RecentUnregistered.Any())
+                        {
+                            <tr>
+                                <td colspan="3" class="empty">Sin registros activos</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var item in Model.RecentUnregistered)
+                            {
+                                <tr>
+                                    <td>@item.PartNumber</td>
+                                    <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td class="text-right">@item.AgeDays</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

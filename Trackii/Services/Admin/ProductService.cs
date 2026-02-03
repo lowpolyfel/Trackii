@@ -103,8 +103,16 @@ public class ProductService
         using var cn = new MySqlConnection(_conn);
         cn.Open();
 
-        using var cmd = new MySqlCommand(
-            "SELECT id, id_subfamily, part_number FROM product WHERE id=@id", cn);
+        using var cmd = new MySqlCommand(@"
+            SELECT p.id,
+                   p.id_subfamily,
+                   s.id_family,
+                   f.id_area,
+                   p.part_number
+            FROM product p
+            JOIN subfamily s ON s.id = p.id_subfamily
+            JOIN family f ON f.id = s.id_family
+            WHERE p.id=@id", cn);
 
         cmd.Parameters.AddWithValue("@id", id);
         using var rd = cmd.ExecuteReader();
@@ -114,6 +122,8 @@ public class ProductService
         {
             Id = id,
             SubfamilyId = rd.GetUInt32("id_subfamily"),
+            FamilyId = rd.GetUInt32("id_family"),
+            AreaId = rd.GetUInt32("id_area"),
             PartNumber = rd.GetString("part_number")
         };
     }
@@ -227,6 +237,73 @@ public class ProductService
             list.Add((rd.GetUInt32(0), rd.GetString(1)));
 
         return list;
+    }
+
+    public List<(uint Id, string Name)> GetActiveAreas()
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        return GetActiveAreas(cn);
+    }
+
+    public List<(uint Id, string Name, uint AreaId)> GetActiveFamiliesWithArea()
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        var list = new List<(uint Id, string Name, uint AreaId)>();
+        using var cmd = new MySqlCommand(
+            @"SELECT f.id, f.name, f.id_area
+              FROM family f
+              JOIN area a ON a.id = f.id_area
+              WHERE f.active=1 AND a.active=1
+              ORDER BY f.name", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+            list.Add((rd.GetUInt32("id"), rd.GetString("name"), rd.GetUInt32("id_area")));
+
+        return list;
+    }
+
+    public List<(uint Id, string Name, uint FamilyId)> GetActiveSubfamiliesWithFamily()
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        var list = new List<(uint Id, string Name, uint FamilyId)>();
+        using var cmd = new MySqlCommand(
+            @"SELECT s.id, s.name, s.id_family
+              FROM subfamily s
+              JOIN family f ON f.id = s.id_family
+              JOIN area a ON a.id = f.id_area
+              WHERE s.active=1 AND f.active=1 AND a.active=1
+              ORDER BY s.name", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+            list.Add((rd.GetUInt32("id"), rd.GetString("name"), rd.GetUInt32("id_family")));
+
+        return list;
+    }
+
+    public (uint AreaId, uint FamilyId)? GetParentsForSubfamily(uint subfamilyId)
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT f.id AS family_id, f.id_area AS area_id
+            FROM subfamily s
+            JOIN family f ON f.id = s.id_family
+            WHERE s.id = @sid", cn);
+        cmd.Parameters.AddWithValue("@sid", subfamilyId);
+
+        using var rd = cmd.ExecuteReader();
+        if (!rd.Read()) return null;
+
+        return (rd.GetUInt32("area_id"), rd.GetUInt32("family_id"));
     }
 
     private static List<(uint, string)> GetActiveAreas(MySqlConnection cn)

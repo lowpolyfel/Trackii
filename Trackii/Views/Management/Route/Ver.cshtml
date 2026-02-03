@@ -1,0 +1,94 @@
+@model Trackii.Models.Admin.Route.RouteViewVm
+
+@{
+    ViewData["Title"] = "Ver Ruta";
+}
+
+<div class="card route-flow-view">
+    <div class="page-header">
+        <div>
+            <h2>Flujo de ruta</h2>
+            <p class="subtitle">Vista detallada y limpia del proceso completo.</p>
+        </div>
+
+        <a href="/Admin/Route" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
+
+    <div class="route-flow-header">
+        <div>
+            <h3>@Model.Name</h3>
+            <p class="muted">@Model.Subfamily</p>
+        </div>
+        <div class="route-flow-meta">
+            <span class="badge info">v @Model.Version</span>
+            @if (Model.Active)
+            {
+                <span class="badge success">ACTIVA</span>
+            }
+            else
+            {
+                <span class="badge">HISTÓRICO</span>
+            }
+        </div>
+    </div>
+
+    <div class="route-flow-board">
+        <div class="route-flow-summary">
+            <div class="summary-card">
+                <span class="summary-label">Total de pasos</span>
+                <span class="summary-value">@Model.Steps.Count</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">Subfamilia</span>
+                <span class="summary-value">@Model.Subfamily</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">Estatus</span>
+                <span class="summary-value">@(Model.Active ? "Activa" : "Histórico")</span>
+            </div>
+        </div>
+
+        @if (!Model.Steps.Any())
+        {
+            <div class="route-flow-empty">
+                <i class="fa-regular fa-circle"></i>
+                No hay pasos configurados para esta ruta.
+            </div>
+        }
+        else
+        {
+            <table class="route-flow-table">
+                <thead>
+                    <tr>
+                        <th>Orden</th>
+                        <th>Estación</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var step in Model.Steps)
+                    {
+                        <tr>
+                            <td>
+                                <span class="step-index">@step.StepNumber</span>
+                            </td>
+                            <td>
+                                <div class="step-main">
+                                    <span class="step-title">@step.LocationName</span>
+                                    <span class="step-subtitle">Estación @step.StepNumber</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="step-detail">Orden en flujo</span>
+                                <span class="step-detail-value">#@step.StepNumber</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

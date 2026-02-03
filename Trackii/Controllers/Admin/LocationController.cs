@@ -10,6 +10,7 @@ namespace Trackii.Controllers.Admin;
 public class LocationController : Controller
 {
     private readonly LocationService _svc;
+    private const string ViewBase = "~/Views/Management/Location/";
 
     public LocationController(LocationService svc)
     {
@@ -28,13 +29,13 @@ public class LocationController : Controller
             page,
             10);
 
-        return View(vm);
+        return View($"{ViewBase}Index.cshtml", vm);
     }
 
     [HttpGet("Create")]
     public IActionResult Create()
     {
-        return View(new LocationEditVm());
+        return View($"{ViewBase}Create.cshtml", new LocationEditVm());
     }
 
     [HttpPost("Create")]
@@ -42,13 +43,13 @@ public class LocationController : Controller
     public IActionResult Create(LocationEditVm vm)
     {
         if (!ModelState.IsValid)
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
 
         // VALIDACIÓN
         if (_svc.Exists(vm.Name))
         {
             ModelState.AddModelError("Name", "Esta ubicación ya existe.");
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
 
         _svc.Create(vm);
@@ -61,7 +62,7 @@ public class LocationController : Controller
         var vm = _svc.GetById(id);
         if (vm == null) return NotFound();
 
-        return View(vm);
+        return View($"{ViewBase}Edit.cshtml", vm);
     }
 
     [HttpPost("Edit/{id:long}")]
@@ -71,13 +72,13 @@ public class LocationController : Controller
         if (id != vm.Id) return BadRequest();
 
         if (!ModelState.IsValid)
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
 
         // VALIDACIÓN
         if (_svc.Exists(vm.Name, id))
         {
             ModelState.AddModelError("Name", "Esta ubicación ya existe.");
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         _svc.Update(vm);

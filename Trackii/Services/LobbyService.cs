@@ -1,4 +1,5 @@
 ﻿using MySql.Data.MySqlClient;
+using Trackii.Models.Engineering;
 using Trackii.Models.Lobby;
 
 namespace Trackii.Services;
@@ -38,10 +39,142 @@ public class LobbyService
         return vm;
     }
 
+    public AdminLobbyVm GetAdminDashboard()
+    {
+        var vm = new AdminLobbyVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        vm.AreasCount = CountTable(cn, "area");
+        vm.FamiliesCount = CountTable(cn, "family");
+        vm.SubfamiliesCount = CountTable(cn, "subfamily");
+        vm.ProductsCount = CountTable(cn, "product");
+        vm.RoutesCount = CountTable(cn, "route");
+        vm.LocationsCount = CountTable(cn, "location");
+        vm.UsersCount = CountTable(cn, "user");
+        vm.RolesCount = CountTable(cn, "role");
+
+        LoadActiveDevices(cn, vm);
+        LoadActiveUsers(cn, vm);
+
+        return vm;
+    }
+
+    public EngineeringLobbyVm GetEngineeringDashboard()
+    {
+        var vm = new EngineeringLobbyVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var countCmd = new MySqlCommand(@"
+            SELECT
+                SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) AS active_count,
+                COUNT(*) AS total_count
+            FROM unregistered_parts", cn);
+
+        using (var rd = countCmd.ExecuteReader())
+        {
+            if (rd.Read())
+            {
+                vm.ActiveUnregisteredCount = Convert.ToInt32(rd.GetInt64("active_count"));
+                vm.TotalUnregisteredCount = Convert.ToInt32(rd.GetInt64("total_count"));
+            }
+        }
+
+        using var oldestCmd = new MySqlCommand(@"
+            SELECT part_id, part_number, creation_datetime,
+                   DATEDIFF(NOW(), creation_datetime) AS age_days
+            FROM unregistered_parts
+            WHERE active = 1
+            ORDER BY creation_datetime
+            LIMIT 5", cn);
+
+        using (var rd = oldestCmd.ExecuteReader())
+        {
+            while (rd.Read())
+            {
+                vm.OldestUnregistered.Add(new EngineeringLobbyVm.UnregisteredPartRow
+                {
+                    PartId = rd.GetUInt32("part_id"),
+                    PartNumber = rd.GetString("part_number"),
+                    CreatedAt = rd.GetDateTime("creation_datetime"),
+                    AgeDays = Convert.ToInt32(rd.GetInt64("age_days"))
+                });
+            }
+        }
+
+        using var recentCmd = new MySqlCommand(@"
+            SELECT part_id, part_number, creation_datetime,
+                   DATEDIFF(NOW(), creation_datetime) AS age_days
+            FROM unregistered_parts
+            WHERE active = 1
+            ORDER BY creation_datetime DESC
+            LIMIT 5", cn);
+
+        using var recentRd = recentCmd.ExecuteReader();
+        while (recentRd.Read())
+        {
+            vm.RecentUnregistered.Add(new EngineeringLobbyVm.UnregisteredPartRow
+            {
+                PartId = recentRd.GetUInt32("part_id"),
+                PartNumber = recentRd.GetString("part_number"),
+                CreatedAt = recentRd.GetDateTime("creation_datetime"),
+                AgeDays = Convert.ToInt32(recentRd.GetInt64("age_days"))
+            });
+        }
+
+        return vm;
+    }
+
     private static int CountTable(MySqlConnection cn, string table)
     {
         using var cmd = new MySqlCommand($"SELECT COUNT(*) FROM `{table}`", cn);
         return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    private static void LoadActiveDevices(MySqlConnection cn, AdminLobbyVm vm)
+    {
+        using var cmd = new MySqlCommand(@"
+            SELECT d.device_uid, COALESCE(d.name, '') AS device_name, l.name AS location_name
+            FROM devices d
+            JOIN location l ON l.id = d.location_id
+            WHERE d.active = 1
+            ORDER BY l.name, d.device_uid", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            vm.ActiveDevices.Add(new AdminLobbyVm.ActiveDeviceVm
+            {
+                DeviceUid = rd.GetString("device_uid"),
+                Name = rd.GetString("device_name"),
+                Location = rd.GetString("location_name")
+            });
+        }
+
+        vm.ActiveDevicesCount = vm.ActiveDevices.Count;
+    }
+
+    private static void LoadActiveUsers(MySqlConnection cn, AdminLobbyVm vm)
+    {
+        using var cmd = new MySqlCommand(@"
+            SELECT u.username, r.name AS role_name
+            FROM user u
+            JOIN role r ON r.id = u.role_id
+            WHERE u.active = 1
+            ORDER BY u.username", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            vm.ActiveUsers.Add(new AdminLobbyVm.ActiveUserVm
+            {
+                Username = rd.GetString("username"),
+                Role = rd.GetString("role_name")
+            });
+        }
     }
 
     private static void LoadAreaProductChart(MySqlConnection cn, LobbyVm.ChartVm chart)

@@ -190,6 +190,61 @@ public class RouteService
         return vm;
     }
 
+    public RouteViewVm GetForView(uint id)
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        var vm = new RouteViewVm { Id = id };
+
+        using (var cmd = new MySqlCommand(@"
+            SELECT
+                r.id,
+                r.name,
+                r.version,
+                r.active,
+                CONCAT(a.name,' / ', f.name,' / ', sf.name) AS subfamily
+            FROM route r
+            JOIN subfamily sf ON sf.id = r.subfamily_id
+            JOIN family f ON f.id = sf.id_family
+            JOIN area a ON a.id = f.id_area
+            WHERE r.id = @id
+        ", cn))
+        {
+            cmd.Parameters.AddWithValue("@id", id);
+            using var rd = cmd.ExecuteReader();
+            if (!rd.Read()) throw new InvalidOperationException("Ruta no encontrada.");
+
+            vm.Name = rd.GetString("name");
+            vm.Version = rd.GetString("version");
+            vm.Active = rd.GetBoolean("active");
+            vm.Subfamily = rd.GetString("subfamily");
+        }
+
+        using (var stepsCmd = new MySqlCommand(@"
+            SELECT rs.step_number, rs.location_id, l.name AS location_name
+            FROM route_step rs
+            JOIN location l ON l.id = rs.location_id
+            WHERE rs.route_id = @id
+            ORDER BY rs.step_number
+        ", cn))
+        {
+            stepsCmd.Parameters.AddWithValue("@id", id);
+            using var rd2 = stepsCmd.ExecuteReader();
+            while (rd2.Read())
+            {
+                vm.Steps.Add(new RouteStepVm
+                {
+                    StepNumber = (int)rd2.GetUInt32("step_number"),
+                    LocationId = rd2.GetUInt32("location_id"),
+                    LocationName = rd2.GetString("location_name")
+                });
+            }
+        }
+
+        return vm;
+    }
+
     // ==========================================
     // ACTIVATE (Lógica Crítica)
     // ==========================================
@@ -251,6 +306,122 @@ public class RouteService
         using (var ptr = new MySqlCommand("UPDATE subfamily SET active_route_id=@rid WHERE id=@sf", cn, tx))
         {
             ptr.Parameters.AddWithValue("@rid", id);
+            ptr.Parameters.AddWithValue("@sf", subfamilyId);
+            ptr.ExecuteNonQuery();
+        }
+
+        tx.Commit();
+    }
+
+    public RouteDeactivateVm GetDeactivateVm(uint id)
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        var vm = new RouteDeactivateVm { RouteId = id };
+        uint subfamilyId;
+
+        using (var cmd = new MySqlCommand(@"
+            SELECT r.subfamily_id,
+                   r.name,
+                   r.active,
+                   CONCAT(a.name,' / ', f.name,' / ', sf.name) AS subfamily_name
+            FROM route r
+            JOIN subfamily sf ON sf.id = r.subfamily_id
+            JOIN family f ON f.id = sf.id_family
+            JOIN area a ON a.id = f.id_area
+            WHERE r.id = @id", cn))
+        {
+            cmd.Parameters.AddWithValue("@id", id);
+            using var rd = cmd.ExecuteReader();
+            if (!rd.Read()) throw new InvalidOperationException("Ruta no encontrada.");
+            if (!rd.GetBoolean("active"))
+                throw new InvalidOperationException("Solo puedes desactivar una ruta activa.");
+
+            subfamilyId = rd.GetUInt32("subfamily_id");
+            vm.SubfamilyId = subfamilyId;
+            vm.RouteName = rd.GetString("name");
+            vm.SubfamilyName = rd.GetString("subfamily_name");
+        }
+
+        using (var cmd = new MySqlCommand(@"
+            SELECT id, name, version, active
+            FROM route
+            WHERE subfamily_id = @sf AND id <> @id
+            ORDER BY active DESC, CAST(version AS UNSIGNED) DESC", cn))
+        {
+            cmd.Parameters.AddWithValue("@sf", subfamilyId);
+            cmd.Parameters.AddWithValue("@id", id);
+
+            using var rd = cmd.ExecuteReader();
+            while (rd.Read())
+            {
+                vm.Options.Add(new RouteDeactivateVm.Option
+                {
+                    Id = rd.GetUInt32("id"),
+                    Name = rd.GetString("name"),
+                    Version = rd.GetString("version"),
+                    Active = rd.GetBoolean("active")
+                });
+            }
+        }
+
+        if (vm.Options.Count == 0)
+            throw new InvalidOperationException("No hay otra ruta disponible para dejar activa en esta subfamilia.");
+
+        return vm;
+    }
+
+    public void DeactivateAndActivate(uint routeId, uint replacementId)
+    {
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+        using var tx = cn.BeginTransaction();
+
+        uint subfamilyId;
+        bool isActive;
+
+        using (var cmd = new MySqlCommand("SELECT subfamily_id, active FROM route WHERE id=@id", cn, tx))
+        {
+            cmd.Parameters.AddWithValue("@id", routeId);
+            using var rd = cmd.ExecuteReader();
+            if (!rd.Read()) throw new InvalidOperationException("Ruta no encontrada.");
+            subfamilyId = rd.GetUInt32("subfamily_id");
+            isActive = rd.GetBoolean("active");
+        }
+
+        if (!isActive)
+            throw new InvalidOperationException("Solo puedes desactivar una ruta activa.");
+
+        if (CountWipInRoute(cn, tx, routeId) > 0)
+            throw new InvalidOperationException("No se puede desactivar la ruta activa: hay WIP en proceso.");
+
+        using (var chk = new MySqlCommand(@"
+            SELECT COUNT(*) FROM route
+            WHERE id=@rid AND subfamily_id=@sf AND id<>@target", cn, tx))
+        {
+            chk.Parameters.AddWithValue("@rid", replacementId);
+            chk.Parameters.AddWithValue("@sf", subfamilyId);
+            chk.Parameters.AddWithValue("@target", routeId);
+            if (Convert.ToInt32(chk.ExecuteScalar()) == 0)
+                throw new InvalidOperationException("Selecciona una ruta válida para dejar activa.");
+        }
+
+        using (var off = new MySqlCommand("UPDATE route SET active=0 WHERE subfamily_id=@sf", cn, tx))
+        {
+            off.Parameters.AddWithValue("@sf", subfamilyId);
+            off.ExecuteNonQuery();
+        }
+
+        using (var on = new MySqlCommand("UPDATE route SET active=1 WHERE id=@rid", cn, tx))
+        {
+            on.Parameters.AddWithValue("@rid", replacementId);
+            on.ExecuteNonQuery();
+        }
+
+        using (var ptr = new MySqlCommand("UPDATE subfamily SET active_route_id=@rid WHERE id=@sf", cn, tx))
+        {
+            ptr.Parameters.AddWithValue("@rid", replacementId);
             ptr.Parameters.AddWithValue("@sf", subfamilyId);
             ptr.ExecuteNonQuery();
         }

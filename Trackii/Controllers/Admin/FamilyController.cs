@@ -5,11 +5,12 @@ using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Engineering,Ingenieria")]
 [Route("Admin/Family")]
 public class FamilyController : Controller
 {
     private readonly FamilyService _svc;
+    private const string ViewBase = "~/Views/Management/Family/";
 
     public FamilyController(FamilyService svc)
     {
@@ -20,14 +21,14 @@ public class FamilyController : Controller
     public IActionResult Index(uint? areaId, string? search, bool showInactive = false, int page = 1)
     {
         var vm = _svc.GetPaged(areaId, search, showInactive, page, 10);
-        return View(vm);
+        return View($"{ViewBase}Index.cshtml", vm);
     }
 
     [HttpGet("Create")]
     public IActionResult Create()
     {
         ViewBag.Areas = _svc.GetActiveAreas();
-        return View(new FamilyEditVm());
+        return View($"{ViewBase}Create.cshtml", new FamilyEditVm());
     }
 
     [HttpPost("Create")]
@@ -37,7 +38,7 @@ public class FamilyController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Areas = _svc.GetActiveAreas();
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
 
         // 1. VALIDACIÓN DUPLICADOS (La que ya tenías)
@@ -45,7 +46,7 @@ public class FamilyController : Controller
         {
             ModelState.AddModelError("Name", "Este nombre de Familia ya existe.");
             ViewBag.Areas = _svc.GetActiveAreas();
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
 
         // 2. INTENTO DE CREACIÓN (Con validación de Área Activa)
@@ -59,22 +60,24 @@ public class FamilyController : Controller
             // Captura si el Área está inactiva y muestra el error
             ModelState.AddModelError("", ex.Message);
             ViewBag.Areas = _svc.GetActiveAreas();
-            return View(vm);
+            return View($"{ViewBase}Create.cshtml", vm);
         }
     }
 
     [HttpGet("Edit/{id:long}")]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(uint id)
     {
         var vm = _svc.GetById(id);
         if (vm == null) return NotFound();
 
         ViewBag.Areas = _svc.GetActiveAreas();
-        return View(vm);
+        return View($"{ViewBase}Edit.cshtml", vm);
     }
 
     [HttpPost("Edit/{id:long}")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(uint id, FamilyEditVm vm)
     {
         if (id != vm.Id) return BadRequest();
@@ -82,7 +85,7 @@ public class FamilyController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Areas = _svc.GetActiveAreas();
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         // 1. VALIDACIÓN DUPLICADOS (La que ya tenías)
@@ -90,7 +93,7 @@ public class FamilyController : Controller
         {
             ModelState.AddModelError("Name", "Este nombre de Familia ya existe.");
             ViewBag.Areas = _svc.GetActiveAreas();
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         // 2. INTENTO DE ACTUALIZACIÓN (Con validación de Área Activa)
@@ -103,7 +106,7 @@ public class FamilyController : Controller
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Areas = _svc.GetActiveAreas();
-            return View(vm);
+            return View($"{ViewBase}Edit.cshtml", vm);
         }
     }
     [HttpPost("Toggle")]

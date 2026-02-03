@@ -5,11 +5,12 @@ using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Engineering,Ingenieria")]
 [Route("Admin/Route")]
 public class RouteController : Controller
 {
     private readonly RouteService _service;
+    private const string ViewBase = "~/Views/Management/Route/";
 
     public RouteController(RouteService service)
     {
@@ -28,28 +29,41 @@ public class RouteController : Controller
     {
         LoadLookups(subfamilyId);
         var vm = _service.GetPaged(subfamilyId, search, showInactive, page, 10);
-        return View(vm);
+        return View($"{ViewBase}Index.cshtml", vm);
     }
 
     [HttpGet("Create")]
     public IActionResult Create()
     {
         LoadLookups(null);
-        return View(_service.GetForCreate());
+        return View($"{ViewBase}Create.cshtml", _service.GetForCreate());
     }
 
     [HttpGet("Edit/{id}")]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(uint id)
     {
         var vm = _service.GetForEdit(id);
         LoadLookups(vm.SubfamilyId);
-        return View(vm);
+        return View($"{ViewBase}Edit.cshtml", vm);
+    }
+
+    [HttpGet("Ver/{id}")]
+    public IActionResult Ver(uint id)
+    {
+        var vm = _service.GetForView(id);
+        return View($"{ViewBase}Ver.cshtml", vm);
     }
 
     [HttpPost("Save")]
     [ValidateAntiForgeryToken]
     public IActionResult Save(RouteEditVm vm)
     {
+        if (!User.IsInRole("Admin") && vm.Id != 0)
+        {
+            return Forbid();
+        }
+
         try
         {
             // Validaciones manuales básicas si ModelState falla por listas dinámicas
@@ -63,12 +77,14 @@ public class RouteController : Controller
             // Error de negocio (ej: WIP activo)
             ModelState.AddModelError("", ex.Message);
             LoadLookups(vm.SubfamilyId);
-            return View(vm.Id == 0 ? "Create" : "Edit", vm);
+            var viewName = vm.Id == 0 ? "Create" : "Edit";
+            return View($"{ViewBase}{viewName}.cshtml", vm);
         }
     }
 
     [HttpPost("Activate/{id}")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult Activate(uint id)
     {
         try
@@ -81,5 +97,53 @@ public class RouteController : Controller
             TempData["Error"] = ex.Message;
         }
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet("Deactivate/{id}")]
+    public IActionResult Deactivate(uint id)
+    {
+        try
+        {
+            var vm = _service.GetDeactivateVm(id);
+            return View($"{ViewBase}Deactivate.cshtml", vm);
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("Deactivate/{id}")]
+    [ValidateAntiForgeryToken]
+    public IActionResult Deactivate(uint id, RouteDeactivateVm vm)
+    {
+        if (id != vm.RouteId)
+        {
+            TempData["Error"] = "La ruta seleccionada no coincide.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (!vm.ReplacementRouteId.HasValue)
+        {
+            ModelState.AddModelError("ReplacementRouteId", "Selecciona la ruta que quedará activa.");
+            var reload = _service.GetDeactivateVm(id);
+            reload.ReplacementRouteId = vm.ReplacementRouteId;
+            return View($"{ViewBase}Deactivate.cshtml", reload);
+        }
+
+        try
+        {
+            _service.DeactivateAndActivate(id, vm.ReplacementRouteId.Value);
+            TempData["Success"] = "Ruta desactivada. La nueva ruta quedó activa.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            var reload = _service.GetDeactivateVm(id);
+            reload.ReplacementRouteId = vm.ReplacementRouteId;
+            return View($"{ViewBase}Deactivate.cshtml", reload);
+        }
     }
 }
