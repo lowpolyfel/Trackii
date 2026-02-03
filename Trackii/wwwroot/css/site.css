@@ -586,6 +586,10 @@ body {
     text-align: center;
 }
 
+.route-flow-table tbody td:first-child {
+    justify-content: center;
+}
+
 .route-flow-table .step-index {
     width: 36px;
     height: 36px;
