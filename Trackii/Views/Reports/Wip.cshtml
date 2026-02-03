@@ -1,0 +1,85 @@
+@model Trackii.Models.Reports.WipReportVm
+
+@{
+    ViewData["Title"] = "WIP actual";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>WIP actual</h2>
+            <p class="subtitle">Listado de piezas en proceso por estado</p>
+        </div>
+        <a asp-controller="Reports" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a reportes
+        </a>
+    </div>
+
+    <form method="get" class="filters">
+        <select name="status">
+            <option value="">Todos los estados</option>
+            <option value="ACTIVE" selected="@(Model.Status == "ACTIVE")">ACTIVE</option>
+            <option value="HOLD" selected="@(Model.Status == "HOLD")">HOLD</option>
+            <option value="FINISHED" selected="@(Model.Status == "FINISHED")">FINISHED</option>
+            <option value="SCRAPPED" selected="@(Model.Status == "SCRAPPED")">SCRAPPED</option>
+        </select>
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>WIP</th>
+                    <th>WO</th>
+                    <th>Estado</th>
+                    <th>Localidad</th>
+                    <th>Creado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="empty">No hay WIP registrados</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.WipItemId</td>
+                            <td>@item.WoNumber</td>
+                            <td>@item.Status</td>
+                            <td>@(item.Location ?? "-")</td>
+                            <td>@item.CreatedAt.ToString("yyyy-MM-dd")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page" href="/Reportes/Wip?page=@i&status=@Model.Status">@i</a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="pagination">Página @Model.Page de @Model.TotalPages</div>
+    }
+</div>

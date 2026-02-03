@@ -73,6 +73,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<LobbyService>();
 builder.Services.AddScoped<GerenciaService>();
+builder.Services.AddScoped<Trackii.Services.Reports.ReportsService>();
 builder.Services.AddScoped<ViewCatalogService>();
 builder.Services.AddScoped<RegisterApiService>();
 builder.Services.AddScoped<LocationListApiService>();

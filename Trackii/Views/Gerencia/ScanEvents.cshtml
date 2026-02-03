@@ -18,7 +18,7 @@
     </div>
 
     <div class="chart-grid">
-        <div class="card">
+        <div class="card chart-card">
             <h3>Eventos por tipo</h3>
             <canvas id="scanEventChart"></canvas>
         </div>
@@ -76,7 +76,7 @@
                     backgroundColor: ['#fbbf24', '#22c55e', '#f87171', '#94a3b8']
                 }]
             },
-            options: { responsive: true }
+            options: { responsive: true, maintainAspectRatio: false }
         });
     </script>
 }

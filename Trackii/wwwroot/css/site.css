@@ -40,7 +40,7 @@ body {
     border-radius: 18px;
     overflow: hidden;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
-    background: #ffffff;
+    background: transparent;
 }
 
 .auth-form {
@@ -48,6 +48,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    background: #ffffff;
 }
 
 .auth-brand {
@@ -158,6 +159,7 @@ body {
     display: flex;
     align-items: flex-end;
     justify-content: flex-end;
+    width: 100%;
     background: radial-gradient(circle at 70% 30%, rgba(255, 230, 170, 0.85), rgba(15, 23, 42, 0.9) 70%);
     color: #fff;
 }
@@ -360,6 +362,15 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
     gap: 24px;
+}
+
+.chart-card {
+    height: 280px;
+}
+
+.chart-card canvas {
+    width: 100% !important;
+    height: 220px !important;
 }
 
 .card h3 {

@@ -18,7 +18,7 @@
     </div>
 
     <div class="chart-grid">
-        <div class="card">
+        <div class="card chart-card">
             <h3>Producción total</h3>
             <canvas id="productionDetailChart"></canvas>
         </div>
@@ -73,6 +73,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: { legend: { display: false } }
             }
         });

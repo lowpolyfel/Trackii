@@ -1,0 +1,70 @@
+@model Trackii.Models.Reports.ProductsByAreaReportVm
+
+@{
+    ViewData["Title"] = "Productos por área";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Productos por área</h2>
+            <p class="subtitle">Resumen de productos totales y activos por área</p>
+        </div>
+        <a asp-controller="Reports" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a reportes
+        </a>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Área</th>
+                    <th class="text-right">Productos</th>
+                    <th class="text-right">Activos</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="3" class="empty">No hay áreas registradas</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.Area</td>
+                            <td class="text-right">@item.Products</td>
+                            <td class="text-right">@item.ActiveProducts</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page" href="/Reportes/ProductsByArea?page=@i">@i</a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="pagination">Página @Model.Page de @Model.TotalPages</div>
+    }
+</div>
