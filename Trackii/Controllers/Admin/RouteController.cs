@@ -5,7 +5,7 @@ using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Engineering,Ingenieria")]
 [Route("Admin/Route")]
 public class RouteController : Controller
 {
@@ -40,6 +40,7 @@ public class RouteController : Controller
     }
 
     [HttpGet("Edit/{id}")]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(uint id)
     {
         var vm = _service.GetForEdit(id);
@@ -58,6 +59,11 @@ public class RouteController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Save(RouteEditVm vm)
     {
+        if (!User.IsInRole("Admin") && vm.Id != 0)
+        {
+            return Forbid();
+        }
+
         try
         {
             // Validaciones manuales básicas si ModelState falla por listas dinámicas
@@ -78,6 +84,7 @@ public class RouteController : Controller
 
     [HttpPost("Activate/{id}")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult Activate(uint id)
     {
         try

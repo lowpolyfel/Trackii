@@ -5,7 +5,7 @@ using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Engineering,Ingenieria")]
 [Route("Admin/Product")]
 public class ProductController : Controller
 {
@@ -96,6 +96,7 @@ public class ProductController : Controller
     }
 
     [HttpGet("Edit/{id:long}")]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(uint id)
     {
         var vm = _svc.GetById(id);
@@ -107,6 +108,7 @@ public class ProductController : Controller
 
     [HttpPost("Edit/{id:long}")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(uint id, ProductEditVm vm)
     {
         if (id != vm.Id) return BadRequest();

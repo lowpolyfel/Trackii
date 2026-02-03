@@ -119,6 +119,6 @@ app.MapControllers();
 // Conventional routing (MVC)
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Gerencia}/{action=Index}/{id?}");
+    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 app.Run();
