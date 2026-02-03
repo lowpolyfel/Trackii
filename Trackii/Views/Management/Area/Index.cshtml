@@ -76,12 +76,15 @@
                                 }
                             </td>
                             <td class="text-right">
-                                <a asp-action="Edit"
-                                   asp-route-id="@row.Id"
-                                   class="btn-icon"
-                                   title="Editar">
-                                    <i class="fa-solid fa-pen"></i>
-                                </a>
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <a asp-action="Edit"
+                                       asp-route-id="@row.Id"
+                                       class="btn-icon"
+                                       title="Editar">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </a>
+                                }
 
                                 <form action="/Admin/Area/Toggle" method="post" class="inline-form">
                                     @Html.AntiForgeryToken()

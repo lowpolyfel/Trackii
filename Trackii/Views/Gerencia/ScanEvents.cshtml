@@ -1,0 +1,82 @@
+@using System.Text.Json
+@model Trackii.Models.Gerencia.GerenciaScanEventsVm
+
+@{
+    ViewData["Title"] = "Eventos de escaneo";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Eventos de escaneo</h2>
+            <p class="subtitle">Últimos eventos registrados en las estaciones</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a Gerencia
+        </a>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card">
+            <h3>Eventos por tipo</h3>
+            <canvas id="scanEventChart"></canvas>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>WO</th>
+                    <th>WIP</th>
+                    <th>Localidad</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.RecentEvents.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="empty">Sin eventos recientes</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.RecentEvents)
+                    {
+                        <tr>
+                            <td>@item.Timestamp.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@item.ScanType</td>
+                            <td>@item.WoNumber</td>
+                            <td>@item.WipItemId</td>
+                            <td>@(item.Location ?? "-")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const scanLabels = @Html.Raw(JsonSerializer.Serialize(Model.ScanEventChart.Labels));
+        const scanValues = @Html.Raw(JsonSerializer.Serialize(Model.ScanEventChart.Values));
+
+        new Chart(document.getElementById('scanEventChart'), {
+            type: 'doughnut',
+            data: {
+                labels: scanLabels,
+                datasets: [{
+                    data: scanValues,
+                    backgroundColor: ['#fbbf24', '#22c55e', '#f87171', '#94a3b8']
+                }]
+            },
+            options: { responsive: true }
+        });
+    </script>
+}

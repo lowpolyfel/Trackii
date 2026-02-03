@@ -40,6 +40,9 @@ public class AccountController : Controller
             principal
         );
 
+        if (principal.IsInRole("Gerencia"))
+            return RedirectToAction("Index", "Gerencia");
+
         return RedirectToAction("Index", "Lobby");
     }
 

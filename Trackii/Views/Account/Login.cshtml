@@ -4,36 +4,57 @@
     Layout = "_AuthLayout";
 }
 
-<div class="container" style="max-width:420px; margin-top:8vh;">
-    <h3>Trackii</h3>
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-form">
+            <div class="auth-brand">
+                <span class="auth-logo">Tt</span>
+                <span class="auth-title">Trackii</span>
+            </div>
 
-    <form method="post" asp-action="Login">
-        @Html.AntiForgeryToken()
-        <input type="hidden" asp-for="ReturnUrl" />
+            <div class="auth-avatar">
+                <i class="fa-solid fa-user"></i>
+            </div>
 
-        <div class="mb-3">
-            <label asp-for="Username" class="form-label"></label>
-            <input asp-for="Username" class="form-control" autocomplete="username" />
-            <span asp-validation-for="Username" class="text-danger"></span>
+            <form method="post" asp-action="Login" class="auth-fields">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="ReturnUrl" />
+
+                <div class="auth-field">
+                    <label asp-for="Username" class="auth-label"></label>
+                    <input asp-for="Username" class="auth-input" autocomplete="username" />
+                    <span asp-validation-for="Username" class="auth-error"></span>
+                </div>
+
+                <div class="auth-field">
+                    <label asp-for="Password" class="auth-label"></label>
+                    <input asp-for="Password" class="auth-input" autocomplete="current-password" />
+                    <span asp-validation-for="Password" class="auth-error"></span>
+                </div>
+
+                <div class="auth-meta">
+                    <label class="auth-remember">
+                        <input asp-for="RememberMe" />
+                        <span>@Html.DisplayNameFor(m => m.RememberMe)</span>
+                    </label>
+                </div>
+
+                <div class="auth-error">
+                    @Html.ValidationSummary(false)
+                </div>
+
+                <button type="submit" class="auth-button">Login</button>
+            </form>
         </div>
 
-        <div class="mb-3">
-            <label asp-for="Password" class="form-label"></label>
-            <input asp-for="Password" class="form-control" autocomplete="current-password" />
-            <span asp-validation-for="Password" class="text-danger"></span>
+        <div class="auth-welcome">
+            <div class="auth-welcome-overlay"></div>
+            <div class="auth-welcome-content">
+                <h2>Welcome.</h2>
+                <p>Gestión y trazabilidad en tiempo real.</p>
+            </div>
         </div>
-
-        <div class="form-check mb-3">
-            <input asp-for="RememberMe" class="form-check-input" />
-            <label asp-for="RememberMe" class="form-check-label"></label>
-        </div>
-
-        <div class="text-danger mb-2">
-            @Html.ValidationSummary(false)
-        </div>
-
-        <button type="submit" class="btn btn-primary w-100">Entrar</button>
-    </form>
+    </div>
 </div>
 
 @section Scripts {
