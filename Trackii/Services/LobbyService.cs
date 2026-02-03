@@ -1,4 +1,5 @@
 ﻿using MySql.Data.MySqlClient;
+using Trackii.Models.Engineering;
 using Trackii.Models.Lobby;
 
 namespace Trackii.Services;
@@ -56,6 +57,73 @@ public class LobbyService
 
         LoadActiveDevices(cn, vm);
         LoadActiveUsers(cn, vm);
+
+        return vm;
+    }
+
+    public EngineeringLobbyVm GetEngineeringDashboard()
+    {
+        var vm = new EngineeringLobbyVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var countCmd = new MySqlCommand(@"
+            SELECT
+                SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) AS active_count,
+                COUNT(*) AS total_count
+            FROM unregistered_parts", cn);
+
+        using (var rd = countCmd.ExecuteReader())
+        {
+            if (rd.Read())
+            {
+                vm.ActiveUnregisteredCount = Convert.ToInt32(rd.GetInt64("active_count"));
+                vm.TotalUnregisteredCount = Convert.ToInt32(rd.GetInt64("total_count"));
+            }
+        }
+
+        using var oldestCmd = new MySqlCommand(@"
+            SELECT part_id, part_number, creation_datetime,
+                   DATEDIFF(NOW(), creation_datetime) AS age_days
+            FROM unregistered_parts
+            WHERE active = 1
+            ORDER BY creation_datetime
+            LIMIT 5", cn);
+
+        using (var rd = oldestCmd.ExecuteReader())
+        {
+            while (rd.Read())
+            {
+                vm.OldestUnregistered.Add(new EngineeringLobbyVm.UnregisteredPartRow
+                {
+                    PartId = rd.GetUInt32("part_id"),
+                    PartNumber = rd.GetString("part_number"),
+                    CreatedAt = rd.GetDateTime("creation_datetime"),
+                    AgeDays = Convert.ToInt32(rd.GetInt64("age_days"))
+                });
+            }
+        }
+
+        using var recentCmd = new MySqlCommand(@"
+            SELECT part_id, part_number, creation_datetime,
+                   DATEDIFF(NOW(), creation_datetime) AS age_days
+            FROM unregistered_parts
+            WHERE active = 1
+            ORDER BY creation_datetime DESC
+            LIMIT 5", cn);
+
+        using var recentRd = recentCmd.ExecuteReader();
+        while (recentRd.Read())
+        {
+            vm.RecentUnregistered.Add(new EngineeringLobbyVm.UnregisteredPartRow
+            {
+                PartId = recentRd.GetUInt32("part_id"),
+                PartNumber = recentRd.GetString("part_number"),
+                CreatedAt = recentRd.GetDateTime("creation_datetime"),
+                AgeDays = Convert.ToInt32(recentRd.GetInt64("age_days"))
+            });
+        }
 
         return vm;
     }

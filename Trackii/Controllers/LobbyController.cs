@@ -22,6 +22,12 @@ public class LobbyController : Controller
             return View("Admin", adminVm);
         }
 
+        if (User.IsInRole("Engineering") || User.IsInRole("Ingenieria"))
+        {
+            var engineeringVm = _svc.GetEngineeringDashboard();
+            return View("Engineering", engineeringVm);
+        }
+
         var vm = _svc.GetDashboard();
         return View(vm);
     }

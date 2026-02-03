@@ -82,6 +82,11 @@
                         <span>Routes</span>
                     </a>
 
+                    <a asp-controller="UnregisteredParts" asp-action="Index">
+                        <i class="fa-solid fa-file-circle-plus"></i>
+                        <span>Partes sin registrar</span>
+                    </a>
+
                 }
 
                 @if (User.IsInRole("Admin") || User.IsInRole("Engineering") || User.IsInRole("Ingenieria") || User.IsInRole("Gerencia"))
