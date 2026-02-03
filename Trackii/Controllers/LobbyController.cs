@@ -4,7 +4,7 @@ using Trackii.Services;
 
 namespace Trackii.Controllers;
 
-[Authorize]
+[Authorize(Roles = "Admin,Engineering,Ingenieria")]
 public class LobbyController : Controller
 {
     private readonly LobbyService _svc;
@@ -16,6 +16,12 @@ public class LobbyController : Controller
 
     public IActionResult Index()
     {
+        if (User.IsInRole("Admin"))
+        {
+            var adminVm = _svc.GetAdminDashboard();
+            return View("Admin", adminVm);
+        }
+
         var vm = _svc.GetDashboard();
         return View(vm);
     }

@@ -1,0 +1,92 @@
+@model Trackii.Models.Reports.ProductsReportVm
+
+@{
+    ViewData["Title"] = "Productos";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Productos</h2>
+            <p class="subtitle">Listado de productos con jerarquía de área y familia</p>
+        </div>
+        <a asp-controller="Reports" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a reportes
+        </a>
+    </div>
+
+    <form method="get" class="filters">
+        <input name="search" value="@Model.Search" placeholder="Buscar part number..." />
+        <label class="checkbox">
+            <input type="checkbox" name="showInactive" value="true" @(Model.ShowInactive ? "checked" : "") />
+            Ver inactivos
+        </label>
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Part Number</th>
+                    <th>Área</th>
+                    <th>Family</th>
+                    <th>Subfamily</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="empty">No hay productos registrados</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.PartNumber</td>
+                            <td>@item.Area</td>
+                            <td>@item.Family</td>
+                            <td>@item.Subfamily</td>
+                            <td>
+                                @if (item.Active)
+                                {
+                                    <span class="badge success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge danger">Inactivo</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page" href="/Reportes/Products?page=@i&search=@Model.Search&showInactive=@(Model.ShowInactive ? "true" : "")">@i</a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="pagination">Página @Model.Page de @Model.TotalPages</div>
+    }
+</div>

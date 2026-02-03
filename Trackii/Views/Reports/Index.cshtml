@@ -1,0 +1,70 @@
+@{
+    ViewData["Title"] = "Reportes";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Reportes</h2>
+            <p class="subtitle">Vistas operativas y ejecutivas de solo lectura</p>
+        </div>
+    </div>
+
+    <div class="chart-grid">
+        <a class="kpi-card" asp-controller="Reports" asp-action="WorkOrders">
+            <div class="kpi-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Órdenes de trabajo</div>
+                <div class="kpi-value">Ver listado</div>
+            </div>
+        </a>
+
+        <a class="kpi-card" asp-controller="Reports" asp-action="Products">
+            <div class="kpi-icon"><i class="fa-solid fa-box"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Productos</div>
+                <div class="kpi-value">Ver listado</div>
+            </div>
+        </a>
+
+        <a class="kpi-card" asp-controller="Reports" asp-action="Rework">
+            <div class="kpi-icon"><i class="fa-solid fa-rotate"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Rework</div>
+                <div class="kpi-value">Ver registros</div>
+            </div>
+        </a>
+
+        <a class="kpi-card" asp-controller="Reports" asp-action="ProductsByArea">
+            <div class="kpi-icon"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Productos por área</div>
+                <div class="kpi-value">Ver resumen</div>
+            </div>
+        </a>
+
+        <a class="kpi-card" asp-controller="Reports" asp-action="Wip">
+            <div class="kpi-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">WIP actual</div>
+                <div class="kpi-value">Ver listado</div>
+            </div>
+        </a>
+
+        <a class="kpi-card" asp-controller="Reports" asp-action="Devices">
+            <div class="kpi-icon"><i class="fa-solid fa-tablet-screen-button"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Dispositivos</div>
+                <div class="kpi-value">Ver estado</div>
+            </div>
+        </a>
+
+        <a class="kpi-card" asp-controller="Reports" asp-action="Users">
+            <div class="kpi-icon"><i class="fa-solid fa-users"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Usuarios</div>
+                <div class="kpi-value">Ver estado</div>
+            </div>
+        </a>
+    </div>
+</div>

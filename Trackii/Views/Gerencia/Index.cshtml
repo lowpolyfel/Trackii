@@ -1,0 +1,180 @@
+@using System.Text.Json
+@model Trackii.Models.Gerencia.GerenciaDashboardVm
+
+@{
+    ViewData["Title"] = "Gerencia";
+}
+
+<div class="dashboard">
+    <div class="page-header">
+        <div>
+            <h2>Gerencia</h2>
+            <p class="subtitle">Resumen ejecutivo de producción, WIP y eventos de escaneo</p>
+        </div>
+        <div class="header-actions">
+            <a asp-controller="Gerencia" asp-action="Production" class="btn btn-secondary">
+                <i class="fa-solid fa-industry"></i>
+                Producción por localidad
+            </a>
+            <a asp-controller="Gerencia" asp-action="Wip" class="btn btn-secondary">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                WIP detallado
+            </a>
+            <a asp-controller="Gerencia" asp-action="ScanEvents" class="btn btn-secondary">
+                <i class="fa-solid fa-qrcode"></i>
+                Eventos de escaneo
+            </a>
+            <a asp-controller="Gerencia" asp-action="WorkOrders" class="btn btn-secondary">
+                <i class="fa-solid fa-clipboard-list"></i>
+                Órdenes de trabajo
+            </a>
+            <a asp-controller="Gerencia" asp-action="Throughput" class="btn btn-secondary">
+                <i class="fa-solid fa-chart-line"></i>
+                Throughput diario
+            </a>
+            <a asp-controller="Gerencia" asp-action="ReworkSummary" class="btn btn-secondary">
+                <i class="fa-solid fa-rotate"></i>
+                Rework por localidad
+            </a>
+            <a asp-controller="Gerencia" asp-action="WoHealth" class="btn btn-secondary">
+                <i class="fa-solid fa-heart-pulse"></i>
+                Salud de órdenes
+            </a>
+        </div>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card chart-card">
+            <h3>Producción por localidad</h3>
+            <canvas id="productionChart"></canvas>
+        </div>
+        <div class="card chart-card">
+            <h3>WIP por estado</h3>
+            <canvas id="wipChart"></canvas>
+        </div>
+        <div class="card chart-card">
+            <h3>Eventos de escaneo</h3>
+            <canvas id="scanChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card">
+            <h3>Localidades con mayor producción</h3>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Localidad</th>
+                            <th class="text-right">Piezas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.TopLocations.Any())
+                        {
+                            <tr>
+                                <td colspan="2" class="empty">Sin datos disponibles</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var item in Model.TopLocations)
+                            {
+                                <tr>
+                                    <td>@item.Location</td>
+                                    <td class="text-right">@item.QtyProduced</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Localidades con menor producción</h3>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Localidad</th>
+                            <th class="text-right">Piezas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.BottomLocations.Any())
+                        {
+                            <tr>
+                                <td colspan="2" class="empty">Sin datos disponibles</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var item in Model.BottomLocations)
+                            {
+                                <tr>
+                                    <td>@item.Location</td>
+                                    <td class="text-right">@item.QtyProduced</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const productionLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Labels));
+        const productionValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Values));
+        const wipLabels = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Labels));
+        const wipValues = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Values));
+        const scanLabels = @Html.Raw(JsonSerializer.Serialize(Model.ScanEventChart.Labels));
+        const scanValues = @Html.Raw(JsonSerializer.Serialize(Model.ScanEventChart.Values));
+
+        new Chart(document.getElementById('productionChart'), {
+            type: 'bar',
+            data: {
+                labels: productionLabels,
+                datasets: [{
+                    label: 'Piezas producidas',
+                    data: productionValues,
+                    backgroundColor: '#38bdf8'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        new Chart(document.getElementById('wipChart'), {
+            type: 'pie',
+            data: {
+                labels: wipLabels,
+                datasets: [{
+                    data: wipValues,
+                    backgroundColor: ['#60a5fa', '#a78bfa', '#34d399', '#f87171']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        new Chart(document.getElementById('scanChart'), {
+            type: 'doughnut',
+            data: {
+                labels: scanLabels,
+                datasets: [{
+                    data: scanValues,
+                    backgroundColor: ['#fbbf24', '#22c55e', '#f87171', '#94a3b8']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    </script>
+}
