@@ -38,6 +38,21 @@
                         <i class="fa-solid fa-clipboard-check"></i>
                         <span>Gerencia</span>
                     </a>
+
+                    <a asp-controller="Gerencia" asp-action="Throughput">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span>Throughput</span>
+                    </a>
+
+                    <a asp-controller="Gerencia" asp-action="ReworkSummary">
+                        <i class="fa-solid fa-rotate"></i>
+                        <span>Rework</span>
+                    </a>
+
+                    <a asp-controller="Gerencia" asp-action="WoHealth">
+                        <i class="fa-solid fa-heart-pulse"></i>
+                        <span>Salud de órdenes</span>
+                    </a>
                 }
 
                 @if (User.IsInRole("Admin") || User.IsInRole("Engineering") || User.IsInRole("Ingenieria"))
@@ -67,6 +82,10 @@
                         <span>Routes</span>
                     </a>
 
+                }
+
+                @if (User.IsInRole("Admin") || User.IsInRole("Engineering") || User.IsInRole("Ingenieria") || User.IsInRole("Gerencia"))
+                {
                     <a asp-controller="Reports" asp-action="Index">
                         <i class="fa-solid fa-chart-pie"></i>
                         <span>Reportes</span>

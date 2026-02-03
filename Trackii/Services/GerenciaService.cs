@@ -101,6 +101,109 @@ public class GerenciaService
         return vm;
     }
 
+    public GerenciaThroughputVm GetThroughput()
+    {
+        var vm = new GerenciaThroughputVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT DATE(wse.create_at) AS day,
+                   SUM(wse.qty_in - wse.qty_scrap) AS qty
+            FROM wip_step_execution wse
+            GROUP BY DATE(wse.create_at)
+            ORDER BY day DESC
+            LIMIT 14", cn);
+
+        using var rd = cmd.ExecuteReader();
+        var rows = new List<GerenciaThroughputVm.Row>();
+        while (rd.Read())
+        {
+            rows.Add(new GerenciaThroughputVm.Row
+            {
+                Day = rd.GetDateTime("day"),
+                QtyProduced = Convert.ToInt32(rd.GetInt64("qty"))
+            });
+        }
+
+        rows.Reverse();
+        foreach (var item in rows)
+        {
+            vm.Items.Add(item);
+            vm.DailyThroughputChart.Labels.Add(item.Day.ToString("MM-dd"));
+            vm.DailyThroughputChart.Values.Add(item.QtyProduced);
+        }
+
+        return vm;
+    }
+
+    public GerenciaReworkSummaryVm GetReworkSummary()
+    {
+        var vm = new GerenciaReworkSummaryVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT l.name AS location_name,
+                   SUM(wrl.qty) AS qty,
+                   COUNT(*) AS events
+            FROM wip_rework_log wrl
+            JOIN location l ON l.id = wrl.location_id
+            GROUP BY l.id, l.name
+            ORDER BY qty DESC", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            var row = new GerenciaReworkSummaryVm.Row
+            {
+                Location = rd.GetString("location_name"),
+                Qty = Convert.ToInt32(rd.GetInt64("qty")),
+                Events = Convert.ToInt32(rd.GetInt64("events"))
+            };
+            vm.Items.Add(row);
+            vm.ReworkByLocationChart.Labels.Add(row.Location);
+            vm.ReworkByLocationChart.Values.Add(row.Qty);
+        }
+
+        return vm;
+    }
+
+    public GerenciaWoHealthVm GetWoHealth()
+    {
+        var vm = new GerenciaWoHealthVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT wo.status,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN wip.id IS NULL THEN 0 ELSE 1 END) AS with_wip
+            FROM work_order wo
+            LEFT JOIN wip_item wip ON wip.wo_order_id = wo.id
+            GROUP BY wo.status
+            ORDER BY wo.status", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            var row = new GerenciaWoHealthVm.Row
+            {
+                Status = rd.GetString("status"),
+                Total = Convert.ToInt32(rd.GetInt64("total")),
+                WithWip = Convert.ToInt32(rd.GetInt64("with_wip"))
+            };
+            vm.Items.Add(row);
+            vm.StatusChart.Labels.Add(row.Status);
+            vm.StatusChart.Values.Add(row.Total);
+        }
+
+        return vm;
+    }
+
     private static List<LocationProductionVm> LoadProductionByLocation(MySqlConnection cn)
     {
         var items = new List<LocationProductionVm>();

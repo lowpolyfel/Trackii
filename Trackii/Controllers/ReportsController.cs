@@ -4,7 +4,7 @@ using Trackii.Services.Reports;
 
 namespace Trackii.Controllers;
 
-[Authorize(Roles = "Admin,Engineering,Ingenieria")]
+[Authorize(Roles = "Admin,Engineering,Ingenieria,Gerencia")]
 [Route("Reportes")]
 public class ReportsController : Controller
 {

@@ -50,4 +50,25 @@ public class GerenciaController : Controller
         var vm = _svc.GetScanEvents();
         return View($"{ViewBase}ScanEvents.cshtml", vm);
     }
+
+    [HttpGet("Throughput")]
+    public IActionResult Throughput()
+    {
+        var vm = _svc.GetThroughput();
+        return View($"{ViewBase}Throughput.cshtml", vm);
+    }
+
+    [HttpGet("ReworkSummary")]
+    public IActionResult ReworkSummary()
+    {
+        var vm = _svc.GetReworkSummary();
+        return View($"{ViewBase}ReworkSummary.cshtml", vm);
+    }
+
+    [HttpGet("WoHealth")]
+    public IActionResult WoHealth()
+    {
+        var vm = _svc.GetWoHealth();
+        return View($"{ViewBase}WoHealth.cshtml", vm);
+    }
 }
