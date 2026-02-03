@@ -1,0 +1,87 @@
+@model Trackii.Models.Reports.ReworkReportVm
+
+@{
+    ViewData["Title"] = "Rework";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Rework</h2>
+            <p class="subtitle">Registros de retrabajo con filtros por fecha</p>
+        </div>
+        <a asp-controller="Reports" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a reportes
+        </a>
+    </div>
+
+    <form method="get" class="filters">
+        <input name="search" value="@Model.Search" placeholder="Buscar WO o WIP..." />
+        <input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd") ?? string.Empty)" />
+        <input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd") ?? string.Empty)" />
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>WO</th>
+                    <th>WIP</th>
+                    <th>Localidad</th>
+                    <th>Usuario</th>
+                    <th>Dispositivo</th>
+                    <th>Cantidad</th>
+                    <th>Motivo</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="empty">No hay registros de rework</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@item.WoNumber</td>
+                            <td>@item.WipItemId</td>
+                            <td>@item.Location</td>
+                            <td>@item.User</td>
+                            <td>@item.Device</td>
+                            <td>@item.Qty</td>
+                            <td>@(item.Reason ?? "-")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page" href="/Reportes/Rework?page=@i&search=@Model.Search&from=@(Model.From?.ToString("yyyy-MM-dd"))&to=@(Model.To?.ToString("yyyy-MM-dd"))">@i</a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="pagination">Página @Model.Page de @Model.TotalPages</div>
+    }
+</div>

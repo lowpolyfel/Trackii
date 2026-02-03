@@ -1,0 +1,82 @@
+@using System.Text.Json
+@model Trackii.Models.Gerencia.GerenciaWoHealthVm
+
+@{
+    ViewData["Title"] = "Salud de órdenes";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Salud de órdenes</h2>
+            <p class="subtitle">Distribución de estados y cobertura de WIP</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a Gerencia
+        </a>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card chart-card">
+            <h3>Órdenes por estado</h3>
+            <canvas id="woStatusChart"></canvas>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Estado</th>
+                    <th class="text-right">Total</th>
+                    <th class="text-right">Con WIP</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="3" class="empty">Sin órdenes registradas</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.Status</td>
+                            <td class="text-right">@item.Total</td>
+                            <td class="text-right">@item.WithWip</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const woLabels = @Html.Raw(JsonSerializer.Serialize(Model.StatusChart.Labels));
+        const woValues = @Html.Raw(JsonSerializer.Serialize(Model.StatusChart.Values));
+
+        new Chart(document.getElementById('woStatusChart'), {
+            type: 'bar',
+            data: {
+                labels: woLabels,
+                datasets: [{
+                    label: 'Órdenes',
+                    data: woValues,
+                    backgroundColor: '#6366f1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
+}

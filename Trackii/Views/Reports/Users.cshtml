@@ -1,0 +1,88 @@
+@model Trackii.Models.Reports.UsersReportVm
+
+@{
+    ViewData["Title"] = "Usuarios";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Usuarios</h2>
+            <p class="subtitle">Listado de usuarios con filtros de estado</p>
+        </div>
+        <a asp-controller="Reports" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a reportes
+        </a>
+    </div>
+
+    <form method="get" class="filters">
+        <input name="search" value="@Model.Search" placeholder="Buscar usuario..." />
+        <label class="checkbox">
+            <input type="checkbox" name="onlyActive" value="true" @(Model.OnlyActive ? "checked" : "") />
+            Solo activos
+        </label>
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="3" class="empty">No hay usuarios</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.Username</td>
+                            <td>@item.Role</td>
+                            <td>
+                                @if (item.Active)
+                                {
+                                    <span class="badge success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge danger">Inactivo</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page" href="/Reportes/Users?page=@i&search=@Model.Search&onlyActive=@(Model.OnlyActive ? "true" : "")">@i</a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="pagination">Página @Model.Page de @Model.TotalPages</div>
+    }
+</div>

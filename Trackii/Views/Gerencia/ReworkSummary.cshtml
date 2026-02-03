@@ -1,0 +1,82 @@
+@using System.Text.Json
+@model Trackii.Models.Gerencia.GerenciaReworkSummaryVm
+
+@{
+    ViewData["Title"] = "Rework por localidad";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Rework por localidad</h2>
+            <p class="subtitle">Cantidad total y eventos de retrabajo por estación</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a Gerencia
+        </a>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card chart-card">
+            <h3>Rework total</h3>
+            <canvas id="reworkChart"></canvas>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Localidad</th>
+                    <th class="text-right">Piezas</th>
+                    <th class="text-right">Eventos</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="3" class="empty">Sin registros de rework</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.Location</td>
+                            <td class="text-right">@item.Qty</td>
+                            <td class="text-right">@item.Events</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const reworkLabels = @Html.Raw(JsonSerializer.Serialize(Model.ReworkByLocationChart.Labels));
+        const reworkValues = @Html.Raw(JsonSerializer.Serialize(Model.ReworkByLocationChart.Values));
+
+        new Chart(document.getElementById('reworkChart'), {
+            type: 'bar',
+            data: {
+                labels: reworkLabels,
+                datasets: [{
+                    label: 'Piezas',
+                    data: reworkValues,
+                    backgroundColor: '#f97316'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
+}

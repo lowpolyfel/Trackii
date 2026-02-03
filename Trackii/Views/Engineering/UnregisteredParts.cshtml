@@ -1,0 +1,104 @@
+@model Trackii.Models.Engineering.UnregisteredPartsListVm
+
+@{
+    ViewData["Title"] = "Partes sin registrar";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Partes sin registrar</h2>
+            <p class="subtitle">Registro y seguimiento de part numbers pendientes</p>
+        </div>
+        <a asp-controller="Product" asp-action="Create" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i>
+            Registrar producto
+        </a>
+    </div>
+
+    <form method="get" class="filters">
+        <input name="search" value="@Model.Search" placeholder="Buscar part number..." />
+        <label class="checkbox">
+            <input type="checkbox" name="onlyActive" value="true" @(Model.OnlyActive ? "checked" : "") />
+            Solo activos
+        </label>
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Part Number</th>
+                    <th>Creación</th>
+                    <th>Estado</th>
+                    <th class="text-right">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="empty">No hay partes pendientes</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.PartNumber</td>
+                            <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>
+                                @if (item.Active)
+                                {
+                                    <span class="badge success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge danger">Cerrado</span>
+                                }
+                            </td>
+                            <td class="text-right">
+                                <a class="btn-chip" href="/Admin/Product/Create?partNumber=@item.PartNumber">Registrar</a>
+                                @if (item.Active)
+                                {
+                                    <form method="post" action="/Engineering/UnregisteredParts/Close" class="inline-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="partId" value="@item.PartId" />
+                                        <button type="submit" class="btn-chip danger">Cerrar</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="badge">Sin acción</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page" href="/Engineering/UnregisteredParts?page=@i&search=@Model.Search&onlyActive=@(Model.OnlyActive ? "true" : "")">@i</a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="pagination">Página @Model.Page de @Model.TotalPages</div>
+    }
+</div>
