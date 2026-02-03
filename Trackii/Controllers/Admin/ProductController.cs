@@ -56,9 +56,13 @@ public class ProductController : Controller
     }
 
     [HttpGet("Create")]
-    public IActionResult Create()
+    public IActionResult Create(string? partNumber)
     {
         var vm = new ProductEditVm();
+        if (!string.IsNullOrWhiteSpace(partNumber))
+        {
+            vm.PartNumber = partNumber;
+        }
         LoadLookups(vm);
         return View($"{ViewBase}Create.cshtml", vm);
     }

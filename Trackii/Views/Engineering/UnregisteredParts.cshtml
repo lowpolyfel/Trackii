@@ -10,9 +10,9 @@
             <h2>Partes sin registrar</h2>
             <p class="subtitle">Registro y seguimiento de part numbers pendientes</p>
         </div>
-        <a asp-controller="UnregisteredParts" asp-action="Create" class="btn btn-primary">
+        <a asp-controller="Product" asp-action="Create" class="btn btn-primary">
             <i class="fa-solid fa-plus"></i>
-            Registrar parte
+            Registrar producto
         </a>
     </div>
 
@@ -60,6 +60,7 @@
                                 }
                             </td>
                             <td class="text-right">
+                                <a class="btn-chip" href="/Admin/Product/Create?partNumber=@item.PartNumber">Registrar</a>
                                 @if (item.Active)
                                 {
                                     <form method="post" action="/Engineering/UnregisteredParts/Close" class="inline-form">

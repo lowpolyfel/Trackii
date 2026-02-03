@@ -25,20 +25,9 @@ public class UnregisteredPartsController : Controller
     }
 
     [HttpGet("Create")]
-    public IActionResult Create()
+    public IActionResult Create(string? partNumber)
     {
-        return View($"{ViewBase}CreateUnregisteredPart.cshtml", new UnregisteredPartCreateVm());
-    }
-
-    [HttpPost("Create")]
-    [ValidateAntiForgeryToken]
-    public IActionResult Create(UnregisteredPartCreateVm vm)
-    {
-        if (!ModelState.IsValid)
-            return View($"{ViewBase}CreateUnregisteredPart.cshtml", vm);
-
-        _svc.Create(vm);
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction("Create", "Product", new { partNumber });
     }
 
     [HttpPost("Close")]

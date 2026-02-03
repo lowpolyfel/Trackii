@@ -64,20 +64,6 @@ public class UnregisteredPartsService
         return vm;
     }
 
-    public void Create(UnregisteredPartCreateVm vm)
-    {
-        using var cn = new MySqlConnection(_conn);
-        cn.Open();
-
-        using var cmd = new MySqlCommand(@"
-            INSERT INTO unregistered_parts (part_number, creation_datetime, active)
-            VALUES (@part, @created, 1)", cn);
-
-        cmd.Parameters.AddWithValue("@part", vm.PartNumber);
-        cmd.Parameters.AddWithValue("@created", vm.CreatedAt ?? DateTime.Now);
-        cmd.ExecuteNonQuery();
-    }
-
     public void Close(uint partId)
     {
         using var cn = new MySqlConnection(_conn);
