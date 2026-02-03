@@ -137,9 +137,12 @@
                                 }
                             </td>
                             <td class="text-right">
-                                <a href="/Admin/Subfamily/Edit/@r.Id" class="btn-icon" title="Editar">
-                                    <i class="fa-solid fa-pen"></i>
-                                </a>
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <a href="/Admin/Subfamily/Edit/@r.Id" class="btn-icon" title="Editar">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </a>
+                                }
 
                                 <!-- IMPORTANTE: respetamos tu endpoint real -->
                                 <form method="post" action="/Admin/Subfamily/Toggle/@r.Id" class="inline-form">

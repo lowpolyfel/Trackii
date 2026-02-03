@@ -1,0 +1,90 @@
+@model Trackii.Models.Reports.DevicesReportVm
+
+@{
+    ViewData["Title"] = "Dispositivos";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Dispositivos</h2>
+            <p class="subtitle">Estado y ubicación de los dispositivos</p>
+        </div>
+        <a asp-controller="Reports" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver a reportes
+        </a>
+    </div>
+
+    <form method="get" class="filters">
+        <input name="search" value="@Model.Search" placeholder="Buscar UID o nombre..." />
+        <label class="checkbox">
+            <input type="checkbox" name="onlyActive" value="true" @(Model.OnlyActive ? "checked" : "") />
+            Solo activos
+        </label>
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>UID</th>
+                    <th>Nombre</th>
+                    <th>Localidad</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="empty">No hay dispositivos</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.DeviceUid</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.Name) ? "-" : item.Name)</td>
+                            <td>@item.Location</td>
+                            <td>
+                                @if (item.Active)
+                                {
+                                    <span class="badge success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge danger">Inactivo</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pager">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                if (i == Model.Page)
+                {
+                    <span class="page current">@i</span>
+                }
+                else
+                {
+                    <a class="page" href="/Reportes/Devices?page=@i&search=@Model.Search&onlyActive=@(Model.OnlyActive ? "true" : "")">@i</a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="pagination">Página @Model.Page de @Model.TotalPages</div>
+    }
+</div>

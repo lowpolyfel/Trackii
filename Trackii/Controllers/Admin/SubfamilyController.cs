@@ -5,7 +5,7 @@ using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize]
+[Authorize(Roles = "Admin,Engineering,Ingenieria")]
 [Route("Admin/[controller]")]
 public class SubfamilyController : Controller
 {
@@ -72,6 +72,7 @@ public class SubfamilyController : Controller
 
     // ===================== EDIT =====================
     [HttpGet("Edit/{id:long}")]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(uint id)
     {
         var vm = _svc.GetById(id);
@@ -83,6 +84,7 @@ public class SubfamilyController : Controller
 
     [HttpPost("Edit/{id:long}")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult Edit(SubfamilyEditVm vm)
     {
         if (!ModelState.IsValid)

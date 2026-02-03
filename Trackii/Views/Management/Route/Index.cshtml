@@ -110,9 +110,12 @@
                             </td>
                             <td>
                                 <div class="route-actions">
-                                    <a href="/Admin/Route/Edit/@item.Id" class="icon-action edit" title="Editar">
-                                        <i class="fa-solid fa-pen"></i>
-                                    </a>
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <a href="/Admin/Route/Edit/@item.Id" class="icon-action edit" title="Editar">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </a>
+                                    }
                                     <a href="/Admin/Route/Ver/@item.Id" class="icon-action view" title="Ver flujo">
                                         <i class="fa-solid fa-eye"></i>
                                     </a>
@@ -125,15 +128,18 @@
                                     }
                                     else
                                     {
-                                        <form action="/Admin/Route/Activate/@item.Id"
-                                              method="post"
-                                              class="inline-form"
-                                              onsubmit="return confirm('¿Seguro que deseas activar esta versión antigua? La actual dejará de funcionar.');">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="icon-action success" title="Restaurar">
-                                                <i class="fa-solid fa-rotate-left"></i>
-                                            </button>
-                                        </form>
+                                        @if (User.IsInRole("Admin"))
+                                        {
+                                            <form action="/Admin/Route/Activate/@item.Id"
+                                                  method="post"
+                                                  class="inline-form"
+                                                  onsubmit="return confirm('¿Seguro que deseas activar esta versión antigua? La actual dejará de funcionar.');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="icon-action success" title="Restaurar">
+                                                    <i class="fa-solid fa-rotate-left"></i>
+                                                </button>
+                                            </form>
+                                        }
                                     }
                                 </div>
                             </td>

@@ -4,7 +4,7 @@ using Trackii.Services;
 
 namespace Trackii.Controllers;
 
-[Authorize]
+[Authorize(Roles = "Admin")]
 [Route("ViewCatalog")]
 public class ViewCatalogController : Controller
 {
