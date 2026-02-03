@@ -57,6 +57,7 @@ public class ReportsController : Controller
         return View($"{ViewBase}Wip.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin,Engineering,Ingenieria")]
     [HttpGet("Devices")]
     public IActionResult Devices(string? search, bool onlyActive = true, int page = 1)
     {
@@ -64,6 +65,7 @@ public class ReportsController : Controller
         return View($"{ViewBase}Devices.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin,Engineering,Ingenieria")]
     [HttpGet("Users")]
     public IActionResult Users(string? search, bool onlyActive = true, int page = 1)
     {

@@ -51,20 +51,23 @@
             </div>
         </a>
 
-        <a class="kpi-card" asp-controller="Reports" asp-action="Devices">
-            <div class="kpi-icon"><i class="fa-solid fa-tablet-screen-button"></i></div>
-            <div class="kpi-content">
-                <div class="kpi-title">Dispositivos</div>
-                <div class="kpi-value">Ver estado</div>
-            </div>
-        </a>
+        @if (!User.IsInRole("Gerencia"))
+        {
+            <a class="kpi-card" asp-controller="Reports" asp-action="Devices">
+                <div class="kpi-icon"><i class="fa-solid fa-tablet-screen-button"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-title">Dispositivos</div>
+                    <div class="kpi-value">Ver estado</div>
+                </div>
+            </a>
 
-        <a class="kpi-card" asp-controller="Reports" asp-action="Users">
-            <div class="kpi-icon"><i class="fa-solid fa-users"></i></div>
-            <div class="kpi-content">
-                <div class="kpi-title">Usuarios</div>
-                <div class="kpi-value">Ver estado</div>
-            </div>
-        </a>
+            <a class="kpi-card" asp-controller="Reports" asp-action="Users">
+                <div class="kpi-icon"><i class="fa-solid fa-users"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-title">Usuarios</div>
+                    <div class="kpi-value">Ver estado</div>
+                </div>
+            </a>
+        }
     </div>
 </div>
