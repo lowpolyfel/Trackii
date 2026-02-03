@@ -75,6 +75,32 @@ public class GerenciaService
         return vm;
     }
 
+    public GerenciaWipVm GetWipOverview()
+    {
+        var vm = new GerenciaWipVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        LoadWipStatusChart(cn, vm.WipStatusChart);
+        vm.WipItems.AddRange(LoadWipItems(cn));
+
+        return vm;
+    }
+
+    public GerenciaScanEventsVm GetScanEvents()
+    {
+        var vm = new GerenciaScanEventsVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        LoadScanEventChart(cn, vm.ScanEventChart);
+        vm.RecentEvents.AddRange(LoadRecentScanEvents(cn));
+
+        return vm;
+    }
+
     private static List<LocationProductionVm> LoadProductionByLocation(MySqlConnection cn)
     {
         var items = new List<LocationProductionVm>();
@@ -157,15 +183,20 @@ public class GerenciaService
         using var rd = cmd.ExecuteReader();
         while (rd.Read())
         {
+            var wipIdOrdinal = rd.GetOrdinal("wip_id");
+            var wipStatusOrdinal = rd.GetOrdinal("wip_status");
+            var locationOrdinal = rd.GetOrdinal("location_name");
+            var createdAtOrdinal = rd.GetOrdinal("created_at");
+
             items.Add(new WorkOrderVm
             {
                 WoNumber = rd.GetString("wo_number"),
                 Status = rd.GetString("status"),
                 Product = rd.GetString("part_number"),
-                WipItemId = rd.IsDBNull("wip_id") ? null : rd.GetUInt32("wip_id"),
-                WipStatus = rd.IsDBNull("wip_status") ? null : rd.GetString("wip_status"),
-                CurrentLocation = rd.IsDBNull("location_name") ? null : rd.GetString("location_name"),
-                WipCreatedAt = rd.IsDBNull("created_at") ? null : rd.GetDateTime("created_at")
+                WipItemId = rd.IsDBNull(wipIdOrdinal) ? null : rd.GetUInt32(wipIdOrdinal),
+                WipStatus = rd.IsDBNull(wipStatusOrdinal) ? null : rd.GetString(wipStatusOrdinal),
+                CurrentLocation = rd.IsDBNull(locationOrdinal) ? null : rd.GetString(locationOrdinal),
+                WipCreatedAt = rd.IsDBNull(createdAtOrdinal) ? null : rd.GetDateTime(createdAtOrdinal)
             });
         }
 
@@ -197,6 +228,8 @@ public class GerenciaService
         using var rd = cmd.ExecuteReader();
         while (rd.Read())
         {
+            var locationOrdinal = rd.GetOrdinal("location_name");
+
             items.Add(new DelayedWorkOrderVm
             {
                 WoNumber = rd.GetString("wo_number"),
@@ -204,9 +237,79 @@ public class GerenciaService
                 Product = rd.GetString("part_number"),
                 WipItemId = rd.GetUInt32("wip_id"),
                 WipStatus = rd.GetString("wip_status"),
-                CurrentLocation = rd.IsDBNull("location_name") ? null : rd.GetString("location_name"),
+                CurrentLocation = rd.IsDBNull(locationOrdinal) ? null : rd.GetString(locationOrdinal),
                 WipCreatedAt = rd.GetDateTime("created_at"),
                 DaysDelayed = Convert.ToInt32(rd.GetInt64("days_delayed"))
+            });
+        }
+
+        return items;
+    }
+
+    private static List<WipItemVm> LoadWipItems(MySqlConnection cn)
+    {
+        var items = new List<WipItemVm>();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT wip.id,
+                   wip.status,
+                   wip.created_at,
+                   wo.wo_number,
+                   l.name AS location_name
+            FROM wip_item wip
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            LEFT JOIN route_step rs ON rs.id = wip.current_step_id
+            LEFT JOIN location l ON l.id = rs.location_id
+            ORDER BY wip.created_at DESC", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            var locationOrdinal = rd.GetOrdinal("location_name");
+
+            items.Add(new WipItemVm
+            {
+                Id = rd.GetUInt32("id"),
+                Status = rd.GetString("status"),
+                WoNumber = rd.GetString("wo_number"),
+                CurrentLocation = rd.IsDBNull(locationOrdinal) ? null : rd.GetString(locationOrdinal),
+                CreatedAt = rd.GetDateTime("created_at")
+            });
+        }
+
+        return items;
+    }
+
+    private static List<ScanEventVm> LoadRecentScanEvents(MySqlConnection cn)
+    {
+        var items = new List<ScanEventVm>();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT se.ts,
+                   se.scan_type,
+                   wip.id AS wip_id,
+                   wo.wo_number,
+                   l.name AS location_name
+            FROM scan_event se
+            JOIN wip_item wip ON wip.id = se.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            LEFT JOIN route_step rs ON rs.id = se.route_step_id
+            LEFT JOIN location l ON l.id = rs.location_id
+            ORDER BY se.ts DESC
+            LIMIT 50", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            var locationOrdinal = rd.GetOrdinal("location_name");
+
+            items.Add(new ScanEventVm
+            {
+                Timestamp = rd.GetDateTime("ts"),
+                ScanType = rd.GetString("scan_type"),
+                WoNumber = rd.GetString("wo_number"),
+                WipItemId = rd.GetUInt32("wip_id"),
+                Location = rd.IsDBNull(locationOrdinal) ? null : rd.GetString(locationOrdinal)
             });
         }
 

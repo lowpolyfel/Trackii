@@ -36,4 +36,18 @@ public class GerenciaController : Controller
         var vm = _svc.GetWorkOrders();
         return View($"{ViewBase}WorkOrders.cshtml", vm);
     }
+
+    [HttpGet("Wip")]
+    public IActionResult Wip()
+    {
+        var vm = _svc.GetWipOverview();
+        return View($"{ViewBase}Wip.cshtml", vm);
+    }
+
+    [HttpGet("ScanEvents")]
+    public IActionResult ScanEvents()
+    {
+        var vm = _svc.GetScanEvents();
+        return View($"{ViewBase}ScanEvents.cshtml", vm);
+    }
 }
