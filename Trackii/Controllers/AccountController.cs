@@ -40,6 +40,9 @@ public class AccountController : Controller
             principal
         );
 
+        if (principal.IsInRole("Gerencia"))
+            return RedirectToAction("Index", "Gerencia");
+
         return RedirectToAction("Index", "Lobby");
     }
 
@@ -48,7 +51,7 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
-        await HttpContext.SignOutAsync();
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return RedirectToAction("Login");
     }
 

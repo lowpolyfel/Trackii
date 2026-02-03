@@ -139,9 +139,12 @@
                                 }
                             </td>
                             <td class="text-right">
-                                <a href="/Admin/Product/Edit/@p.Id" class="btn-icon" title="Editar">
-                                    <i class="fa-solid fa-pen"></i>
-                                </a>
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <a href="/Admin/Product/Edit/@p.Id" class="btn-icon" title="Editar">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </a>
+                                }
 
                                 <form method="post" action="/Admin/Product/Toggle" class="inline-form">
                                     @Html.AntiForgeryToken()

@@ -72,6 +72,8 @@ builder.Services.AddControllersWithViews(options =>
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<LobbyService>();
+builder.Services.AddScoped<GerenciaService>();
+builder.Services.AddScoped<Trackii.Services.Reports.ReportsService>();
 builder.Services.AddScoped<ViewCatalogService>();
 builder.Services.AddScoped<RegisterApiService>();
 builder.Services.AddScoped<LocationListApiService>();
@@ -118,6 +120,6 @@ app.MapControllers();
 // Conventional routing (MVC)
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 app.Run();
