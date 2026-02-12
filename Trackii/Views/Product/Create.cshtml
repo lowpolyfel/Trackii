@@ -1,0 +1,81 @@
+﻿@model Trackii.Models.Admin.Product.ProductEditVm
+
+@{
+    ViewData["Title"] = "Nuevo Product";
+    var subfamilies = ViewBag.Subfamilies as List<(uint Id, string Name)> ?? new();
+}
+
+<div class="card">
+
+    <div class="page-header">
+        <div>
+            <h2>Nuevo Product</h2>
+            <p class="subtitle">Selecciona la Subfamily y captura el Part Number</p>
+        </div>
+
+        <a href="/Admin/Product" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Volver
+        </a>
+    </div>
+
+    <form method="post" action="/Admin/Product/Create" class="form">
+        @Html.AntiForgeryToken()
+
+        <div class="form-grid">
+
+            <div class="form-field">
+                <label for="SubfamilyName">Subfamily</label>
+                <input id="SubfamilyName"
+                       class="input"
+                       list="subfamilyOptions"
+                       placeholder="Pega o escribe la subfamilia..." />
+                <input type="hidden" id="SubfamilyId" name="SubfamilyId" />
+                <datalist id="subfamilyOptions">
+                    @foreach (var s in subfamilies)
+                    {
+                        <option value="@s.Name" data-id="@s.Id"></option>
+                    }
+                </datalist>
+                <span asp-validation-for="SubfamilyId" class="field-error"></span>
+            </div>
+
+            <div class="form-field">
+                <label asp-for="PartNumber"></label>
+                <input asp-for="PartNumber" class="input" placeholder="Ej. ABC-12345" />
+                <span asp-validation-for="PartNumber" class="field-error"></span>
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Guardar
+            </button>
+
+            <a href="/Admin/Product" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const input = document.getElementById("SubfamilyName");
+            const hidden = document.getElementById("SubfamilyId");
+            const options = Array.from(document.getElementById("subfamilyOptions").options);
+
+            const sync = () => {
+                const value = input.value.trim();
+                const match = options.find((option) => option.value === value);
+                hidden.value = match ? match.dataset.id : "";
+            };
+
+            input.addEventListener("input", sync);
+            input.addEventListener("change", sync);
+        })();
+    </script>
+}
