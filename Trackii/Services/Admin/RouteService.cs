@@ -430,7 +430,7 @@ public class RouteService
     }
     // ... dentro de RouteService.cs ...
 
-    public void Save(RouteEditVm vm)
+    public void Save(RouteEditVm vm, bool isAdmin)
     {
         if (vm.SubfamilyId == 0) throw new InvalidOperationException("Selecciona una Subfamily.");
         vm.Name = (vm.Name ?? "").Trim();
@@ -538,7 +538,7 @@ public class RouteService
             }
 
             // Si está activa y tiene WIP, solo permitimos cambio de Nombre, NO de pasos NI de subfamilia
-            if (isActive && CountWipInRoute(cn, tx, vm.Id) > 0)
+            if (isActive && CountWipInRoute(cn, tx, vm.Id) > 0 && !isAdmin)
             {
                 if (oldSubfamilyId != vm.SubfamilyId)
                     throw new InvalidOperationException("No se puede cambiar la Subfamilia: hay WIP en proceso en esta ruta activa.");

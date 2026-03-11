@@ -59,7 +59,9 @@ public class RouteController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Save(RouteEditVm vm)
     {
-        if (!User.IsInRole("Admin") && vm.Id != 0)
+        var isAdmin = User.IsInRole("Admin");
+
+        if (!isAdmin && vm.Id != 0)
         {
             return Forbid();
         }
@@ -69,7 +71,7 @@ public class RouteController : Controller
             // Validaciones manuales básicas si ModelState falla por listas dinámicas
             if (vm.SubfamilyId == 0) ModelState.AddModelError("SubfamilyId", "Requerido");
 
-            _service.Save(vm);
+            _service.Save(vm, isAdmin);
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
