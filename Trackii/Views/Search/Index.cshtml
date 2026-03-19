@@ -1,0 +1,97 @@
+@model Trackii.Models.Search.SearchIndexVm
+
+@{
+    ViewData["Title"] = "Buscador";
+}
+
+<div class="search-page">
+    <section class="card search-hero-card">
+        <div class="search-hero-copy">
+            <span class="search-section-label">Búsqueda global</span>
+            <h2>Encuentra productos y work orders en un solo lugar</h2>
+            <p class="subtitle">Escribe un número de parte o una work order para obtener coincidencias rápidas y navegar al detalle completo.</p>
+        </div>
+
+        <form method="get" action="/Buscador" class="search-form-minimal">
+            <div class="search-input-shell">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="search"
+                       name="q"
+                       value="@Model.Query"
+                       class="search-input-minimal"
+                       placeholder="Buscar work order o product..."
+                       autocomplete="off" />
+                <button type="submit" class="btn btn-primary search-submit">Buscar</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card search-results-card">
+        <div class="page-header search-results-header">
+            <div>
+                <h3>Resultados</h3>
+                <p class="subtitle">
+                    @if (string.IsNullOrWhiteSpace(Model.Query))
+                    {
+                        <span>Ingresa un número para listar coincidencias.</span>
+                    }
+                    else
+                    {
+                        <span>@Model.Results.Count coincidencia(s) para <strong>@Model.Query</strong>.</span>
+                    }
+                </p>
+            </div>
+        </div>
+
+        @if (string.IsNullOrWhiteSpace(Model.Query))
+        {
+            <div class="search-empty-state">
+                <i class="fa-solid fa-arrow-up-right-dots"></i>
+                <div>
+                    <strong>Empieza por escribir un número.</strong>
+                    <p>El buscador revisa productos y work orders al mismo tiempo.</p>
+                </div>
+            </div>
+        }
+        else if (!Model.Results.Any())
+        {
+            <div class="search-empty-state">
+                <i class="fa-regular fa-face-meh"></i>
+                <div>
+                    <strong>Sin resultados.</strong>
+                    <p>No encontramos coincidencias con ese criterio.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="search-results-list">
+                @foreach (var result in Model.Results)
+                {
+                    <a class="search-result-item"
+                       href="/Buscador/Detalle/@result.ProductId@(result.WorkOrderId.HasValue ? $"?workOrderId={result.WorkOrderId}" : string.Empty)">
+                        <div class="search-result-badge">@result.Type</div>
+                        <div class="search-result-main">
+                            <div class="search-result-top">
+                                <strong>@result.PrimaryValue</strong>
+                                <span>@result.SecondaryValue</span>
+                            </div>
+                            <div class="search-result-meta">
+                                <span>@result.Area</span>
+                                <span>@result.Family</span>
+                                <span>@result.Subfamily</span>
+                            </div>
+                        </div>
+                        <div class="search-result-side">
+                            <span class="badge @(result.Status.Equals("Activo", StringComparison.OrdinalIgnoreCase) || result.Status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase) ? "success" : "")">@result.Status</span>
+                            @if (!string.IsNullOrWhiteSpace(result.CurrentLocation))
+                            {
+                                <small>@result.CurrentLocation</small>
+                            }
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+    </section>
+</div>

@@ -24,6 +24,11 @@
             </div>
 
             <nav class="sidebar-nav">
+                <a asp-controller="Search" asp-action="Index">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>Buscador</span>
+                </a>
+
                 @if (User.IsInRole("Admin") || User.IsInRole("Engineering") || User.IsInRole("Ingenieria"))
                 {
                     <a asp-controller="Lobby" asp-action="Index">

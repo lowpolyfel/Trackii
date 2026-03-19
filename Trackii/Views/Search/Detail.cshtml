@@ -1,0 +1,156 @@
+@model Trackii.Models.Search.SearchDetailVm
+
+@{
+    ViewData["Title"] = "Detalle de búsqueda";
+}
+
+<div class="search-detail-page">
+    <section class="card search-detail-hero">
+        <div>
+            <span class="search-section-label">Detalle del producto</span>
+            <h2>@Model.PartNumber</h2>
+            <p class="subtitle">Vista general del producto, su jerarquía, la ruta configurada y el contexto operativo de la work order seleccionada.</p>
+        </div>
+
+        <div class="search-detail-actions">
+            <a href="/Buscador?q=@Model.PartNumber" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i>
+                Volver al buscador
+            </a>
+        </div>
+    </section>
+
+    <section class="search-detail-grid">
+        <article class="card search-detail-card">
+            <div class="page-header">
+                <div>
+                    <h3>Datos clave</h3>
+                    <p class="subtitle">Información de interés para producción y seguimiento.</p>
+                </div>
+            </div>
+
+            <div class="search-stat-grid">
+                @foreach (var stat in Model.Stats)
+                {
+                    <div class="search-stat-item">
+                        <span>@stat.Label</span>
+                        <strong>@stat.Value</strong>
+                    </div>
+                }
+            </div>
+
+            <div class="search-info-list">
+                <div>
+                    <span>Producto activo</span>
+                    <strong>@(Model.ProductActive ? "Sí" : "No")</strong>
+                </div>
+                <div>
+                    <span>Ruta activa</span>
+                    <strong>@(Model.RouteActive ? "Sí" : "No")</strong>
+                </div>
+                <div>
+                    <span>Work order</span>
+                    <strong>@(string.IsNullOrWhiteSpace(Model.WorkOrderNumber) ? "Sin selección" : Model.WorkOrderNumber)</strong>
+                </div>
+                <div>
+                    <span>Ubicación actual</span>
+                    <strong>@(string.IsNullOrWhiteSpace(Model.CurrentLocation) ? "Sin movimiento activo" : Model.CurrentLocation)</strong>
+                </div>
+                <div>
+                    <span>Paso actual</span>
+                    <strong>@(Model.CurrentStepNumber.HasValue ? $"Paso {Model.CurrentStepNumber}" : "Sin paso actual")</strong>
+                </div>
+                <div>
+                    <span>Creada en WIP</span>
+                    <strong>@(Model.WipCreatedAt.HasValue ? Model.WipCreatedAt.Value.ToString("yyyy-MM-dd HH:mm") : "Sin registro")</strong>
+                </div>
+            </div>
+        </article>
+
+        <article class="card search-detail-card">
+            <div class="page-header">
+                <div>
+                    <h3>Ruta y pasos</h3>
+                    <p class="subtitle">Secuencia operativa asignada al producto.</p>
+                </div>
+                <div class="route-flow-meta">
+                    <span class="badge">@Model.RouteName</span>
+                    <span class="badge info">v @Model.RouteVersion</span>
+                </div>
+            </div>
+
+            @if (!Model.Steps.Any())
+            {
+                <div class="search-empty-state compact">
+                    <i class="fa-regular fa-map"></i>
+                    <div>
+                        <strong>No hay pasos configurados.</strong>
+                        <p>Este producto aún no tiene una ruta activa con estaciones asignadas.</p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="search-steps-list">
+                    @foreach (var step in Model.Steps)
+                    {
+                        <div class="search-step-item @(step.IsCurrent ? "current" : string.Empty)">
+                            <span class="search-step-index">@step.StepNumber</span>
+                            <div>
+                                <strong>@step.LocationName</strong>
+                                <small>@(step.IsCurrent ? "Paso actual" : "Paso de ruta")</small>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </article>
+    </section>
+
+    <section class="card search-detail-card">
+        <div class="page-header">
+            <div>
+                <h3>Work orders relacionadas</h3>
+                <p class="subtitle">Selecciona una orden para abrir el mismo producto con su contexto operativo.</p>
+            </div>
+        </div>
+
+        @if (!Model.RelatedWorkOrders.Any())
+        {
+            <div class="search-empty-state compact">
+                <i class="fa-regular fa-folder-open"></i>
+                <div>
+                    <strong>Sin work orders relacionadas.</strong>
+                    <p>No hay órdenes ligadas a este producto por el momento.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="search-results-list">
+                @foreach (var result in Model.RelatedWorkOrders)
+                {
+                    <a class="search-result-item"
+                       href="/Buscador/Detalle/@result.ProductId?workOrderId=@result.WorkOrderId">
+                        <div class="search-result-badge">WO</div>
+                        <div class="search-result-main">
+                            <div class="search-result-top">
+                                <strong>@result.PrimaryValue</strong>
+                                <span>@result.SecondaryValue</span>
+                            </div>
+                            <div class="search-result-meta">
+                                <span>@result.Area</span>
+                                <span>@result.Family</span>
+                                <span>@result.Subfamily</span>
+                            </div>
+                        </div>
+                        <div class="search-result-side">
+                            <span class="badge">@result.Status</span>
+                            <small>@(string.IsNullOrWhiteSpace(result.CurrentLocation) ? "Sin ubicación" : result.CurrentLocation)</small>
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+    </section>
+</div>
