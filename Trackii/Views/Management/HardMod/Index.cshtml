@@ -1,0 +1,140 @@
+@model Trackii.Models.Admin.HardMod.HardModVm
+
+@{
+    ViewData["Title"] = "Hard Mod";
+}
+
+<div class="hardmod-page">
+    <div class="card hardmod-hero">
+        <div>
+            <span class="search-section-label">Admin only</span>
+            <h2>Hard Mod</h2>
+            <p class="subtitle">Elimina registros directamente de la base de datos para limpiar WIP items y ejecuciones de pasos.</p>
+        </div>
+        <div class="alert alert-warning hardmod-warning-box">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Estas acciones hacen hard delete real sobre la BD y no se pueden deshacer.</span>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+    {
+        <div class="alert alert-success">
+            <i class="fa-solid fa-circle-check"></i>
+            @Model.SuccessMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert error">
+            <i class="fa-solid fa-circle-xmark"></i>
+            @Model.ErrorMessage
+        </div>
+    }
+
+    <div class="hardmod-grid">
+        <section class="card hardmod-card">
+            <div class="page-header">
+                <div>
+                    <h3>Eliminar WIP item</h3>
+                    <p class="subtitle">Borra el `wip_item` seleccionado y también sus registros dependientes.</p>
+                </div>
+            </div>
+
+            <form method="get" action="/Admin/HardMod" class="hardmod-form">
+                <input type="hidden" name="wipStepExecutionId" value="@(Model.WipStepExecutionPreview?.Id)" />
+                <label for="wipItemIdLookup">Consultar WIP item</label>
+                <div class="hardmod-input-row">
+                    <input id="wipItemIdLookup" name="wipItemId" type="number" min="1" class="input" placeholder="ID de wip_item" required />
+                    <button type="submit" class="btn btn-secondary">Cargar</button>
+                </div>
+            </form>
+
+            @if (Model.WipItemPreview != null)
+            {
+                <div class="hardmod-preview">
+                    <div><span>ID</span><strong>@Model.WipItemPreview.Id</strong></div>
+                    <div><span>WO</span><strong>@Model.WipItemPreview.WorkOrderNumber</strong></div>
+                    <div><span>Producto</span><strong>@Model.WipItemPreview.ProductPartNumber</strong></div>
+                    <div><span>Estatus</span><strong>@Model.WipItemPreview.Status</strong></div>
+                    <div><span>Ubicación actual</span><strong>@(string.IsNullOrWhiteSpace(Model.WipItemPreview.CurrentLocation) ? "Sin ubicación" : Model.WipItemPreview.CurrentLocation)</strong></div>
+                    <div><span>Creado</span><strong>@(Model.WipItemPreview.CreatedAt.HasValue ? Model.WipItemPreview.CreatedAt.Value.ToString("yyyy-MM-dd HH:mm") : "Sin fecha")</strong></div>
+                    <div><span>Step executions</span><strong>@Model.WipItemPreview.StepExecutionsCount</strong></div>
+                    <div><span>Scan events</span><strong>@Model.WipItemPreview.ScanEventsCount</strong></div>
+                    <div><span>Rework logs</span><strong>@Model.WipItemPreview.ReworkLogsCount</strong></div>
+                </div>
+
+                <form method="post" action="/Admin/HardMod/DeleteWipItem" class="hardmod-delete-form" onsubmit="return confirm('Se eliminará el WIP item y sus dependencias. ¿Deseas continuar?');">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="wipItemId" value="@Model.WipItemPreview.Id" />
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fa-solid fa-trash"></i>
+                        Hard delete WIP item
+                    </button>
+                </form>
+            }
+            else
+            {
+                <div class="search-empty-state compact">
+                    <i class="fa-regular fa-hard-drive"></i>
+                    <div>
+                        <strong>Sin WIP item cargado.</strong>
+                        <p>Captura un ID para revisar el registro antes de eliminarlo.</p>
+                    </div>
+                </div>
+            }
+        </section>
+
+        <section class="card hardmod-card">
+            <div class="page-header">
+                <div>
+                    <h3>Eliminar WIP step execution</h3>
+                    <p class="subtitle">Borra una ejecución individual de `wip_step_execution`.</p>
+                </div>
+            </div>
+
+            <form method="get" action="/Admin/HardMod" class="hardmod-form">
+                <input type="hidden" name="wipItemId" value="@(Model.WipItemPreview?.Id)" />
+                <label for="wipStepExecutionIdLookup">Consultar step execution</label>
+                <div class="hardmod-input-row">
+                    <input id="wipStepExecutionIdLookup" name="wipStepExecutionId" type="number" min="1" class="input" placeholder="ID de wip_step_execution" required />
+                    <button type="submit" class="btn btn-secondary">Cargar</button>
+                </div>
+            </form>
+
+            @if (Model.WipStepExecutionPreview != null)
+            {
+                <div class="hardmod-preview">
+                    <div><span>ID</span><strong>@Model.WipStepExecutionPreview.Id</strong></div>
+                    <div><span>WIP item</span><strong>@Model.WipStepExecutionPreview.WipItemId</strong></div>
+                    <div><span>WO</span><strong>@Model.WipStepExecutionPreview.WorkOrderNumber</strong></div>
+                    <div><span>Producto</span><strong>@Model.WipStepExecutionPreview.ProductPartNumber</strong></div>
+                    <div><span>Estación</span><strong>@Model.WipStepExecutionPreview.LocationName</strong></div>
+                    <div><span>Creado</span><strong>@(Model.WipStepExecutionPreview.CreatedAt.HasValue ? Model.WipStepExecutionPreview.CreatedAt.Value.ToString("yyyy-MM-dd HH:mm") : "Sin fecha")</strong></div>
+                    <div><span>Qty In</span><strong>@Model.WipStepExecutionPreview.QtyIn</strong></div>
+                    <div><span>Qty Scrap</span><strong>@Model.WipStepExecutionPreview.QtyScrap</strong></div>
+                </div>
+
+                <form method="post" action="/Admin/HardMod/DeleteWipStepExecution" class="hardmod-delete-form" onsubmit="return confirm('Se eliminará esta ejecución directamente de la BD. ¿Deseas continuar?');">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="wipStepExecutionId" value="@Model.WipStepExecutionPreview.Id" />
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fa-solid fa-trash"></i>
+                        Hard delete step execution
+                    </button>
+                </form>
+            }
+            else
+            {
+                <div class="search-empty-state compact">
+                    <i class="fa-regular fa-file-lines"></i>
+                    <div>
+                        <strong>Sin step execution cargado.</strong>
+                        <p>Captura un ID para revisar el registro antes de eliminarlo.</p>
+                    </div>
+                </div>
+            }
+        </section>
+    </div>
+</div>

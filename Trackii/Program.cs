@@ -87,6 +87,8 @@ builder.Services.AddScoped<RoleService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<Trackii.Services.Admin.RouteService>();
 builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<HardModService>();
+builder.Services.AddScoped<Trackii.Services.Search.SearchService>();
 builder.Services.AddScoped<DeviceService>();
 builder.Services.AddScoped<DeviceActivationApiService>();
 
