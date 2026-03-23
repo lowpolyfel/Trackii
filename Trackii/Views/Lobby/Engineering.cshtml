@@ -8,6 +8,46 @@
     <div class="kpi-grid">
         <div class="kpi-card">
             <div class="kpi-icon">
+                <i class="fa-solid fa-list-check"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Órdenes activas</div>
+                <div class="kpi-value">@Model.ActiveWorkOrdersCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-play"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">OPEN</div>
+                <div class="kpi-value">@Model.OpenWorkOrdersCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-gears"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">IN_PROGRESS</div>
+                <div class="kpi-value">@Model.InProgressWorkOrdersCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-location-dot"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Localidades activas</div>
+                <div class="kpi-value">@Model.ActiveLocationsCount</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">
                 <i class="fa-solid fa-triangle-exclamation"></i>
             </div>
             <div class="kpi-content">
@@ -35,9 +75,74 @@
                 <div class="kpi-value">Ver listado</div>
             </div>
         </a>
+
+        <a class="kpi-card" asp-controller="Lobby" asp-action="EngineeringOrders">
+            <div class="kpi-icon">
+                <i class="fa-solid fa-sitemap"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-title">Clasificar órdenes</div>
+                <div class="kpi-value">Familia / ruta</div>
+            </div>
+        </a>
     </div>
 
     <div class="chart-grid">
+        <div class="card">
+            <div class="page-header">
+                <div>
+                    <h3>Dashboard de órdenes activas</h3>
+                    <p class="subtitle">Vista rápida para ingeniería con foco en clasificación por producto y flujo.</p>
+                </div>
+                <a asp-controller="Lobby" asp-action="EngineeringOrders" class="btn btn-primary">
+                    <i class="fa-solid fa-arrow-right"></i>
+                    Abrir tablero detallado
+                </a>
+            </div>
+
+            <div class="engineering-highlight-grid">
+                <div class="engineering-highlight">
+                    <div class="engineering-highlight-label">Top familias</div>
+                    @if (!Model.FamilyBreakdown.Any())
+                    {
+                        <p class="subtitle">Sin órdenes activas.</p>
+                    }
+                    else
+                    {
+                        <ul class="engineering-breakdown-list">
+                            @foreach (var item in Model.FamilyBreakdown)
+                            {
+                                <li>
+                                    <span>@item.Label</span>
+                                    <strong>@item.Count</strong>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+
+                <div class="engineering-highlight">
+                    <div class="engineering-highlight-label">Top localidades</div>
+                    @if (!Model.LocationBreakdown.Any())
+                    {
+                        <p class="subtitle">Sin órdenes activas.</p>
+                    }
+                    else
+                    {
+                        <ul class="engineering-breakdown-list">
+                            @foreach (var item in Model.LocationBreakdown)
+                            {
+                                <li>
+                                    <span>@item.Label</span>
+                                    <strong>@item.Count</strong>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <h3>Partes activas con mayor antigüedad</h3>
             <div class="table-wrapper">
@@ -104,6 +209,56 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="page-header">
+            <div>
+                <h3>Órdenes activas prioritarias</h3>
+                <p class="subtitle">Se muestran primero las órdenes con más antigüedad en WIP.</p>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>WO</th>
+                        <th>Producto</th>
+                        <th>Family</th>
+                        <th>Subfamily</th>
+                        <th>Ruta</th>
+                        <th>Localidad</th>
+                        <th>Inicio WIP</th>
+                        <th class="text-right">Días</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.PriorityWorkOrders.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="empty">No hay órdenes activas en este momento.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.PriorityWorkOrders)
+                        {
+                            <tr>
+                                <td>@item.WoNumber</td>
+                                <td>@item.Product</td>
+                                <td>@item.Family</td>
+                                <td>@item.Subfamily</td>
+                                <td>@item.Route</td>
+                                <td>@item.Location</td>
+                                <td>@(item.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                <td class="text-right">@(item.AgeDays?.ToString() ?? "-")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
