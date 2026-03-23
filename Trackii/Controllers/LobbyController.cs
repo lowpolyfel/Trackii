@@ -31,4 +31,11 @@ public class LobbyController : Controller
         var vm = _svc.GetDashboard();
         return View(vm);
     }
+
+    [Authorize(Roles = "Admin,Engineering,Ingenieria")]
+    public IActionResult EngineeringOrders(string? search, string? status, uint? familyId, uint? subfamilyId, uint? focusSubfamilyId, uint? locationId, uint? routeId)
+    {
+        var vm = _svc.GetEngineeringActiveOrders(search, status, familyId, subfamilyId, focusSubfamilyId, locationId, routeId);
+        return View("EngineeringOrders", vm);
+    }
 }
