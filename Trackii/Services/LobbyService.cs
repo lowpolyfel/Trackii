@@ -180,7 +180,7 @@ public class LobbyService
         return vm;
     }
 
-    public EngineeringActiveOrdersVm GetEngineeringActiveOrders(string? search, string? status, uint? familyId, uint? subfamilyId, uint? locationId, uint? routeId)
+    public EngineeringActiveOrdersVm GetEngineeringActiveOrders(string? search, string? status, uint? familyId, uint? subfamilyId, uint? focusSubfamilyId, uint? locationId, uint? routeId)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
@@ -192,6 +192,7 @@ public class LobbyService
             Status = status,
             FamilyId = familyId,
             SubfamilyId = subfamilyId,
+            FocusSubfamilyId = focusSubfamilyId ?? subfamilyId,
             LocationId = locationId,
             RouteId = routeId,
             ActiveOrdersCount = allItems.Count,
@@ -286,6 +287,18 @@ public class LobbyService
             vm.Items.Add(item);
         }
 
+        if (vm.FocusSubfamilyId.HasValue)
+        {
+            foreach (var item in allItems
+                         .Where(x => x.SubfamilyId == vm.FocusSubfamilyId.Value)
+                         .OrderBy(x => x.NextLocation)
+                         .ThenBy(x => x.Location)
+                         .ThenBy(x => x.WoNumber))
+            {
+                vm.FocusSubfamilyItems.Add(item);
+            }
+        }
+
         PopulateBreakdown(vm.FamilySummary, filteredList.GroupBy(x => x.Family));
         PopulateBreakdown(vm.SubfamilySummary, filteredList.GroupBy(x => x.Subfamily));
         PopulateBreakdown(vm.LocationSummary, filteredList.GroupBy(x => x.Location));
@@ -335,6 +348,7 @@ public class LobbyService
                    COALESCE(CONCAT(r.name, ' v', r.version), 'Sin ruta') AS route_name,
                    l.id AS location_id,
                    COALESCE(l.name, 'Sin localidad') AS location_name,
+                   next_loc.name AS next_location_name,
                    wip.created_at,
                    DATEDIFF(NOW(), wip.created_at) AS age_days
             FROM work_order wo
@@ -344,7 +358,13 @@ public class LobbyService
             LEFT JOIN wip_item wip ON wip.wo_order_id = wo.id
             LEFT JOIN route r ON r.id = COALESCE(wip.route_id, s.active_route_id)
             LEFT JOIN route_step rs ON rs.id = wip.current_step_id
+            LEFT JOIN route_step next_rs ON next_rs.route_id = COALESCE(wip.route_id, s.active_route_id)
+                                         AND next_rs.step_number = CASE
+                                             WHEN rs.id IS NULL THEN 1
+                                             ELSE rs.step_number + 1
+                                         END
             LEFT JOIN location l ON l.id = rs.location_id
+            LEFT JOIN location next_loc ON next_loc.id = next_rs.location_id
             WHERE wo.status IN ('OPEN', 'IN_PROGRESS')
             ORDER BY wo.wo_number", cn);
 
@@ -370,6 +390,9 @@ public class LobbyService
                 Route = rd.GetString("route_name"),
                 LocationId = rd.IsDBNull(locationIdOrdinal) ? null : rd.GetUInt32(locationIdOrdinal),
                 Location = rd.GetString("location_name"),
+                NextLocation = rd.IsDBNull(rd.GetOrdinal("next_location_name"))
+                    ? (rd.IsDBNull(routeIdOrdinal) ? "Sin ruta" : "Fin de ruta")
+                    : rd.GetString("next_location_name"),
                 WipCreatedAt = rd.IsDBNull(createdAtOrdinal) ? null : rd.GetDateTime(createdAtOrdinal),
                 AgeDays = rd.IsDBNull(ageDaysOrdinal) ? null : Convert.ToInt32(rd.GetInt64(ageDaysOrdinal))
             });

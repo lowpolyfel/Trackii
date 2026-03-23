@@ -6,6 +6,7 @@ public class EngineeringActiveOrdersVm
     public string? Status { get; set; }
     public uint? FamilyId { get; set; }
     public uint? SubfamilyId { get; set; }
+    public uint? FocusSubfamilyId { get; set; }
     public uint? LocationId { get; set; }
     public uint? RouteId { get; set; }
 
@@ -24,6 +25,7 @@ public class EngineeringActiveOrdersVm
     public List<BreakdownRow> LocationSummary { get; } = new();
     public List<BreakdownRow> RouteSummary { get; } = new();
     public List<OrderRow> Items { get; } = new();
+    public List<OrderRow> FocusSubfamilyItems { get; } = new();
 
     public class FilterOption
     {
@@ -57,6 +59,7 @@ public class EngineeringActiveOrdersVm
         public string Route { get; set; } = string.Empty;
         public uint? LocationId { get; set; }
         public string Location { get; set; } = string.Empty;
+        public string NextLocation { get; set; } = string.Empty;
         public DateTime? WipCreatedAt { get; set; }
         public int? AgeDays { get; set; }
     }

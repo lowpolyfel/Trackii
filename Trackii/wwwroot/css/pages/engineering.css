@@ -44,3 +44,25 @@
 .engineering-breakdown-list strong {
     color: var(--brand-700);
 }
+
+.group-toggle {
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
+    border: 1px solid rgba(23, 88, 177, 0.12);
+    border-radius: 10px;
+    color: var(--brand-700);
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.group-toggle.active {
+    color: #ffffff;
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
+}
+
+.group-row td {
+    font-weight: 700;
+    color: var(--brand-700);
+    background: rgba(220, 235, 255, 0.55);
+}

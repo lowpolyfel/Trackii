@@ -93,6 +93,8 @@
                 }
             </select>
 
+            <input type="hidden" name="focusSubfamilyId" value="@Model.FocusSubfamilyId" />
+
             <select name="routeId">
                 <option value="">Todas las rutas</option>
                 @foreach (var item in Model.Routes)
@@ -112,6 +114,87 @@
             <button type="submit" class="btn btn-primary">Aplicar filtros</button>
             <a asp-controller="Lobby" asp-action="EngineeringOrders" class="btn btn-secondary">Limpiar</a>
         </form>
+    </div>
+
+    <div class="card" id="subfamily-flow">
+        <div class="page-header">
+            <div>
+                <h3>Localidad actual y siguiente paso por subfamily</h3>
+                <p class="subtitle">Selecciona una subfamily para ver todas sus órdenes activas, en qué localidad están y cuál será la siguiente localidad de su ruta.</p>
+            </div>
+        </div>
+
+        <form method="get" class="filters">
+            <input type="hidden" name="search" value="@Model.Search" />
+            <input type="hidden" name="status" value="@Model.Status" />
+            <input type="hidden" name="familyId" value="@Model.FamilyId" />
+            <input type="hidden" name="subfamilyId" value="@Model.SubfamilyId" />
+            <input type="hidden" name="routeId" value="@Model.RouteId" />
+            <input type="hidden" name="locationId" value="@Model.LocationId" />
+
+            <select name="focusSubfamilyId" id="focusSubfamilyFilter">
+                <option value="">Selecciona una subfamily</option>
+                @foreach (var item in Model.Subfamilies)
+                {
+                    <option value="@item.Id"
+                            data-family-id="@item.FamilyId"
+                            selected="@(Model.FocusSubfamilyId == item.Id)">
+                        @item.Name (@item.Count)
+                    </option>
+                }
+            </select>
+
+            <button type="submit" class="btn btn-primary">Ver flujo</button>
+            <a asp-controller="Lobby" asp-action="EngineeringOrders" class="btn btn-secondary">Restablecer tablero</a>
+        </form>
+
+        @if (!Model.FocusSubfamilyId.HasValue)
+        {
+            <div class="empty">Selecciona una subfamily para desplegar sus órdenes y el siguiente paso de ruta.</div>
+        }
+        else if (!Model.FocusSubfamilyItems.Any())
+        {
+            <div class="empty">No hay órdenes activas para la subfamily seleccionada.</div>
+        }
+        else
+        {
+            <div class="table-wrapper">
+                <table class="table js-groupable-table" id="focusSubfamilyTable">
+                    <thead>
+                        <tr>
+                            <th>WO</th>
+                            <th>Producto</th>
+                            <th>Localidad actual</th>
+                            <th>
+                                <button type="button"
+                                        class="group-toggle"
+                                        id="toggleNextLocationGrouping"
+                                        aria-pressed="false"
+                                        title="Agrupar por siguiente localidad">
+                                    <i class="fa-solid fa-layer-group"></i>
+                                </button>
+                                Siguiente localidad
+                            </th>
+                            <th>Ruta</th>
+                            <th class="text-right">Días</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.FocusSubfamilyItems)
+                        {
+                            <tr data-next-location="@item.NextLocation" data-current-location="@item.Location" data-wo="@item.WoNumber">
+                                <td>@item.WoNumber</td>
+                                <td>@item.Product</td>
+                                <td>@item.Location</td>
+                                <td>@item.NextLocation</td>
+                                <td>@item.Route</td>
+                                <td class="text-right">@(item.AgeDays?.ToString() ?? "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 
     <div class="engineering-summary-grid">
@@ -215,6 +298,7 @@
                         <th>Subfamily</th>
                         <th>Ruta</th>
                         <th>Localidad</th>
+                        <th>Siguiente localidad</th>
                         <th>Inicio WIP</th>
                         <th class="text-right">Días</th>
                     </tr>
@@ -223,7 +307,7 @@
                     @if (!Model.Items.Any())
                     {
                         <tr>
-                            <td colspan="9" class="empty">No hay órdenes que coincidan con los filtros seleccionados.</td>
+                            <td colspan="10" class="empty">No hay órdenes que coincidan con los filtros seleccionados.</td>
                         </tr>
                     }
                     else
@@ -238,6 +322,7 @@
                                 <td>@item.Subfamily</td>
                                 <td>@item.Route</td>
                                 <td>@item.Location</td>
+                                <td>@item.NextLocation</td>
                                 <td>@(item.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
                                 <td class="text-right">@(item.AgeDays?.ToString() ?? "-")</td>
                             </tr>
@@ -254,6 +339,7 @@
         (() => {
             const familySelect = document.getElementById("familyFilter");
             const subfamilySelect = document.getElementById("subfamilyFilter");
+            const focusSubfamilySelect = document.getElementById("focusSubfamilyFilter");
             if (!familySelect || !subfamilySelect) return;
 
             const options = Array.from(subfamilySelect.options);
@@ -273,10 +359,81 @@
                 if (selected && selected.value && selected.hidden) {
                     subfamilySelect.value = "";
                 }
+
+                if (focusSubfamilySelect) {
+                    const focusSelected = focusSubfamilySelect.selectedOptions[0];
+                    Array.from(focusSubfamilySelect.options).forEach((option) => {
+                        if (!option.value) {
+                            option.hidden = false;
+                            return;
+                        }
+
+                        option.hidden = !!familyId && option.dataset.familyId !== familyId;
+                    });
+
+                    if (focusSelected && focusSelected.value && focusSelected.hidden) {
+                        focusSubfamilySelect.value = "";
+                    }
+                }
             };
 
             familySelect.addEventListener("change", filterSubfamilies);
             filterSubfamilies();
+        })();
+
+        (() => {
+            const table = document.getElementById("focusSubfamilyTable");
+            const toggle = document.getElementById("toggleNextLocationGrouping");
+            if (!table || !toggle) return;
+
+            const tbody = table.querySelector("tbody");
+            const originalRows = Array.from(tbody.querySelectorAll("tr"));
+            let grouped = false;
+
+            const render = () => {
+                tbody.innerHTML = "";
+
+                if (!grouped) {
+                    originalRows.forEach((row) => tbody.appendChild(row));
+                    toggle.setAttribute("aria-pressed", "false");
+                    toggle.classList.remove("active");
+                    return;
+                }
+
+                const sortedRows = [...originalRows].sort((a, b) => {
+                    const nextA = a.dataset.nextLocation || "";
+                    const nextB = b.dataset.nextLocation || "";
+                    if (nextA !== nextB) return nextA.localeCompare(nextB);
+
+                    const currentA = a.dataset.currentLocation || "";
+                    const currentB = b.dataset.currentLocation || "";
+                    if (currentA !== currentB) return currentA.localeCompare(currentB);
+
+                    return (a.dataset.wo || "").localeCompare(b.dataset.wo || "");
+                });
+
+                let currentGroup = "";
+                sortedRows.forEach((row) => {
+                    const nextLocation = row.dataset.nextLocation || "Sin siguiente localidad";
+                    if (nextLocation !== currentGroup) {
+                        currentGroup = nextLocation;
+                        const groupRow = document.createElement("tr");
+                        groupRow.className = "group-row";
+                        groupRow.innerHTML = `<td colspan="6">Siguiente localidad: <strong>${currentGroup}</strong></td>`;
+                        tbody.appendChild(groupRow);
+                    }
+
+                    tbody.appendChild(row);
+                });
+
+                toggle.setAttribute("aria-pressed", "true");
+                toggle.classList.add("active");
+            };
+
+            toggle.addEventListener("click", () => {
+                grouped = !grouped;
+                render();
+            });
         })();
     </script>
 }
