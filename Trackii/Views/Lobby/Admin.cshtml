@@ -88,22 +88,31 @@
     </div>
 
     <div class="chart-grid">
-        <div class="card">
-            <h3>Dispositivos activos</h3>
+        <div class="card admin-devices-card">
+            <div class="admin-devices-header">
+                <div>
+                    <h3>Gestión rápida de dispositivos</h3>
+                    <p class="subtitle">Visualiza dispositivos, cuenta asociada (último usuario que escaneó en ese dispositivo), contraseña enmascarada y cambia la localidad en un clic.</p>
+                </div>
+            </div>
             <div class="table-wrapper">
-                <table class="table">
+                <table class="table admin-devices-table">
                     <thead>
                         <tr>
+                            <th>Estado</th>
                             <th>UID</th>
                             <th>Nombre</th>
-                            <th>Localidad</th>
+                            <th>Cuenta asociada</th>
+                            <th>Contraseña</th>
+                            <th>Localidad actual</th>
+                            <th>Cambiar localidad</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (!Model.ActiveDevices.Any())
                         {
                             <tr>
-                                <td colspan="3" class="empty">No hay dispositivos activos</td>
+                                <td colspan="7" class="empty">No hay dispositivos registrados</td>
                             </tr>
                         }
                         else
@@ -111,9 +120,36 @@
                             foreach (var device in Model.ActiveDevices)
                             {
                                 <tr>
+                                    <td>
+                                        <span class="device-state @(device.Active ? "is-active" : "is-inactive")">
+                                            @(device.Active ? "Activo" : "Inactivo")
+                                        </span>
+                                    </td>
                                     <td>@device.DeviceUid</td>
                                     <td>@(string.IsNullOrWhiteSpace(device.Name) ? "-" : device.Name)</td>
-                                    <td>@device.Location</td>
+                                    <td>@device.AccountUsername</td>
+                                    <td>
+                                        <code>@device.PasswordMask</code>
+                                    </td>
+                                    <td class="device-location-current">@device.Location</td>
+                                    <td>
+                                        <form asp-controller="Lobby"
+                                              asp-action="UpdateAdminDeviceLocation"
+                                              method="post"
+                                              class="device-location-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="deviceId" value="@device.DeviceId" />
+                                            <select name="locationId" class="device-location-select">
+                                                @foreach (var location in Model.Locations)
+                                                {
+                                                    <option value="@location.Id" selected="@(device.LocationId == location.Id)">
+                                                        @location.Name
+                                                    </option>
+                                                }
+                                            </select>
+                                            <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+                                        </form>
+                                    </td>
                                 </tr>
                             }
                         }

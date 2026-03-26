@@ -70,6 +70,40 @@
     margin-top: auto;
 }
 
+.hardmod-lookup-message {
+    font-size: .84rem;
+    color: var(--text-muted);
+}
+
+.hardmod-results-table td,
+.hardmod-results-table th {
+    white-space: nowrap;
+}
+
+.hardmod-table-badges {
+    display: flex;
+    gap: 6px;
+}
+
+.table-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.table-badge.on {
+    color: #0f7a3d;
+    background: rgba(34, 197, 94, 0.18);
+}
+
+.table-badge.off {
+    color: #475569;
+    background: rgba(148, 163, 184, 0.2);
+}
+
 @media (max-width: 720px) {
     .hardmod-input-row {
         flex-direction: column;

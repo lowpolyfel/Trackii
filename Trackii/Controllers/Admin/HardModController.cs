@@ -17,28 +17,19 @@ public class HardModController : Controller
     }
 
     [HttpGet("")]
-    public IActionResult Index(uint? wipItemId, uint? wipStepExecutionId)
+    public IActionResult Index(string? search)
     {
-        var vm = _svc.GetViewModel(wipItemId, wipStepExecutionId);
+        var vm = _svc.GetViewModel(search);
         vm.SuccessMessage = TempData["Success"] as string;
         vm.ErrorMessage = TempData["Error"] as string;
         return View($"{ViewBase}Index.cshtml", vm);
     }
 
-    [HttpPost("DeleteWipItem")]
+    [HttpPost("DeleteByWorkOrder")]
     [ValidateAntiForgeryToken]
-    public IActionResult DeleteWipItem(uint wipItemId)
+    public IActionResult DeleteByWorkOrder(uint workOrderId)
     {
-        var result = _svc.HardDeleteWipItem(wipItemId);
-        TempData[result.Success ? "Success" : "Error"] = result.Message;
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost("DeleteWipStepExecution")]
-    [ValidateAntiForgeryToken]
-    public IActionResult DeleteWipStepExecution(uint wipStepExecutionId)
-    {
-        var result = _svc.HardDeleteWipStepExecution(wipStepExecutionId);
+        var result = _svc.HardDeleteByWorkOrder(workOrderId);
         TempData[result.Success ? "Success" : "Error"] = result.Message;
         return RedirectToAction(nameof(Index));
     }
