@@ -1,0 +1,30 @@
+.gerencia-weekly-card {
+    overflow: hidden;
+}
+
+.gerencia-weekly-table td,
+.gerencia-weekly-table th {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.weekly-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    margin-right: 4px;
+}
+
+.weekly-pill.qty {
+    color: #0f294f;
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.weekly-pill.scrap {
+    color: #7a1d1d;
+    background: rgba(239, 68, 68, 0.14);
+}

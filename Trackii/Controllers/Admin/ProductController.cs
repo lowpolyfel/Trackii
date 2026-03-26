@@ -134,7 +134,7 @@ public class ProductController : Controller
         // 2. INTENTO DE ACTUALIZACIÓN (Con validación de Subfamilia Activa)
         try
         {
-            _svc.Update(vm);
+            _svc.Update(vm, adminOverride: User.IsInRole("Admin"));
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)

@@ -38,4 +38,16 @@ public class LobbyController : Controller
         var vm = _svc.GetEngineeringActiveOrders(search, status, familyId, subfamilyId, focusSubfamilyId, locationId, routeId);
         return View("EngineeringOrders", vm);
     }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    [ValidateAntiForgeryToken]
+    public IActionResult UpdateAdminDeviceLocation(uint deviceId, uint locationId)
+    {
+        var updated = _svc.UpdateDeviceLocationFromAdminDashboard(deviceId, locationId);
+        TempData[updated ? "ToastSuccess" : "ToastError"] = updated
+            ? "Localidad del dispositivo actualizada correctamente."
+            : "No se pudo actualizar la localidad del dispositivo.";
+        return RedirectToAction(nameof(Index));
+    }
 }
