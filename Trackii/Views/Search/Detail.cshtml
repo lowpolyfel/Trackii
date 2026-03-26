@@ -9,7 +9,7 @@
         <div>
             <span class="search-section-label">Detalle del producto</span>
             <h2>@Model.PartNumber</h2>
-            <p class="subtitle">Vista general del producto, su jerarquía, la ruta configurada y el contexto operativo de la work order seleccionada.</p>
+            <p class="subtitle">Vista general del producto, su jerarquía, la ruta configurada y el contexto operativo del no. de orden seleccionado.</p>
         </div>
 
         <div class="search-detail-actions">
@@ -49,7 +49,7 @@
                     <strong>@(Model.RouteActive ? "Sí" : "No")</strong>
                 </div>
                 <div>
-                    <span>Work order</span>
+                    <span>No. de orden</span>
                     <strong>@(string.IsNullOrWhiteSpace(Model.WorkOrderNumber) ? "Sin selección" : Model.WorkOrderNumber)</strong>
                 </div>
                 <div>
@@ -110,7 +110,7 @@
     <section class="card search-detail-card">
         <div class="page-header">
             <div>
-                <h3>Work orders relacionadas</h3>
+                <h3>Números de orden relacionados</h3>
                 <p class="subtitle">Selecciona una orden para abrir el mismo producto con su contexto operativo.</p>
             </div>
         </div>
@@ -120,7 +120,7 @@
             <div class="search-empty-state compact">
                 <i class="fa-regular fa-folder-open"></i>
                 <div>
-                    <strong>Sin work orders relacionadas.</strong>
+                    <strong>Sin números de orden relacionados.</strong>
                     <p>No hay órdenes ligadas a este producto por el momento.</p>
                 </div>
             </div>
@@ -145,7 +145,7 @@
                             </div>
                         </div>
                         <div class="search-result-side">
-                            <span class="badge">@result.Status</span>
+                            <span class="badge">@UiTextHelper.NormalizeStatus(result.Status)</span>
                             <small>@(string.IsNullOrWhiteSpace(result.CurrentLocation) ? "Sin ubicación" : result.CurrentLocation)</small>
                         </div>
                     </a>

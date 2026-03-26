@@ -18,7 +18,7 @@
             </a>
             <a asp-controller="Gerencia" asp-action="Wip" class="btn btn-secondary">
                 <i class="fa-solid fa-boxes-stacked"></i>
-                WIP detallado
+                Estado de la orden detallado
             </a>
             <a asp-controller="Gerencia" asp-action="ScanEvents" class="btn btn-secondary">
                 <i class="fa-solid fa-qrcode"></i>
@@ -49,7 +49,7 @@
             <canvas id="productionChart"></canvas>
         </div>
         <div class="card chart-card">
-            <h3>WIP por estado</h3>
+            <h3>Estado de la orden</h3>
             <canvas id="wipChart"></canvas>
         </div>
         <div class="card chart-card">
@@ -129,9 +129,26 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+        const normalizeStatusLabel = (value) => {
+            const map = {
+                OPEN: 'Activa',
+                IN_PROGRESS: 'En progreso',
+                CANCELLED: 'Cancelada',
+                FINISHED: 'Finalizada',
+                ACTIVE: 'Activa',
+                HOLD: 'En espera',
+                SCRAPPED: 'Desechada',
+                INACTIVE: 'Inactiva'
+            };
+
+            const key = (value || '').toString().toUpperCase();
+            return map[key] || value;
+        };
+
         const productionLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Labels));
         const productionValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Values));
-        const wipLabels = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Labels));
+        const wipLabelsRaw = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Labels));
+        const wipLabels = wipLabelsRaw.map(normalizeStatusLabel);
         const wipValues = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Values));
         const scanLabels = @Html.Raw(JsonSerializer.Serialize(Model.ScanEventChart.Labels));
         const scanValues = @Html.Raw(JsonSerializer.Serialize(Model.ScanEventChart.Values));

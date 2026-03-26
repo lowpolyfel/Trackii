@@ -45,7 +45,7 @@
                     foreach (var item in Model.Items)
                     {
                         <tr>
-                            <td>@item.Status</td>
+                            <td>@UiTextHelper.NormalizeStatus(item.Status)</td>
                             <td class="text-right">@item.Total</td>
                             <td class="text-right">@item.WithWip</td>
                         </tr>
@@ -59,7 +59,24 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const woLabels = @Html.Raw(JsonSerializer.Serialize(Model.StatusChart.Labels));
+        const normalizeStatusLabel = (value) => {
+            const map = {
+                OPEN: 'Activa',
+                IN_PROGRESS: 'En progreso',
+                CANCELLED: 'Cancelada',
+                FINISHED: 'Finalizada',
+                ACTIVE: 'Activa',
+                HOLD: 'En espera',
+                SCRAPPED: 'Desechada',
+                INACTIVE: 'Inactiva'
+            };
+
+            const key = (value || '').toString().toUpperCase();
+            return map[key] || value;
+        };
+
+        const woLabelsRaw = @Html.Raw(JsonSerializer.Serialize(Model.StatusChart.Labels));
+        const woLabels = woLabelsRaw.map(normalizeStatusLabel);
         const woValues = @Html.Raw(JsonSerializer.Serialize(Model.StatusChart.Values));
 
         new Chart(document.getElementById('woStatusChart'), {

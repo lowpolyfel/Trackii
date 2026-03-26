@@ -8,8 +8,8 @@
     <section class="card search-hero-card">
         <div class="search-hero-copy">
             <span class="search-section-label">Búsqueda global</span>
-            <h2>Encuentra productos y work orders en un solo lugar</h2>
-            <p class="subtitle">Escribe un número de parte o una work order para obtener coincidencias rápidas y navegar al detalle completo.</p>
+            <h2>Encuentra productos y no. de orden en un solo lugar</h2>
+            <p class="subtitle">Escribe un número de parte o un no. de orden para obtener coincidencias rápidas y navegar al detalle completo.</p>
         </div>
 
         <form method="get" action="/Buscador" class="search-form-minimal">
@@ -19,7 +19,7 @@
                        name="q"
                        value="@Model.Query"
                        class="search-input-minimal"
-                       placeholder="Buscar work order o product..."
+                       placeholder="Buscar no. de orden o producto..."
                        autocomplete="off" />
                 <button type="submit" class="btn btn-primary search-submit">Buscar</button>
             </div>
@@ -49,7 +49,7 @@
                 <i class="fa-solid fa-arrow-up-right-dots"></i>
                 <div>
                     <strong>Empieza por escribir un número.</strong>
-                    <p>El buscador revisa productos y work orders al mismo tiempo.</p>
+                    <p>El buscador revisa productos y números de orden al mismo tiempo.</p>
                 </div>
             </div>
         }
@@ -83,7 +83,7 @@
                             </div>
                         </div>
                         <div class="search-result-side">
-                            <span class="badge @(result.Status.Equals("Activo", StringComparison.OrdinalIgnoreCase) || result.Status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase) ? "success" : "")">@result.Status</span>
+                            <span class="badge @(result.Status.Equals("Activo", StringComparison.OrdinalIgnoreCase) || result.Status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase) || result.Status.Equals("OPEN", StringComparison.OrdinalIgnoreCase) ? "success" : "")">@UiTextHelper.NormalizeStatus(result.Status)</span>
                             @if (!string.IsNullOrWhiteSpace(result.CurrentLocation))
                             {
                                 <small>@result.CurrentLocation</small>

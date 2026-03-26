@@ -17,13 +17,13 @@
     </div>
 
     <form method="get" class="filters">
-        <input name="search" value="@Model.Search" placeholder="Buscar WO o producto..." />
+        <input name="search" value="@Model.Search" placeholder="Buscar no. de orden o producto..." />
         <select name="status">
             <option value="">Todos los estados</option>
-            <option value="OPEN" selected="@(Model.Status == "OPEN")">OPEN</option>
-            <option value="IN_PROGRESS" selected="@(Model.Status == "IN_PROGRESS")">IN_PROGRESS</option>
-            <option value="FINISHED" selected="@(Model.Status == "FINISHED")">FINISHED</option>
-            <option value="CANCELLED" selected="@(Model.Status == "CANCELLED")">CANCELLED</option>
+            <option value="OPEN" selected="@(Model.Status == "OPEN")">Activa</option>
+            <option value="IN_PROGRESS" selected="@(Model.Status == "IN_PROGRESS")">En progreso</option>
+            <option value="FINISHED" selected="@(Model.Status == "FINISHED")">Finalizada</option>
+            <option value="CANCELLED" selected="@(Model.Status == "CANCELLED")">Cancelada</option>
         </select>
         <button type="submit" class="btn btn-secondary">Filtrar</button>
     </form>
@@ -32,7 +32,7 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th>WO</th>
+                    <th>No. de orden</th>
                     <th>Producto</th>
                     <th>Estado</th>
                     <th>Localidad</th>
@@ -53,7 +53,7 @@
                         <tr>
                             <td>@item.WoNumber</td>
                             <td>@item.Product</td>
-                            <td>@item.Status</td>
+                            <td>@UiTextHelper.NormalizeStatus(item.Status)</td>
                             <td>@(item.CurrentLocation ?? "-")</td>
                             <td>@(item.WipCreatedAt?.ToString("yyyy-MM-dd") ?? "-")</td>
                         </tr>

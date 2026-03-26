@@ -8,7 +8,7 @@
     <div class="page-header">
         <div>
             <h2>Órdenes de trabajo</h2>
-            <p class="subtitle">Seguimiento de órdenes activas, en progreso, canceladas y demoradas</p>
+            <p class="subtitle">Seguimiento de órdenes activas, en progreso, canceladas y finalizadas</p>
         </div>
         <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary">
             <i class="fa-solid fa-arrow-left"></i>
@@ -17,12 +17,12 @@
     </div>
 
     <div class="card">
-        <h3>Órdenes activas (OPEN)</h3>
+        <h3>Órdenes activas</h3>
         <div class="table-wrapper">
             <table class="table">
                 <thead>
                     <tr>
-                        <th>WO</th>
+                        <th>No. de orden</th>
                         <th>Producto</th>
                         <th>Estado</th>
                         <th>WIP</th>
@@ -43,7 +43,7 @@
                             <tr>
                                 <td>@item.WoNumber</td>
                                 <td>@item.Product</td>
-                                <td>@item.Status</td>
+                                <td>@UiTextHelper.NormalizeStatus(item.Status)</td>
                                 <td>@(item.WipItemId?.ToString() ?? "-")</td>
                                 <td>@(item.CurrentLocation ?? "-")</td>
                             </tr>
@@ -55,16 +55,16 @@
     </div>
 
     <div class="card">
-        <h3>Órdenes en progreso (IN_PROGRESS)</h3>
+        <h3>Órdenes en progreso</h3>
         <div class="table-wrapper">
             <table class="table">
                 <thead>
                     <tr>
-                        <th>WO</th>
+                        <th>No. de orden</th>
                         <th>Producto</th>
                         <th>Estado</th>
                         <th>WIP</th>
-                        <th>WIP Estado</th>
+                        <th>Estado de la orden</th>
                         <th>Localidad</th>
                     </tr>
                 </thead>
@@ -82,9 +82,9 @@
                             <tr>
                                 <td>@item.WoNumber</td>
                                 <td>@item.Product</td>
-                                <td>@item.Status</td>
+                                <td>@UiTextHelper.NormalizeStatus(item.Status)</td>
                                 <td>@(item.WipItemId?.ToString() ?? "-")</td>
-                                <td>@(item.WipStatus ?? "-")</td>
+                                <td>@(item.WipStatus is null ? "-" : UiTextHelper.NormalizeStatus(item.WipStatus))</td>
                                 <td>@(item.CurrentLocation ?? "-")</td>
                             </tr>
                         }
@@ -95,12 +95,12 @@
     </div>
 
     <div class="card">
-        <h3>Órdenes canceladas (CANCELLED)</h3>
+        <h3>Órdenes canceladas</h3>
         <div class="table-wrapper">
             <table class="table">
                 <thead>
                     <tr>
-                        <th>WO</th>
+                        <th>No. de orden</th>
                         <th>Producto</th>
                         <th>Estado</th>
                     </tr>
@@ -119,7 +119,7 @@
                             <tr>
                                 <td>@item.WoNumber</td>
                                 <td>@item.Product</td>
-                                <td>@item.Status</td>
+                                <td>@UiTextHelper.NormalizeStatus(item.Status)</td>
                             </tr>
                         }
                     }
@@ -134,12 +134,12 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>WO</th>
+                        <th>No. de orden</th>
                         <th>Producto</th>
                         <th>Estado</th>
                         <th>Días</th>
                         <th>WIP</th>
-                        <th>WIP Estado</th>
+                        <th>Estado de la orden</th>
                         <th>Inicio WIP</th>
                         <th>Localidad</th>
                     </tr>
@@ -158,10 +158,10 @@
                             <tr>
                                 <td>@item.WoNumber</td>
                                 <td>@item.Product</td>
-                                <td>@item.Status</td>
+                                <td>@UiTextHelper.NormalizeStatus(item.Status)</td>
                                 <td>@item.DaysDelayed</td>
                                 <td>@item.WipItemId</td>
-                                <td>@item.WipStatus</td>
+                                <td>@UiTextHelper.NormalizeStatus(item.WipStatus)</td>
                                 <td>@item.WipCreatedAt?.ToString("yyyy-MM-dd")</td>
                                 <td>@(item.CurrentLocation ?? "-")</td>
                             </tr>

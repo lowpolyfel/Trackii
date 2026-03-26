@@ -1,0 +1,17 @@
+.altas-bajas-dashboard {
+    gap: 20px;
+}
+
+.altas-bajas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px;
+}
+
+.altas-bajas-card {
+    min-height: 150px;
+}
+
+.altas-bajas-card .kpi-value {
+    font-size: 1.35rem;
+}

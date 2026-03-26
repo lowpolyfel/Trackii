@@ -1,0 +1,115 @@
+@{
+    ViewData["Title"] = "Altas/Bajas";
+
+    var esAdmin = User.IsInRole("Admin");
+}
+
+<div class="dashboard altas-bajas-dashboard">
+    <div class="page-header">
+        <div>
+            <h2>Altas/Bajas</h2>
+            <p class="subtitle">Selecciona el módulo donde quieres dar de alta, dar de baja o editar datos del sistema.</p>
+        </div>
+    </div>
+
+    <div class="altas-bajas-grid">
+        <a asp-controller="Area" asp-action="Index" class="card kpi-card altas-bajas-card">
+            <div class="kpi-icon"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Módulo</div>
+                <div class="kpi-value">Áreas</div>
+            </div>
+        </a>
+
+        <a asp-controller="Family" asp-action="Index" class="card kpi-card altas-bajas-card">
+            <div class="kpi-icon"><i class="fa-solid fa-diagram-project"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Módulo</div>
+                <div class="kpi-value">Familias</div>
+            </div>
+        </a>
+
+        <a asp-controller="Subfamily" asp-action="Index" class="card kpi-card altas-bajas-card">
+            <div class="kpi-icon"><i class="fa-solid fa-sitemap"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Módulo</div>
+                <div class="kpi-value">Subfamilias</div>
+            </div>
+        </a>
+
+        <a asp-controller="Product" asp-action="Index" class="card kpi-card altas-bajas-card">
+            <div class="kpi-icon"><i class="fa-solid fa-box"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Módulo</div>
+                <div class="kpi-value">Productos</div>
+            </div>
+        </a>
+
+        <a asp-controller="Route" asp-action="Index" class="card kpi-card altas-bajas-card">
+            <div class="kpi-icon"><i class="fa-solid fa-route"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Módulo</div>
+                <div class="kpi-value">Rutas</div>
+            </div>
+        </a>
+
+        @if (esAdmin)
+        {
+            <a asp-controller="UnregisteredParts" asp-action="Index" class="card kpi-card altas-bajas-card">
+                <div class="kpi-icon"><i class="fa-solid fa-file-circle-plus"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-title">Módulo</div>
+                    <div class="kpi-value">Registro de partes</div>
+                </div>
+            </a>
+
+            <a asp-controller="Location" asp-action="Index" class="card kpi-card altas-bajas-card">
+                <div class="kpi-icon"><i class="fa-solid fa-location-dot"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-title">Módulo</div>
+                    <div class="kpi-value">Localidades</div>
+                </div>
+            </a>
+
+            <a asp-controller="Device" asp-action="Index" class="card kpi-card altas-bajas-card">
+                <div class="kpi-icon"><i class="fa-solid fa-tablet-screen-button"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-title">Módulo</div>
+                    <div class="kpi-value">Dispositivos</div>
+                </div>
+            </a>
+
+            <a asp-controller="User" asp-action="Index" class="card kpi-card altas-bajas-card">
+                <div class="kpi-icon"><i class="fa-solid fa-users"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-title">Módulo</div>
+                    <div class="kpi-value">Usuarios</div>
+                </div>
+            </a>
+
+            <a asp-controller="Role" asp-action="Index" class="card kpi-card altas-bajas-card">
+                <div class="kpi-icon"><i class="fa-solid fa-user-shield"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-title">Módulo</div>
+                    <div class="kpi-value">Roles</div>
+                </div>
+            </a>
+
+            <a asp-controller="ViewCatalog" asp-action="Index" class="card kpi-card altas-bajas-card">
+                <div class="kpi-icon"><i class="fa-solid fa-table-list"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-title">Módulo</div>
+                    <div class="kpi-value">Catálogo</div>
+                </div>
+            </a>
+
+            <a asp-controller="HardMod" asp-action="Index" class="card kpi-card altas-bajas-card hardmod-link">
+                <div class="kpi-icon"><i class="fa-solid fa-skull-crossbones"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-title">Módulo</div>
+                    <div class="kpi-value">Hard Mod</div>
+                </div>
+            </a>
+        }
+    </div>
+</div>

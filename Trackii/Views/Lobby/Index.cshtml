@@ -15,7 +15,7 @@
                 <i class="fa-solid fa-layer-group"></i>
             </div>
             <div class="kpi-content">
-                <div class="kpi-title">Areas</div>
+                <div class="kpi-title">Áreas</div>
                 <div class="kpi-value">@Model.AreasCount</div>
             </div>
         </a>
@@ -25,7 +25,7 @@
                 <i class="fa-solid fa-diagram-project"></i>
             </div>
             <div class="kpi-content">
-                <div class="kpi-title">Families</div>
+                <div class="kpi-title">Familias</div>
                 <div class="kpi-value">@Model.FamiliesCount</div>
             </div>
         </a>
@@ -35,7 +35,7 @@
                 <i class="fa-solid fa-sitemap"></i>
             </div>
             <div class="kpi-content">
-                <div class="kpi-title">Subfamilies</div>
+                <div class="kpi-title">Subfamilias</div>
                 <div class="kpi-value">@Model.SubfamiliesCount</div>
             </div>
         </a>
@@ -45,7 +45,7 @@
                 <i class="fa-solid fa-box"></i>
             </div>
             <div class="kpi-content">
-                <div class="kpi-title">Products</div>
+                <div class="kpi-title">Productos</div>
                 <div class="kpi-value">@Model.ProductsCount</div>
             </div>
         </a>
@@ -55,7 +55,7 @@
                 <i class="fa-solid fa-route"></i>
             </div>
             <div class="kpi-content">
-                <div class="kpi-title">Routes</div>
+                <div class="kpi-title">Rutas</div>
                 <div class="kpi-value">@Model.RoutesCount</div>
             </div>
         </a>
@@ -75,7 +75,7 @@
                 <i class="fa-solid fa-users"></i>
             </div>
             <div class="kpi-content">
-                <div class="kpi-title">Users</div>
+                <div class="kpi-title">Usuarios</div>
                 <div class="kpi-value">@Model.UsersCount</div>
             </div>
         </a>
@@ -101,7 +101,7 @@
         </div>
 
         <div class="card">
-            <h3>Estado de Productos</h3>
+            <h3>Estado de productos</h3>
             <canvas id="productChart"></canvas>
         </div>
 
@@ -111,7 +111,7 @@
         </div>
 
         <div class="card">
-            <h3>WIP por Estado</h3>
+            <h3>Estado de la orden</h3>
             <canvas id="wipChart"></canvas>
         </div>
 
@@ -128,13 +128,32 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+        const normalizeStatusLabel = (value) => {
+            const map = {
+                OPEN: 'Activa',
+                IN_PROGRESS: 'En progreso',
+                CANCELLED: 'Cancelada',
+                FINISHED: 'Finalizada',
+                ACTIVE: 'Activa',
+                HOLD: 'En espera',
+                SCRAPPED: 'Desechada',
+                INACTIVE: 'Inactiva'
+            };
+
+            const key = (value || '').toString().toUpperCase();
+            return map[key] || value;
+        };
+
         const areaLabels = @Html.Raw(JsonSerializer.Serialize(Model.AreaProductChart.Labels));
         const areaValues = @Html.Raw(JsonSerializer.Serialize(Model.AreaProductChart.Values));
-        const productLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductStatusChart.Labels));
+        const productLabelsRaw = @Html.Raw(JsonSerializer.Serialize(Model.ProductStatusChart.Labels));
+        const productLabels = productLabelsRaw.map(normalizeStatusLabel);
         const productValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductStatusChart.Values));
-        const workOrderLabels = @Html.Raw(JsonSerializer.Serialize(Model.WorkOrderStatusChart.Labels));
+        const workOrderLabelsRaw = @Html.Raw(JsonSerializer.Serialize(Model.WorkOrderStatusChart.Labels));
+        const workOrderLabels = workOrderLabelsRaw.map(normalizeStatusLabel);
         const workOrderValues = @Html.Raw(JsonSerializer.Serialize(Model.WorkOrderStatusChart.Values));
-        const wipLabels = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Labels));
+        const wipLabelsRaw = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Labels));
+        const wipLabels = wipLabelsRaw.map(normalizeStatusLabel);
         const wipValues = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Values));
         const roleLabels = @Html.Raw(JsonSerializer.Serialize(Model.UsersByRoleChart.Labels));
         const roleValues = @Html.Raw(JsonSerializer.Serialize(Model.UsersByRoleChart.Values));

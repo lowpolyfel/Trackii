@@ -17,7 +17,7 @@
     </div>
 
     <form method="get" class="filters">
-        <input name="search" value="@Model.Search" placeholder="Buscar WO o WIP..." />
+        <input name="search" value="@Model.Search" placeholder="Buscar no. de orden o WIP..." />
         <input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd") ?? string.Empty)" />
         <input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd") ?? string.Empty)" />
         <button type="submit" class="btn btn-secondary">Filtrar</button>
@@ -28,7 +28,7 @@
             <thead>
                 <tr>
                     <th>Fecha</th>
-                    <th>WO</th>
+                    <th>No. de orden</th>
                     <th>WIP</th>
                     <th>Localidad</th>
                     <th>Usuario</th>

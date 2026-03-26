@@ -2,13 +2,13 @@
 @model Trackii.Models.Gerencia.GerenciaWipVm
 
 @{
-    ViewData["Title"] = "WIP detallado";
+    ViewData["Title"] = "Estado de la orden detallado";
 }
 
 <div class="card">
     <div class="page-header">
         <div>
-            <h2>WIP detallado</h2>
+            <h2>Estado de la orden detallado</h2>
             <p class="subtitle">Estado actual de las piezas en proceso</p>
         </div>
         <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary">
@@ -19,7 +19,7 @@
 
     <div class="chart-grid">
         <div class="card chart-card">
-            <h3>WIP por estado</h3>
+            <h3>Estado de la orden</h3>
             <canvas id="wipStatusChart"></canvas>
         </div>
     </div>
@@ -29,7 +29,7 @@
             <thead>
                 <tr>
                     <th>WIP</th>
-                    <th>WO</th>
+                    <th>No. de orden</th>
                     <th>Estado</th>
                     <th>Localidad</th>
                     <th>Creado</th>
@@ -49,7 +49,7 @@
                         <tr>
                             <td>@item.Id</td>
                             <td>@item.WoNumber</td>
-                            <td>@item.Status</td>
+                            <td>@UiTextHelper.NormalizeStatus(item.Status)</td>
                             <td>@(item.CurrentLocation ?? "-")</td>
                             <td>@item.CreatedAt.ToString("yyyy-MM-dd")</td>
                         </tr>
@@ -64,7 +64,24 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        const wipLabels = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Labels));
+        const normalizeStatusLabel = (value) => {
+            const map = {
+                OPEN: 'Activa',
+                IN_PROGRESS: 'En progreso',
+                CANCELLED: 'Cancelada',
+                FINISHED: 'Finalizada',
+                ACTIVE: 'Activa',
+                HOLD: 'En espera',
+                SCRAPPED: 'Desechada',
+                INACTIVE: 'Inactiva'
+            };
+
+            const key = (value || '').toString().toUpperCase();
+            return map[key] || value;
+        };
+
+        const wipLabelsRaw = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Labels));
+        const wipLabels = wipLabelsRaw.map(normalizeStatusLabel);
         const wipValues = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Values));
 
         new Chart(document.getElementById('wipStatusChart'), {

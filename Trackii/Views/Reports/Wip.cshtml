@@ -1,13 +1,13 @@
 @model Trackii.Models.Reports.WipReportVm
 
 @{
-    ViewData["Title"] = "WIP actual";
+    ViewData["Title"] = "Estado de la orden actual";
 }
 
 <div class="card">
     <div class="page-header">
         <div>
-            <h2>WIP actual</h2>
+            <h2>Estado de la orden actual</h2>
             <p class="subtitle">Listado de piezas en proceso por estado</p>
         </div>
         <a asp-controller="Reports" asp-action="Index" class="btn btn-secondary">
@@ -19,10 +19,10 @@
     <form method="get" class="filters">
         <select name="status">
             <option value="">Todos los estados</option>
-            <option value="ACTIVE" selected="@(Model.Status == "ACTIVE")">ACTIVE</option>
-            <option value="HOLD" selected="@(Model.Status == "HOLD")">HOLD</option>
-            <option value="FINISHED" selected="@(Model.Status == "FINISHED")">FINISHED</option>
-            <option value="SCRAPPED" selected="@(Model.Status == "SCRAPPED")">SCRAPPED</option>
+            <option value="ACTIVE" selected="@(Model.Status == "ACTIVE")">Activa</option>
+            <option value="HOLD" selected="@(Model.Status == "HOLD")">En espera</option>
+            <option value="FINISHED" selected="@(Model.Status == "FINISHED")">Finalizada</option>
+            <option value="SCRAPPED" selected="@(Model.Status == "SCRAPPED")">Desechada</option>
         </select>
         <button type="submit" class="btn btn-secondary">Filtrar</button>
     </form>
@@ -32,7 +32,7 @@
             <thead>
                 <tr>
                     <th>WIP</th>
-                    <th>WO</th>
+                    <th>No. de orden</th>
                     <th>Estado</th>
                     <th>Localidad</th>
                     <th>Creado</th>
@@ -52,7 +52,7 @@
                         <tr>
                             <td>@item.WipItemId</td>
                             <td>@item.WoNumber</td>
-                            <td>@item.Status</td>
+                            <td>@UiTextHelper.NormalizeStatus(item.Status)</td>
                             <td>@(item.Location ?? "-")</td>
                             <td>@item.CreatedAt.ToString("yyyy-MM-dd")</td>
                         </tr>

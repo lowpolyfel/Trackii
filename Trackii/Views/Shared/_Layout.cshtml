@@ -6,6 +6,11 @@
     var pageTitle = ViewData["Title"]?.ToString() ?? "Panel";
     var username = HttpContextAccessor.HttpContext?.User?.Identity?.Name ?? "Usuario";
     var userInitial = string.IsNullOrWhiteSpace(username) ? "U" : username.Substring(0, 1).ToUpperInvariant();
+    var isAdmin = User.IsInRole("Admin");
+    var isEngineering = User.IsInRole("Engineering") || User.IsInRole("Ingenieria");
+    var isGerencia = User.IsInRole("Gerencia");
+    var altasBajasControllers = new[] { "AltasBajas", "Area", "Family", "Subfamily", "Product", "Route", "UnregisteredParts", "HardMod", "User", "Location", "Device", "Role", "ViewCatalog" };
+    var isAltasBajasActive = altasBajasControllers.Contains(currentController);
 }
 
 <!DOCTYPE html>
@@ -39,7 +44,7 @@
                     <span>Buscador</span>
                 </a>
 
-                @if (User.IsInRole("Admin") || User.IsInRole("Engineering") || User.IsInRole("Ingenieria"))
+                @if (isAdmin || isEngineering)
                 {
                     <a asp-controller="Lobby" asp-action="Index" class="@(currentController == "Lobby" ? "active" : string.Empty)">
                         <i class="fa-solid fa-chart-line"></i>
@@ -47,7 +52,7 @@
                     </a>
                 }
 
-                @if (User.IsInRole("Admin") || User.IsInRole("Gerencia"))
+                @if (isAdmin || isGerencia)
                 {
                     <a asp-controller="Gerencia" asp-action="Index" class="@(currentController == "Gerencia" && currentAction == "Index" ? "active" : string.Empty)">
                         <i class="fa-solid fa-clipboard-check"></i>
@@ -70,40 +75,15 @@
                     </a>
                 }
 
-                @if (User.IsInRole("Admin") || User.IsInRole("Engineering") || User.IsInRole("Ingenieria"))
+                @if (isAdmin || isEngineering)
                 {
-                    <a asp-controller="Area" asp-action="Index" class="@(currentController == "Area" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-layer-group"></i>
-                        <span>Áreas</span>
-                    </a>
-
-                    <a asp-controller="Family" asp-action="Index" class="@(currentController == "Family" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-diagram-project"></i>
-                        <span>Families</span>
-                    </a>
-
-                    <a asp-controller="Subfamily" asp-action="Index" class="@(currentController == "Subfamily" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-sitemap"></i>
-                        <span>Subfamilies</span>
-                    </a>
-
-                    <a asp-controller="Product" asp-action="Index" class="@(currentController == "Product" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-box"></i>
-                        <span>Products</span>
-                    </a>
-
-                    <a asp-controller="Route" asp-action="Index" class="@(currentController == "Route" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-route"></i>
-                        <span>Routes</span>
-                    </a>
-
-                    <a asp-controller="UnregisteredParts" asp-action="Index" class="@(currentController == "UnregisteredParts" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-file-circle-plus"></i>
-                        <span>Partes sin registrar</span>
+                    <a asp-controller="AltasBajas" asp-action="Index" class="@(isAltasBajasActive ? "active" : string.Empty)">
+                        <i class="fa-solid fa-folder-tree"></i>
+                        <span>Altas/Bajas</span>
                     </a>
                 }
 
-                @if (User.IsInRole("Admin") || User.IsInRole("Engineering") || User.IsInRole("Ingenieria") || User.IsInRole("Gerencia"))
+                @if (isAdmin || isEngineering || isGerencia)
                 {
                     <a asp-controller="Reports" asp-action="Index" class="@(currentController == "Reports" ? "active" : string.Empty)">
                         <i class="fa-solid fa-chart-pie"></i>
@@ -111,38 +91,6 @@
                     </a>
                 }
 
-                @if (User.IsInRole("Admin"))
-                {
-                    <a asp-controller="HardMod" asp-action="Index" class="@(currentController == "HardMod" ? "active hardmod-link" : "hardmod-link")">
-                        <i class="fa-solid fa-skull-crossbones"></i>
-                        <span>Hard Mod</span>
-                    </a>
-
-                    <a asp-controller="User" asp-action="Index" class="@(currentController == "User" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-users"></i>
-                        <span>Users</span>
-                    </a>
-
-                    <a asp-controller="Location" asp-action="Index" class="@(currentController == "Location" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-location-dot"></i>
-                        <span>Localidades</span>
-                    </a>
-
-                    <a asp-controller="Device" asp-action="Index" class="@(currentController == "Device" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-tablet-screen-button"></i>
-                        <span>Devices</span>
-                    </a>
-
-                    <a asp-controller="Role" asp-action="Index" class="@(currentController == "Role" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-user-shield"></i>
-                        <span>Roles</span>
-                    </a>
-
-                    <a asp-controller="ViewCatalog" asp-action="Index" class="@(currentController == "ViewCatalog" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-table-list"></i>
-                        <span>Catálogo</span>
-                    </a>
-                }
             </nav>
         </aside>
 
@@ -158,7 +106,7 @@
 
                 <form asp-controller="Search" asp-action="Index" method="get" class="topbar-search">
                     <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="search" name="q" placeholder="Buscar work order o product..." autocomplete="off" />
+                    <input type="search" name="q" placeholder="Buscar no. de orden o producto..." autocomplete="off" />
                 </form>
 
                 <div class="topbar-right">
