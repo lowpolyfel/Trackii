@@ -336,7 +336,7 @@ public class GerenciaService
             foreach (var location in locationNames)
             {
                 var key = $"{day:yyyy-MM-dd}|{location}";
-                var values = map.TryGetValue(key, out var found) ? found : (0, 0);
+                var values = map.TryGetValue(key, out var found) ? found : (Qty: 0, Scrap: 0);
 
                 row.Cells.Add(new WeeklyOutputCellVm
                 {
