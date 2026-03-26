@@ -50,6 +50,8 @@ public class EngineeringActiveOrdersVm
         public uint WorkOrderId { get; set; }
         public string WoNumber { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
+        public string WipStatus { get; set; } = string.Empty;
+        public string WipStatusNormalized { get; set; } = string.Empty;
         public string Product { get; set; } = string.Empty;
         public uint FamilyId { get; set; }
         public string Family { get; set; } = string.Empty;

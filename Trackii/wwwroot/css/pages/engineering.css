@@ -165,6 +165,13 @@
     justify-content: center;
 }
 
+.interactive-sort-active {
+    margin: -4px 0 12px;
+    font-size: .8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
 .engineering-orders-table td,
 .engineering-orders-table th {
     white-space: nowrap;

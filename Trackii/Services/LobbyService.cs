@@ -339,6 +339,7 @@ public class LobbyService
             SELECT wo.id AS work_order_id,
                    wo.wo_number,
                    wo.status,
+                   COALESCE(wip.status, '') AS wip_status,
                    p.part_number,
                    f.id AS family_id,
                    f.name AS family_name,
@@ -398,6 +399,8 @@ public class LobbyService
                 WorkOrderId = rd.GetUInt32("work_order_id"),
                 WoNumber = rd.GetString("wo_number"),
                 Status = rd.GetString("status"),
+                WipStatus = rd.GetString("wip_status"),
+                WipStatusNormalized = NormalizeStatusLabel(rd.GetString("wip_status")),
                 Product = rd.GetString("part_number"),
                 FamilyId = rd.GetUInt32("family_id"),
                 Family = rd.GetString("family_name"),
@@ -419,6 +422,19 @@ public class LobbyService
         }
 
         return items;
+    }
+
+    private static string NormalizeStatusLabel(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+            return "Sin estado";
+
+        var cleaned = status.Trim().Replace('_', ' ').ToLowerInvariant();
+        var words = cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0)
+            return "Sin estado";
+
+        return string.Join(" ", words.Select(word => char.ToUpperInvariant(word[0]) + word[1..]));
     }
 
     private static void LoadActiveDevices(MySqlConnection cn, AdminLobbyVm vm)

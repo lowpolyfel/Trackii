@@ -301,9 +301,11 @@
             <button type="button" class="criterion-button" data-criterion-key="currentStep" data-criterion-type="text">Paso actual</button>
             <button type="button" class="criterion-button" data-criterion-key="currentStepQty" data-criterion-type="number">Piezas paso actual</button>
             <button type="button" class="criterion-button" data-criterion-key="nextStep" data-criterion-type="text">Paso siguiente</button>
+            <button type="button" class="criterion-button" data-criterion-key="wipStatusNormalized" data-criterion-type="text">Estado WIP</button>
             <button type="button" class="criterion-button" data-criterion-key="ageDays" data-criterion-type="number">Días desde creación</button>
             <button type="button" class="criterion-button" data-criterion-key="wipStart" data-criterion-type="date">Fecha creación</button>
         </div>
+        <div class="interactive-sort-active" id="activeSortCriteria"></div>
 
         <div class="table-wrapper">
             <table class="table engineering-orders-table" id="filteredOrdersTable">
@@ -315,6 +317,7 @@
                         <th>Paso actual</th>
                         <th class="text-right">Piezas paso actual</th>
                         <th>Paso siguiente</th>
+                        <th>Estado WIP</th>
                         <th class="text-right">Días desde creación</th>
                         <th>Fecha creación</th>
                     </tr>
@@ -323,7 +326,7 @@
                     @if (!Model.Items.Any())
                     {
                         <tr>
-                            <td colspan="8" class="empty">No hay órdenes que coincidan con los filtros seleccionados.</td>
+                            <td colspan="9" class="empty">No hay órdenes que coincidan con los filtros seleccionados.</td>
                         </tr>
                     }
                     else
@@ -336,6 +339,7 @@
                                 data-current-step="@item.CurrentStep"
                                 data-current-step-qty="@(item.CurrentStepQty?.ToString() ?? string.Empty)"
                                 data-next-step="@item.NextStep"
+                                data-wip-status-normalized="@item.WipStatusNormalized"
                                 data-wip-start="@(item.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty)"
                                 data-age-days="@(item.AgeDays?.ToString() ?? string.Empty)">
                                 <td>@item.WoNumber</td>
@@ -344,6 +348,7 @@
                                 <td>@item.CurrentStep</td>
                                 <td class="text-right">@(item.CurrentStepQty?.ToString() ?? "-")</td>
                                 <td>@item.NextStep</td>
+                                <td>@item.WipStatusNormalized</td>
                                 <td class="text-right">@(item.AgeDays?.ToString() ?? "-")</td>
                                 <td>@(item.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
                             </tr>
@@ -461,6 +466,7 @@
             const table = document.getElementById("filteredOrdersTable");
             const exportButton = document.getElementById("exportFilteredOrdersCsv");
             const sortBar = document.getElementById("interactiveSortBar");
+            const activeSortCriteria = document.getElementById("activeSortCriteria");
             if (!table) return;
 
             const tbody = table.querySelector("tbody");
@@ -529,6 +535,24 @@
                         button.setAttribute("data-sort-order", `${index + 1}`);
                     }
                 });
+
+                if (!activeSortCriteria) return;
+
+                if (!activeCriteria.length) {
+                    activeSortCriteria.textContent = "Sin criterios activos";
+                    return;
+                }
+
+                const text = activeCriteria
+                    .map((criterion, index) => {
+                        const button = criterionButtons.find((item) => item.dataset.criterionKey === criterion.key);
+                        const label = button?.textContent?.trim() ?? criterion.key;
+                        const directionLabel = criterion.direction === "asc" ? "ASC" : "DESC";
+                        return `${index + 1}. ${label} (${directionLabel})`;
+                    })
+                    .join("  |  ");
+
+                activeSortCriteria.textContent = `Criterios activos: ${text}`;
             };
 
             criterionButtons.forEach((button) => {
@@ -553,6 +577,9 @@
                     applySort();
                 });
             });
+
+            syncButtons();
+            applySort();
 
             if (exportButton) {
                 exportButton.addEventListener("click", () => {
