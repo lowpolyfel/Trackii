@@ -59,6 +59,9 @@ public class EngineeringActiveOrdersVm
         public string Route { get; set; } = string.Empty;
         public uint? LocationId { get; set; }
         public string Location { get; set; } = string.Empty;
+        public string CurrentStep { get; set; } = string.Empty;
+        public int? CurrentStepQty { get; set; }
+        public string NextStep { get; set; } = string.Empty;
         public string NextLocation { get; set; } = string.Empty;
         public DateTime? WipCreatedAt { get; set; }
         public int? AgeDays { get; set; }

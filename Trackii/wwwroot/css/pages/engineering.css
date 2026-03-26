@@ -101,3 +101,71 @@
 .sort-button-right {
     margin-left: auto;
 }
+
+.interactive-sort-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0 14px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(244, 248, 255, 0.75);
+    border: 1px solid rgba(23, 88, 177, 0.12);
+}
+
+.interactive-sort-label {
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.criterion-button {
+    position: relative;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(23, 88, 177, 0.2);
+    background: #fff;
+    color: var(--brand-700);
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+}
+
+.criterion-button.active {
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
+    color: #fff;
+}
+
+.criterion-button.active::after {
+    content: "↑";
+    margin-left: 8px;
+    opacity: .9;
+}
+
+.criterion-button.active.desc::after {
+    content: "↓";
+}
+
+.criterion-button[data-sort-order]::before {
+    content: attr(data-sort-order);
+    position: absolute;
+    top: -7px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #0f294f;
+    color: #fff;
+    font-size: .68rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.engineering-orders-table td,
+.engineering-orders-table th {
+    white-space: nowrap;
+}
