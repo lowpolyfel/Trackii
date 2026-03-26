@@ -91,7 +91,7 @@ public class RouteController : Controller
     {
         try
         {
-            _service.Activate(id);
+            _service.Activate(id, adminOverride: User.IsInRole("Admin"));
             TempData["Success"] = "Ruta activada correctamente.";
         }
         catch (Exception ex)
@@ -136,7 +136,7 @@ public class RouteController : Controller
 
         try
         {
-            _service.DeactivateAndActivate(id, vm.ReplacementRouteId.Value);
+            _service.DeactivateAndActivate(id, vm.ReplacementRouteId.Value, adminOverride: User.IsInRole("Admin"));
             TempData["Success"] = "Ruta desactivada. La nueva ruta quedó activa.";
             return RedirectToAction(nameof(Index));
         }

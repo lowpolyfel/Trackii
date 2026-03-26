@@ -153,29 +153,47 @@ public class ProductService
     }
 
     // ===================== UPDATE (Con Validación) =====================
-    public void Update(ProductEditVm vm)
+    public void Update(ProductEditVm vm, bool adminOverride = false)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
+        using var tx = cn.BeginTransaction();
 
         // VALIDACIÓN: Padre (Subfamilia) activa
-        using (var check = new MySqlCommand("SELECT active FROM subfamily WHERE id=@sid", cn))
+        using (var check = new MySqlCommand("SELECT active FROM subfamily WHERE id=@sid", cn, tx))
         {
             check.Parameters.AddWithValue("@sid", vm.SubfamilyId);
             var active = check.ExecuteScalar();
-            if (active == null || !Convert.ToBoolean(active))
+            if (!adminOverride && (active == null || !Convert.ToBoolean(active)))
                 throw new Exception("No se puede actualizar: La Subfamilia seleccionada está inactiva.");
         }
 
         using var cmd = new MySqlCommand(@"
             UPDATE product
             SET id_subfamily=@s, part_number=@p
-            WHERE id=@id", cn);
+            WHERE id=@id", cn, tx);
 
         cmd.Parameters.AddWithValue("@id", vm.Id);
         cmd.Parameters.AddWithValue("@s", vm.SubfamilyId);
         cmd.Parameters.AddWithValue("@p", vm.PartNumber);
         cmd.ExecuteNonQuery();
+
+        if (adminOverride)
+        {
+            using var syncWip = new MySqlCommand(@"
+                UPDATE wip_item w
+                JOIN work_order wo ON wo.id = w.wo_order_id
+                JOIN product p ON p.id = wo.product_id
+                JOIN subfamily s ON s.id = p.id_subfamily
+                SET w.route_id = s.active_route_id
+                WHERE p.id = @productId
+                  AND wo.status IN ('OPEN', 'IN_PROGRESS')", cn, tx);
+
+            syncWip.Parameters.AddWithValue("@productId", vm.Id);
+            syncWip.ExecuteNonQuery();
+        }
+
+        tx.Commit();
     }
 
     // ===================== TOGGLE (Con Validación) =====================
