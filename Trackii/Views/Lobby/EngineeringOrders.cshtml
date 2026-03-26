@@ -288,32 +288,42 @@
             <div class="header-actions">
                 <button type="button" class="btn btn-secondary" id="exportFilteredOrdersCsv">
                     <i class="fa-solid fa-file-csv"></i>
-                    Exportar CSV
+                    Exportar Excel
                 </button>
             </div>
         </div>
 
+        <div class="interactive-sort-bar" id="interactiveSortBar">
+            <span class="interactive-sort-label">Ordenar por:</span>
+            <button type="button" class="criterion-button" data-criterion-key="wo" data-criterion-type="number">Órdenes</button>
+            <button type="button" class="criterion-button" data-criterion-key="product" data-criterion-type="text">Producto</button>
+            <button type="button" class="criterion-button" data-criterion-key="subfamily" data-criterion-type="text">Subfamilia</button>
+            <button type="button" class="criterion-button" data-criterion-key="currentStep" data-criterion-type="text">Paso actual</button>
+            <button type="button" class="criterion-button" data-criterion-key="currentStepQty" data-criterion-type="number">Piezas paso actual</button>
+            <button type="button" class="criterion-button" data-criterion-key="nextStep" data-criterion-type="text">Paso siguiente</button>
+            <button type="button" class="criterion-button" data-criterion-key="ageDays" data-criterion-type="number">Días desde creación</button>
+            <button type="button" class="criterion-button" data-criterion-key="wipStart" data-criterion-type="date">Fecha creación</button>
+        </div>
+
         <div class="table-wrapper">
-            <table class="table" id="filteredOrdersTable">
+            <table class="table engineering-orders-table" id="filteredOrdersTable">
                 <thead>
                     <tr>
-                        <th><button type="button" class="sort-button" data-sort-key="wo" data-sort-type="number">No. de orden</button></th>
-                        <th><button type="button" class="sort-button" data-sort-key="product" data-sort-type="text">Producto</button></th>
-                        <th><button type="button" class="sort-button" data-sort-key="status" data-sort-type="text">Estado</button></th>
-                        <th><button type="button" class="sort-button" data-sort-key="family" data-sort-type="text">Familia</button></th>
-                        <th><button type="button" class="sort-button" data-sort-key="subfamily" data-sort-type="text">Subfamilia</button></th>
-                        <th><button type="button" class="sort-button" data-sort-key="route" data-sort-type="text">Ruta</button></th>
-                        <th><button type="button" class="sort-button" data-sort-key="location" data-sort-type="text">Localidad</button></th>
-                        <th><button type="button" class="sort-button" data-sort-key="nextLocation" data-sort-type="text">Siguiente localidad</button></th>
-                        <th><button type="button" class="sort-button" data-sort-key="wipStart" data-sort-type="date">Inicio WIP</button></th>
-                        <th class="text-right"><button type="button" class="sort-button sort-button-right" data-sort-key="ageDays" data-sort-type="number">Días</button></th>
+                        <th>Orden</th>
+                        <th>Producto</th>
+                        <th>Subfamilia</th>
+                        <th>Paso actual</th>
+                        <th class="text-right">Piezas paso actual</th>
+                        <th>Paso siguiente</th>
+                        <th class="text-right">Días desde creación</th>
+                        <th>Fecha creación</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (!Model.Items.Any())
                     {
                         <tr>
-                            <td colspan="10" class="empty">No hay órdenes que coincidan con los filtros seleccionados.</td>
+                            <td colspan="8" class="empty">No hay órdenes que coincidan con los filtros seleccionados.</td>
                         </tr>
                     }
                     else
@@ -322,24 +332,20 @@
                         {
                             <tr data-wo="@item.WoNumber"
                                 data-product="@item.Product"
-                                data-status="@UiTextHelper.NormalizeStatus(item.Status)"
-                                data-family="@item.Family"
                                 data-subfamily="@item.Subfamily"
-                                data-route="@item.Route"
-                                data-location="@item.Location"
-                                data-next-location="@item.NextLocation"
+                                data-current-step="@item.CurrentStep"
+                                data-current-step-qty="@(item.CurrentStepQty?.ToString() ?? string.Empty)"
+                                data-next-step="@item.NextStep"
                                 data-wip-start="@(item.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty)"
                                 data-age-days="@(item.AgeDays?.ToString() ?? string.Empty)">
                                 <td>@item.WoNumber</td>
                                 <td>@item.Product</td>
-                                <td>@UiTextHelper.NormalizeStatus(item.Status)</td>
-                                <td>@item.Family</td>
                                 <td>@item.Subfamily</td>
-                                <td>@item.Route</td>
-                                <td>@item.Location</td>
-                                <td>@item.NextLocation</td>
-                                <td>@(item.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                <td>@item.CurrentStep</td>
+                                <td class="text-right">@(item.CurrentStepQty?.ToString() ?? "-")</td>
+                                <td>@item.NextStep</td>
                                 <td class="text-right">@(item.AgeDays?.ToString() ?? "-")</td>
+                                <td>@(item.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
                             </tr>
                         }
                     }
@@ -454,13 +460,13 @@
         (() => {
             const table = document.getElementById("filteredOrdersTable");
             const exportButton = document.getElementById("exportFilteredOrdersCsv");
+            const sortBar = document.getElementById("interactiveSortBar");
             if (!table) return;
 
             const tbody = table.querySelector("tbody");
             const rows = Array.from(tbody.querySelectorAll("tr")).filter((row) => !row.querySelector(".empty"));
-            const sortButtons = Array.from(table.querySelectorAll(".sort-button"));
-            let currentSortKey = "";
-            let currentDirection = "asc";
+            const criterionButtons = Array.from(sortBar?.querySelectorAll(".criterion-button") ?? []);
+            const activeCriteria = [];
 
             const getValue = (row, key, type) => {
                 const attrName = key.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
@@ -484,40 +490,67 @@
                 sortedRows.forEach((row) => tbody.appendChild(row));
             };
 
-            sortButtons.forEach((button) => {
+            const applySort = () => {
+                if (!rows.length || !activeCriteria.length) {
+                    renderRows(rows);
+                    return;
+                }
+
+                const sortedRows = [...rows].sort((a, b) => {
+                    for (const criterion of activeCriteria) {
+                        const valueA = getValue(a, criterion.key, criterion.type);
+                        const valueB = getValue(b, criterion.key, criterion.type);
+
+                        if (valueA < valueB) return criterion.direction === "asc" ? -1 : 1;
+                        if (valueA > valueB) return criterion.direction === "asc" ? 1 : -1;
+                    }
+
+                    const woA = Number(a.dataset.wo || 0);
+                    const woB = Number(b.dataset.wo || 0);
+                    return woA - woB;
+                });
+
+                renderRows(sortedRows);
+            };
+
+            const syncButtons = () => {
+                criterionButtons.forEach((button) => {
+                    const index = activeCriteria.findIndex((item) => item.key === button.dataset.criterionKey);
+                    button.classList.remove("active", "desc");
+                    button.removeAttribute("data-sort-order");
+
+                    if (index >= 0) {
+                        const criterion = activeCriteria[index];
+                        button.classList.add("active");
+                        if (criterion.direction === "desc") {
+                            button.classList.add("desc");
+                        }
+
+                        button.setAttribute("data-sort-order", `${index + 1}`);
+                    }
+                });
+            };
+
+            criterionButtons.forEach((button) => {
                 button.addEventListener("click", () => {
-                    const { sortKey, sortType } = button.dataset;
-                    if (!sortKey || !sortType || !rows.length) return;
+                    const key = button.dataset.criterionKey;
+                    const type = button.dataset.criterionType;
+                    if (!key || !type || !rows.length) return;
 
-                    if (currentSortKey === sortKey) {
-                        currentDirection = currentDirection === "asc" ? "desc" : "asc";
+                    const currentIndex = activeCriteria.findIndex((item) => item.key === key);
+                    if (currentIndex === -1) {
+                        activeCriteria.push({ key, type, direction: "asc" });
                     } else {
-                        currentSortKey = sortKey;
-                        currentDirection = "asc";
+                        const criterion = activeCriteria[currentIndex];
+                        if (criterion.direction === "asc") {
+                            criterion.direction = "desc";
+                        } else {
+                            activeCriteria.splice(currentIndex, 1);
+                        }
                     }
 
-                    const sortedRows = [...rows].sort((a, b) => {
-                        const valueA = getValue(a, sortKey, sortType);
-                        const valueB = getValue(b, sortKey, sortType);
-
-                        if (valueA < valueB) return currentDirection === "asc" ? -1 : 1;
-                        if (valueA > valueB) return currentDirection === "asc" ? 1 : -1;
-
-                        const woA = Number(a.dataset.wo || 0);
-                        const woB = Number(b.dataset.wo || 0);
-                        return woA - woB;
-                    });
-
-                    sortButtons.forEach((item) => {
-                        item.classList.remove("active", "desc");
-                    });
-
-                    button.classList.add("active");
-                    if (currentDirection === "desc") {
-                        button.classList.add("desc");
-                    }
-
-                    renderRows(sortedRows);
+                    syncButtons();
+                    applySort();
                 });
             });
 
@@ -527,20 +560,20 @@
                     const dataRows = Array.from(tbody.querySelectorAll("tr"));
                     if (!dataRows.length) return;
 
-                    const csvLines = [
-                        headers.join(","),
+                    const lines = [
+                        headers.join("\t"),
                         ...dataRows.map((row) => Array.from(row.children)
-                            .map((cell) => `"${cell.innerText.replace(/"/g, '""')}"`)
-                            .join(","))
+                            .map((cell) => cell.innerText.replace(/\s+/g, " ").trim())
+                            .join("\t"))
                     ];
 
-                    const blob = new Blob(["\uFEFF" + csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+                    const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "application/vnd.ms-excel;charset=utf-8;" });
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement("a");
                     const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
 
                     link.href = url;
-                    link.download = `engineering-active-orders-${timestamp}.csv`;
+                    link.download = `engineering-active-orders-${timestamp}.xls`;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
