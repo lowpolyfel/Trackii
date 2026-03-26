@@ -248,7 +248,7 @@ public class RouteService
     // ==========================================
     // ACTIVATE (Lógica Crítica)
     // ==========================================
-    public void Activate(uint id)
+    public void Activate(uint id, bool adminOverride = false)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
@@ -282,7 +282,7 @@ public class RouteService
             if (obj != null) currentActiveId = Convert.ToUInt32(obj);
         }
 
-        if (currentActiveId.HasValue)
+        if (currentActiveId.HasValue && !adminOverride)
         {
             if (CountWipInRoute(cn, tx, currentActiveId.Value) > 0)
                 throw new InvalidOperationException("No se puede cambiar la ruta activa: hay piezas (WIP) en proceso en la ruta actual.");
@@ -372,7 +372,7 @@ public class RouteService
         return vm;
     }
 
-    public void DeactivateAndActivate(uint routeId, uint replacementId)
+    public void DeactivateAndActivate(uint routeId, uint replacementId, bool adminOverride = false)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
@@ -393,7 +393,7 @@ public class RouteService
         if (!isActive)
             throw new InvalidOperationException("Solo puedes desactivar una ruta activa.");
 
-        if (CountWipInRoute(cn, tx, routeId) > 0)
+        if (!adminOverride && CountWipInRoute(cn, tx, routeId) > 0)
             throw new InvalidOperationException("No se puede desactivar la ruta activa: hay WIP en proceso.");
 
         using (var chk = new MySqlCommand(@"
@@ -486,7 +486,7 @@ public class RouteService
                 if (obj != null) currentActiveId = Convert.ToUInt32(obj);
             }
 
-            if (currentActiveId.HasValue && CountWipInRoute(cn, tx, currentActiveId.Value) > 0)
+            if (currentActiveId.HasValue && CountWipInRoute(cn, tx, currentActiveId.Value) > 0 && !isAdmin)
                 throw new InvalidOperationException("No se puede crear nueva versión: hay WIP en la ruta activa actual.");
 
             var nextVersion = GetNextVersion(cn, tx, vm.SubfamilyId);

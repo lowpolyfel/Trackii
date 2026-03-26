@@ -2,35 +2,24 @@ namespace Trackii.Models.Admin.HardMod;
 
 public class HardModVm
 {
+    public string? Search { get; set; }
+    public string? SearchMessage { get; set; }
     public string? SuccessMessage { get; set; }
     public string? ErrorMessage { get; set; }
-    public WipItemPreviewVm? WipItemPreview { get; set; }
-    public WipStepExecutionPreviewVm? WipStepExecutionPreview { get; set; }
+    public List<HardModSearchResultVm> Results { get; } = new();
 }
 
-public class WipItemPreviewVm
+public class HardModSearchResultVm
 {
-    public uint Id { get; set; }
-    public string Status { get; set; } = string.Empty;
+    public uint WorkOrderId { get; set; }
     public string WorkOrderNumber { get; set; } = string.Empty;
     public string ProductPartNumber { get; set; } = string.Empty;
-    public string? CurrentLocation { get; set; }
-    public DateTime? CreatedAt { get; set; }
-    public int StepExecutionsCount { get; set; }
-    public int ScanEventsCount { get; set; }
-    public int ReworkLogsCount { get; set; }
-}
-
-public class WipStepExecutionPreviewVm
-{
-    public uint Id { get; set; }
-    public uint WipItemId { get; set; }
-    public string WorkOrderNumber { get; set; } = string.Empty;
-    public string ProductPartNumber { get; set; } = string.Empty;
-    public string LocationName { get; set; } = string.Empty;
-    public DateTime? CreatedAt { get; set; }
-    public uint QtyIn { get; set; }
-    public uint QtyScrap { get; set; }
+    public int WipItemsCount { get; set; }
+    public int WipStepExecutionsCount { get; set; }
+    public string WipItemIdsPreview { get; set; } = string.Empty;
+    public bool ExistsInWorkOrder { get; set; }
+    public bool ExistsInWipItem { get; set; }
+    public bool ExistsInWipStepExecution { get; set; }
 }
 
 public class HardDeleteResultVm

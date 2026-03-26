@@ -2,7 +2,6 @@
 
 @{
     ViewData["Title"] = "Nuevo Device";
-    var locations = ViewBag.Locations as List<(uint Id, string Name)> ?? new();
 }
 
 <div class="card">
@@ -36,12 +35,8 @@
 
             <div class="form-field">
                 <label asp-for="LocationId">Localidad</label>
-                <select asp-for="LocationId" class="input">
+                <select asp-for="LocationId" asp-items="ViewBag.Locations" class="input">
                     <option value="">Selecciona una localidad</option>
-                    @foreach (var l in locations)
-                    {
-                        <option value="@l.Id">@l.Name</option>
-                    }
                 </select>
                 <span asp-validation-for="LocationId" class="field-error"></span>
             </div>

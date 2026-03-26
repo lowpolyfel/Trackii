@@ -1,4 +1,5 @@
 using MySql.Data.MySqlClient;
+using System.Globalization;
 using Trackii.Models.Gerencia;
 
 namespace Trackii.Services;
@@ -37,6 +38,61 @@ public class GerenciaService
 
         LoadWipStatusChart(cn, vm.WipStatusChart);
         LoadScanEventChart(cn, vm.ScanEventChart);
+        vm.WeeklyOutput = GetWeeklyOutputMatrix(cn, GetStartOfWeek(DateTime.UtcNow.Date), GetStartOfWeek(DateTime.UtcNow.Date).AddDays(6));
+
+        return vm;
+    }
+
+    public GerenciaWeeklyOutputVm GetWeeklyOutput(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate)
+    {
+        var vm = new GerenciaWeeklyOutputVm
+        {
+            PeriodType = string.IsNullOrWhiteSpace(periodType) ? "week" : periodType,
+            WeekValue = weekValue,
+            MonthValue = monthValue,
+            FromDate = fromDate,
+            ToDate = toDate
+        };
+
+        var today = DateTime.UtcNow.Date;
+        DateTime start;
+        DateTime end;
+
+        switch (vm.PeriodType)
+        {
+            case "month" when !string.IsNullOrWhiteSpace(monthValue) && DateTime.TryParse($"{monthValue}-01", out var monthDate):
+                start = new DateTime(monthDate.Year, monthDate.Month, 1);
+                end = start.AddMonths(1).AddDays(-1);
+                break;
+            case "custom" when fromDate.HasValue && toDate.HasValue:
+                start = fromDate.Value.Date;
+                end = toDate.Value.Date;
+                if (end < start) (start, end) = (end, start);
+                break;
+            case "week" when !string.IsNullOrWhiteSpace(weekValue) && TryParseWeekValue(weekValue, out var weekStart):
+                start = weekStart;
+                end = weekStart.AddDays(6);
+                break;
+            default:
+                start = GetStartOfWeek(today);
+                end = start.AddDays(6);
+                vm.PeriodType = "week";
+                vm.WeekValue = $"{ISOWeek.GetYear(start)}-W{ISOWeek.GetWeekOfYear(start):00}";
+                break;
+        }
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+        vm.Matrix = GetWeeklyOutputMatrix(cn, start, end);
+
+        if (string.IsNullOrWhiteSpace(vm.WeekValue))
+        {
+            vm.WeekValue = $"{ISOWeek.GetYear(start)}-W{ISOWeek.GetWeekOfYear(start):00}";
+        }
+        if (string.IsNullOrWhiteSpace(vm.MonthValue))
+        {
+            vm.MonthValue = $"{start:yyyy-MM}";
+        }
 
         return vm;
     }
@@ -227,6 +283,157 @@ public class GerenciaService
         }
 
         return items;
+    }
+
+    private static WeeklyOutputMatrixVm GetWeeklyOutputMatrix(MySqlConnection cn, DateTime startDate, DateTime endDate)
+    {
+        var matrix = new WeeklyOutputMatrixVm
+        {
+            StartDate = startDate,
+            EndDate = endDate
+        };
+
+        var subfamilyNames = new List<string>();
+        using (var subfamilyCmd = new MySqlCommand(@"
+            SELECT DISTINCT COALESCE(s.name, 'Sin subfamilia') AS subfamily_name
+            FROM wip_step_execution wse
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily s ON s.id = p.id_subfamily
+            WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
+            ORDER BY subfamily_name", cn))
+        {
+            subfamilyCmd.Parameters.AddWithValue("@startDate", startDate);
+            subfamilyCmd.Parameters.AddWithValue("@endDate", endDate);
+
+            using var subfamilyRd = subfamilyCmd.ExecuteReader();
+            while (subfamilyRd.Read())
+            {
+                subfamilyNames.Add(subfamilyRd.GetString("subfamily_name"));
+            }
+        }
+
+        matrix.Subfamilies.AddRange(subfamilyNames);
+
+        var map = new Dictionary<string, (int Qty, int Scrap)>(StringComparer.OrdinalIgnoreCase);
+        using (var dataCmd = new MySqlCommand(@"
+            SELECT DATE(wse.create_at) AS day,
+                   COALESCE(s.name, 'Sin subfamilia') AS subfamily_name,
+                   COALESCE(SUM(wse.qty_in - wse.qty_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(wse.qty_scrap), 0) AS qty_scrap
+            FROM wip_step_execution wse
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily s ON s.id = p.id_subfamily
+            WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
+            GROUP BY DATE(wse.create_at), subfamily_name", cn))
+        {
+            dataCmd.Parameters.AddWithValue("@startDate", startDate);
+            dataCmd.Parameters.AddWithValue("@endDate", endDate);
+
+            using var rd = dataCmd.ExecuteReader();
+            while (rd.Read())
+            {
+                var key = $"{rd.GetDateTime("day"):yyyy-MM-dd}|{rd.GetString("subfamily_name")}";
+                map[key] = (
+                    Qty: Convert.ToInt32(rd.GetInt64("qty_produced")),
+                    Scrap: Convert.ToInt32(rd.GetInt64("qty_scrap")));
+            }
+        }
+
+        var detailMap = new Dictionary<string, List<WeeklyOutputOrderDetailVm>>(StringComparer.OrdinalIgnoreCase);
+        using (var detailCmd = new MySqlCommand(@"
+            SELECT DATE(wse.create_at) AS day,
+                   COALESCE(s.name, 'Sin subfamilia') AS subfamily_name,
+                   wo.wo_number,
+                   p.part_number,
+                   COALESCE(SUM(wse.qty_in - wse.qty_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(wse.qty_scrap), 0) AS qty_scrap
+            FROM wip_step_execution wse
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily s ON s.id = p.id_subfamily
+            WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
+            GROUP BY DATE(wse.create_at), subfamily_name, wo.wo_number, p.part_number
+            ORDER BY day, subfamily_name, wo.wo_number", cn))
+        {
+            detailCmd.Parameters.AddWithValue("@startDate", startDate);
+            detailCmd.Parameters.AddWithValue("@endDate", endDate);
+
+            using var rd = detailCmd.ExecuteReader();
+            while (rd.Read())
+            {
+                var key = $"{rd.GetDateTime("day"):yyyy-MM-dd}|{rd.GetString("subfamily_name")}";
+                if (!detailMap.TryGetValue(key, out var list))
+                {
+                    list = new List<WeeklyOutputOrderDetailVm>();
+                    detailMap[key] = list;
+                }
+
+                list.Add(new WeeklyOutputOrderDetailVm
+                {
+                    WoNumber = rd.GetString("wo_number"),
+                    Product = rd.GetString("part_number"),
+                    Qty = Convert.ToInt32(rd.GetInt64("qty_produced")),
+                    Scrap = Convert.ToInt32(rd.GetInt64("qty_scrap"))
+                });
+            }
+        }
+
+        for (var day = startDate.Date; day <= endDate.Date; day = day.AddDays(1))
+        {
+            var row = new WeeklyOutputDayRowVm { Day = day };
+
+            foreach (var subfamily in subfamilyNames)
+            {
+                var key = $"{day:yyyy-MM-dd}|{subfamily}";
+                var values = map.TryGetValue(key, out var found) ? found : (Qty: 0, Scrap: 0);
+                var details = detailMap.TryGetValue(key, out var detailRows) ? detailRows : new List<WeeklyOutputOrderDetailVm>();
+
+                row.Cells.Add(new WeeklyOutputCellVm
+                {
+                    Subfamily = subfamily,
+                    Qty = values.Qty,
+                    Scrap = values.Scrap,
+                    Details = details
+                });
+
+                row.TotalQty += values.Qty;
+                row.TotalScrap += values.Scrap;
+            }
+
+            matrix.Rows.Add(row);
+        }
+
+        return matrix;
+    }
+
+    private static DateTime GetStartOfWeek(DateTime date)
+    {
+        var diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return date.AddDays(-diff).Date;
+    }
+
+    private static bool TryParseWeekValue(string weekValue, out DateTime weekStart)
+    {
+        weekStart = DateTime.MinValue;
+        var parts = weekValue.Split("-W");
+        if (parts.Length != 2) return false;
+        if (!int.TryParse(parts[0], out var year)) return false;
+        if (!int.TryParse(parts[1], out var week)) return false;
+
+        try
+        {
+            weekStart = ISOWeek.ToDateTime(year, week, DayOfWeek.Monday);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static void LoadWipStatusChart(MySqlConnection cn, ChartVm chart)

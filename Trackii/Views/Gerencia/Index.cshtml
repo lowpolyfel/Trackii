@@ -1,8 +1,10 @@
 @using System.Text.Json
+@using System.Globalization
 @model Trackii.Models.Gerencia.GerenciaDashboardVm
 
 @{
     ViewData["Title"] = "Gerencia";
+    var spanish = new CultureInfo("es-MX");
 }
 
 <div class="dashboard">
@@ -40,6 +42,71 @@
                 <i class="fa-solid fa-heart-pulse"></i>
                 Salud de órdenes
             </a>
+            <a asp-controller="Gerencia" asp-action="WeeklyOutput" class="btn btn-primary">
+                <i class="fa-solid fa-table-cells-large"></i>
+                Ver más (semanas / meses)
+            </a>
+        </div>
+    </div>
+
+    <div class="card gerencia-weekly-card">
+        <div class="page-header">
+            <div>
+                <h3>Salida semanal por subfamilia — Semana actual</h3>
+                <p class="subtitle">
+                    Periodo:
+                    <strong>@Model.WeeklyOutput.StartDate.ToString("yyyy-MM-dd")</strong>
+                    al
+                    <strong>@Model.WeeklyOutput.EndDate.ToString("yyyy-MM-dd")</strong>.
+                    Cada celda muestra <strong>Piezas / Scrap</strong>.
+                </p>
+            </div>
+            <div class="header-actions">
+                <a asp-controller="Gerencia" asp-action="WeeklyOutput" class="btn btn-secondary">
+                    Ver más
+                </a>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table class="table gerencia-weekly-table">
+                <thead>
+                    <tr>
+                        <th>Día</th>
+                        @foreach (var subfamily in Model.WeeklyOutput.Subfamilies)
+                        {
+                            <th>@subfamily</th>
+                        }
+                        <th class="text-right">Total piezas</th>
+                        <th class="text-right">Total scrap</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.WeeklyOutput.Rows.Any())
+                    {
+                        <tr>
+                            <td colspan="@(Model.WeeklyOutput.Subfamilies.Count + 3)" class="empty">Sin datos para la semana actual.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var row in Model.WeeklyOutput.Rows)
+                        {
+                            <tr>
+                                <td>@row.Day.ToString("dddd dd MMM", spanish)</td>
+                                @foreach (var cell in row.Cells)
+                                {
+                                    <td>
+                                        <span class="weekly-pill qty">@cell.Qty</span>
+                                        <span class="weekly-pill scrap">@cell.Scrap</span>
+                                    </td>
+                                }
+                                <td class="text-right">@row.TotalQty</td>
+                                <td class="text-right">@row.TotalScrap</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 

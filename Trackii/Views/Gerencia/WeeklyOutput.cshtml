@@ -1,0 +1,114 @@
+@model Trackii.Models.Gerencia.GerenciaWeeklyOutputVm
+@using System.Globalization
+
+@{
+    ViewData["Title"] = "Salida semanal/mensual";
+    var spanish = new CultureInfo("es-MX");
+}
+
+<div class="dashboard">
+    <div class="page-header">
+        <div>
+            <h2>Salida de piezas por subfamilia</h2>
+            <p class="subtitle">Selecciona semana o periodo mensual para un análisis ejecutivo ordenado.</p>
+        </div>
+        <div class="header-actions">
+            <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i>
+                Volver a Gerencia
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <form method="get" class="filters">
+            <select name="periodType">
+                <option value="week" selected="@(Model.PeriodType == "week")">Semana</option>
+                <option value="month" selected="@(Model.PeriodType == "month")">Mes</option>
+                <option value="custom" selected="@(Model.PeriodType == "custom")">Rango personalizado</option>
+            </select>
+            <input type="week" name="weekValue" value="@Model.WeekValue" />
+            <input type="month" name="monthValue" value="@Model.MonthValue" />
+            <input type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+            <input type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+            <button type="submit" class="btn btn-primary">Aplicar</button>
+        </form>
+    </div>
+
+    <div class="card gerencia-weekly-card">
+        <p class="subtitle">
+            Período seleccionado:
+            <strong>@Model.Matrix.StartDate.ToString("yyyy-MM-dd")</strong> al
+            <strong>@Model.Matrix.EndDate.ToString("yyyy-MM-dd")</strong>.
+            Valores por celda: <strong>piezas buenas (verde) / scrap (rojo)</strong>.
+        </p>
+
+        <div class="table-wrapper">
+            <table class="table gerencia-weekly-table">
+                <thead>
+                    <tr>
+                        <th>Día</th>
+                        @foreach (var subfamily in Model.Matrix.Subfamilies)
+                        {
+                            <th>@subfamily</th>
+                        }
+                        <th class="text-right">Total piezas</th>
+                        <th class="text-right">Total scrap</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Matrix.Rows.Any())
+                    {
+                        <tr>
+                            <td colspan="@(Model.Matrix.Subfamilies.Count + 3)" class="empty">Sin resultados en este periodo.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var row in Model.Matrix.Rows)
+                        {
+                            <tr>
+                                <td>@row.Day.ToString("dddd dd MMMM", spanish)</td>
+                                @foreach (var cell in row.Cells)
+                                {
+                                    <td>
+                                        <details class="weekly-cell-details">
+                                            <summary>
+                                                <span class="weekly-pill qty">@cell.Qty</span>
+                                                <span class="weekly-pill scrap">@cell.Scrap</span>
+                                            </summary>
+                                            @if (cell.Details.Any())
+                                            {
+                                                <div class="weekly-details-grid">
+                                                    @foreach (var detail in cell.Details)
+                                                    {
+                                                        <div class="weekly-detail-row">
+                                                            <div>
+                                                                <strong>WO @detail.WoNumber</strong>
+                                                                <div>@detail.Product</div>
+                                                            </div>
+                                                            <div class="weekly-detail-metrics">
+                                                                <span class="weekly-pill qty">@detail.Qty</span>
+                                                                <span class="weekly-pill scrap">@detail.Scrap</span>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="weekly-empty">Sin órdenes registradas.</div>
+                                            }
+                                        </details>
+                                    </td>
+                                }
+                                <td class="text-right">@row.TotalQty</td>
+                                <td class="text-right">@row.TotalScrap</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

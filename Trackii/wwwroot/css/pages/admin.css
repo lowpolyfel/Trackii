@@ -1,0 +1,47 @@
+.admin-devices-card .subtitle {
+    margin: 6px 0 0;
+    color: var(--text-muted);
+}
+
+.admin-devices-table code {
+    background: rgba(15, 41, 79, 0.08);
+    color: #0f294f;
+    padding: 4px 8px;
+    border-radius: 8px;
+}
+
+.device-state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 74px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 700;
+}
+
+.device-state.is-active {
+    background: rgba(34, 197, 94, 0.15);
+    color: #0f7a3d;
+}
+
+.device-state.is-inactive {
+    background: rgba(100, 116, 139, 0.18);
+    color: #334155;
+}
+
+.device-location-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.device-location-select {
+    min-width: 180px;
+}
+
+.device-location-current {
+    color: var(--text-muted);
+    font-size: .82rem;
+}
