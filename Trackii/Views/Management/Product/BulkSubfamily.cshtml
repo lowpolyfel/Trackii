@@ -1,0 +1,186 @@
+@model Trackii.Models.Admin.Product.ProductBulkSubfamilyVm
+
+@{
+    ViewData["Title"] = "Cambio masivo de subfamilia";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Cambio masivo de subfamilia</h2>
+            <p class="subtitle">Filtra por Área / Family / Subfamily y selecciona productos por Part Number.</p>
+        </div>
+
+        <a href="/Admin/Product" class="btn btn-secondary">Volver a Products</a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert error">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            @TempData["Error"]
+        </div>
+    }
+
+    @if (TempData["Ok"] != null)
+    {
+        <div class="alert success">
+            <i class="fa-solid fa-circle-check"></i>
+            @TempData["Ok"]
+        </div>
+    }
+
+    <form method="get" action="/Admin/Product/BulkSubfamily" class="filters">
+        <select name="areaId" class="input" onchange="this.form.submit()">
+            <option value="">-- Área --</option>
+            @foreach (var a in Model.Areas)
+            {
+                if (Model.AreaId == a.Id)
+                {
+                    <option value="@a.Id" selected="selected">@a.Name</option>
+                }
+                else
+                {
+                    <option value="@a.Id">@a.Name</option>
+                }
+            }
+        </select>
+
+        <select name="familyId" class="input" onchange="this.form.submit()">
+            <option value="">-- Family --</option>
+            @foreach (var f in Model.Families)
+            {
+                if (Model.FamilyId == f.Id)
+                {
+                    <option value="@f.Id" selected="selected">@f.Name</option>
+                }
+                else
+                {
+                    <option value="@f.Id">@f.Name</option>
+                }
+            }
+        </select>
+
+        <select name="subfamilyId" class="input" onchange="this.form.submit()">
+            <option value="">-- Subfamily actual --</option>
+            @foreach (var s in Model.Subfamilies)
+            {
+                if (Model.SubfamilyId == s.Id)
+                {
+                    <option value="@s.Id" selected="selected">@s.Name</option>
+                }
+                else
+                {
+                    <option value="@s.Id">@s.Name</option>
+                }
+            }
+        </select>
+
+        <input type="text" name="search" value="@Model.Search" placeholder="Buscar part number..." />
+
+        <label class="checkbox">
+            @if (Model.ShowInactive)
+            {
+                <input type="checkbox" name="showInactive" value="true" checked="checked" onchange="this.form.submit()" />
+            }
+            else
+            {
+                <input type="checkbox" name="showInactive" value="true" onchange="this.form.submit()" />
+            }
+            Ver inactivos
+        </label>
+
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+        <a href="/Admin/Product/BulkSubfamily" class="btn btn-secondary">Limpiar</a>
+    </form>
+
+    <form method="post" action="/Admin/Product/BulkSubfamily">
+        @Html.AntiForgeryToken()
+
+        <input type="hidden" name="AreaId" value="@Model.AreaId" />
+        <input type="hidden" name="FamilyId" value="@Model.FamilyId" />
+        <input type="hidden" name="SubfamilyId" value="@Model.SubfamilyId" />
+        <input type="hidden" name="Search" value="@Model.Search" />
+        @if (Model.ShowInactive)
+        {
+            <input type="hidden" name="ShowInactive" value="true" />
+        }
+
+        <div class="filters" style="margin-top:10px;">
+            <select name="TargetSubfamilyId" class="input" required="required">
+                <option value="">-- Subfamily destino --</option>
+                @foreach (var target in Model.TargetSubfamilies)
+                {
+                    if (Model.TargetSubfamilyId == target.Id)
+                    {
+                        <option value="@target.Id" selected="selected">@target.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@target.Id">@target.Name</option>
+                    }
+                }
+            </select>
+
+            <button type="button" class="btn btn-secondary" onclick="toggleAll(true)">Seleccionar todo</button>
+            <button type="button" class="btn btn-secondary" onclick="toggleAll(false)">Limpiar selección</button>
+            <button type="submit" class="btn btn-primary">Cambiar subfamilia de seleccionados</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">Sel</th>
+                        <th>Part Number</th>
+                        <th>Subfamily actual</th>
+                        <th>Family</th>
+                        <th>Área</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Items.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="empty">No se encontraron productos con los filtros actuales.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var p in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="SelectedProductIds" value="@p.Id" class="bulk-check" />
+                                </td>
+                                <td>@p.PartNumber</td>
+                                <td>@p.Subfamily</td>
+                                <td>@p.Family</td>
+                                <td>@p.Area</td>
+                                <td>
+                                    @if (p.Active)
+                                    {
+                                        <span class="badge success">Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge danger">Inactivo</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleAll(checked) {
+        document.querySelectorAll('.bulk-check').forEach(function (el) {
+            el.checked = checked;
+        });
+    }
+</script>

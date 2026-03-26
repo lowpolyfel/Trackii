@@ -154,4 +154,74 @@ public class ProductController : Controller
 
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpGet("BulkSubfamily")]
+    [Authorize(Roles = "Admin")]
+    public IActionResult BulkSubfamily(
+        uint? areaId,
+        uint? familyId,
+        uint? subfamilyId,
+        string? search,
+        bool? showInactive)
+    {
+        var vm = _svc.GetBulkSubfamilyVm(
+            areaId,
+            familyId,
+            subfamilyId,
+            search,
+            showInactive ?? false);
+
+        return View($"{ViewBase}BulkSubfamily.cshtml", vm);
+    }
+
+    [HttpPost("BulkSubfamily")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
+    public IActionResult BulkSubfamily(ProductBulkSubfamilyVm vm)
+    {
+        if (vm.TargetSubfamilyId == null || vm.TargetSubfamilyId == 0)
+        {
+            TempData["Error"] = "Selecciona una subfamilia destino.";
+            return RedirectToAction(nameof(BulkSubfamily), new
+            {
+                vm.AreaId,
+                vm.FamilyId,
+                vm.SubfamilyId,
+                vm.Search,
+                vm.ShowInactive
+            });
+        }
+
+        if (vm.SelectedProductIds == null || vm.SelectedProductIds.Count == 0)
+        {
+            TempData["Error"] = "Selecciona al menos un producto.";
+            return RedirectToAction(nameof(BulkSubfamily), new
+            {
+                vm.AreaId,
+                vm.FamilyId,
+                vm.SubfamilyId,
+                vm.Search,
+                vm.ShowInactive
+            });
+        }
+
+        try
+        {
+            var updated = _svc.BulkChangeSubfamily(vm.SelectedProductIds, vm.TargetSubfamilyId.Value, adminOverride: true);
+            TempData["Ok"] = $"Se actualizaron {updated} productos.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(BulkSubfamily), new
+        {
+            vm.AreaId,
+            vm.FamilyId,
+            vm.SubfamilyId,
+            vm.Search,
+            vm.ShowInactive
+        });
+    }
 }

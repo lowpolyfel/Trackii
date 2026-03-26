@@ -12,10 +12,19 @@
             <p class="subtitle">Administración de productos por jerarquía (Área → Family → Subfamily)</p>
         </div>
 
-        <a href="/Admin/Product/Create" class="btn btn-primary">
-            <i class="fa-solid fa-plus"></i>
-            Nuevo Product
-        </a>
+        <div style="display:flex; gap:8px;">
+            @if (User.IsInRole("Admin"))
+            {
+                <a href="/Admin/Product/BulkSubfamily" class="btn btn-secondary">
+                    <i class="fa-solid fa-layer-group"></i>
+                    Cambio masivo subfamilia
+                </a>
+            }
+            <a href="/Admin/Product/Create" class="btn btn-primary">
+                <i class="fa-solid fa-plus"></i>
+                Nuevo Product
+            </a>
+        </div>
     </div>
 
     @if (TempData["Error"] != null)
