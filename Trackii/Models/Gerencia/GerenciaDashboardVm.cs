@@ -8,4 +8,5 @@ public class GerenciaDashboardVm
     public List<LocationProductionVm> ProductionByLocation { get; } = new();
     public List<LocationProductionVm> TopLocations { get; } = new();
     public List<LocationProductionVm> BottomLocations { get; } = new();
+    public WeeklyOutputMatrixVm WeeklyOutput { get; set; } = new();
 }

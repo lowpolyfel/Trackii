@@ -58,6 +58,13 @@ public class GerenciaController : Controller
         return View($"{ViewBase}Throughput.cshtml", vm);
     }
 
+    [HttpGet("SalidaSemanal")]
+    public IActionResult WeeklyOutput(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate)
+    {
+        var vm = _svc.GetWeeklyOutput(periodType, weekValue, monthValue, fromDate, toDate);
+        return View($"{ViewBase}WeeklyOutput.cshtml", vm);
+    }
+
     [HttpGet("ReworkSummary")]
     public IActionResult ReworkSummary()
     {
