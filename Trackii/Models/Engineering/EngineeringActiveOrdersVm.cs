@@ -50,6 +50,8 @@ public class EngineeringActiveOrdersVm
         public uint WorkOrderId { get; set; }
         public string WoNumber { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
+        public string WipStatus { get; set; } = string.Empty;
+        public string WipStatusNormalized { get; set; } = string.Empty;
         public string Product { get; set; } = string.Empty;
         public uint FamilyId { get; set; }
         public string Family { get; set; } = string.Empty;
@@ -59,6 +61,9 @@ public class EngineeringActiveOrdersVm
         public string Route { get; set; } = string.Empty;
         public uint? LocationId { get; set; }
         public string Location { get; set; } = string.Empty;
+        public string CurrentStep { get; set; } = string.Empty;
+        public int? CurrentStepQty { get; set; }
+        public string NextStep { get; set; } = string.Empty;
         public string NextLocation { get; set; } = string.Empty;
         public DateTime? WipCreatedAt { get; set; }
         public int? AgeDays { get; set; }

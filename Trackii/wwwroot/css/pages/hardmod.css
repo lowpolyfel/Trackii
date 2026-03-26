@@ -70,6 +70,11 @@
     margin-top: auto;
 }
 
+.hardmod-lookup-message {
+    font-size: .84rem;
+    color: var(--text-muted);
+}
+
 @media (max-width: 720px) {
     .hardmod-input-row {
         flex-direction: column;

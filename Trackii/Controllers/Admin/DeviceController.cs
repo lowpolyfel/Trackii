@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Trackii.Models.Admin.Device;
 using Trackii.Services.Admin;
 
@@ -27,7 +28,7 @@ public class DeviceController : Controller
     [HttpGet("Create")]
     public IActionResult Create()
     {
-        ViewBag.Locations = _svc.GetActiveLocations();
+        ViewBag.Locations = BuildLocationItems();
         return View($"{ViewBase}Create.cshtml", new DeviceEditVm());
     }
 
@@ -37,14 +38,14 @@ public class DeviceController : Controller
     {
         if (!ModelState.IsValid)
         {
-            ViewBag.Locations = _svc.GetActiveLocations();
+            ViewBag.Locations = BuildLocationItems();
             return View($"{ViewBase}Create.cshtml", vm);
         }
 
         if (_svc.ExistsDeviceUid(vm.DeviceUid))
         {
             ModelState.AddModelError("DeviceUid", "Este UID ya existe.");
-            ViewBag.Locations = _svc.GetActiveLocations();
+            ViewBag.Locations = BuildLocationItems();
             return View($"{ViewBase}Create.cshtml", vm);
         }
 
@@ -57,7 +58,7 @@ public class DeviceController : Controller
     {
         var vm = _svc.GetById(id);
         if (vm == null) return NotFound();
-        ViewBag.Locations = _svc.GetActiveLocations();
+        ViewBag.Locations = BuildLocationItems();
         return View($"{ViewBase}Edit.cshtml", vm);
     }
 
@@ -69,14 +70,14 @@ public class DeviceController : Controller
 
         if (!ModelState.IsValid)
         {
-            ViewBag.Locations = _svc.GetActiveLocations();
+            ViewBag.Locations = BuildLocationItems();
             return View($"{ViewBase}Edit.cshtml", vm);
         }
 
         if (_svc.ExistsDeviceUid(vm.DeviceUid, id))
         {
             ModelState.AddModelError("DeviceUid", "Este UID ya existe.");
-            ViewBag.Locations = _svc.GetActiveLocations();
+            ViewBag.Locations = BuildLocationItems();
             return View($"{ViewBase}Edit.cshtml", vm);
         }
 
@@ -90,5 +91,16 @@ public class DeviceController : Controller
     {
         _svc.SetActive(id, active == 1);
         return RedirectToAction(nameof(Index));
+    }
+
+    private List<SelectListItem> BuildLocationItems()
+    {
+        return _svc.GetActiveLocations()
+            .Select(location => new SelectListItem
+            {
+                Value = location.Id.ToString(),
+                Text = location.Name
+            })
+            .ToList();
     }
 }

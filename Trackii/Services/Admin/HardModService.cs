@@ -13,14 +13,23 @@ public class HardModService
             ?? throw new Exception("Connection string TrackiiDb no configurada");
     }
 
-    public HardModVm GetViewModel(uint? wipItemId = null, uint? wipStepExecutionId = null)
+    public HardModVm GetViewModel(string? wipItemLookup = null, uint? wipStepExecutionId = null)
     {
         using var cn = new MySqlConnection(_conn);
         cn.Open();
 
+        uint? resolvedWipItemId = null;
+        string? lookupMessage = null;
+        if (!string.IsNullOrWhiteSpace(wipItemLookup))
+        {
+            resolvedWipItemId = ResolveWipItemId(cn, wipItemLookup, out lookupMessage);
+        }
+
         return new HardModVm
         {
-            WipItemPreview = wipItemId.HasValue ? GetWipItemPreview(cn, wipItemId.Value) : null,
+            WipItemLookup = wipItemLookup,
+            WipItemLookupMessage = lookupMessage,
+            WipItemPreview = resolvedWipItemId.HasValue ? GetWipItemPreview(cn, resolvedWipItemId.Value) : null,
             WipStepExecutionPreview = wipStepExecutionId.HasValue ? GetWipStepExecutionPreview(cn, wipStepExecutionId.Value) : null
         };
     }
@@ -44,9 +53,7 @@ public class HardModService
                 };
             }
 
-            ExecuteDelete(cn, tx, "DELETE FROM wip_step_execution WHERE wip_item_id=@id", id);
-            ExecuteDelete(cn, tx, "DELETE FROM scan_event WHERE wip_item_id=@id", id);
-            ExecuteDelete(cn, tx, "DELETE FROM wip_rework_log WHERE wip_item_id=@id", id);
+            var fkDeletes = DeleteReferencingRows(cn, tx, "wip_item", "id", id);
             var deleted = ExecuteDelete(cn, tx, "DELETE FROM wip_item WHERE id=@id", id);
 
             if (deleted == 0)
@@ -60,12 +67,12 @@ public class HardModService
             }
 
             tx.Commit();
-            return new HardDeleteResultVm
-            {
-                Success = true,
-                Message = $"WIP item #{id} eliminado de la BD junto con {preview.StepExecutionsCount} step execution(s), {preview.ScanEventsCount} scan event(s) y {preview.ReworkLogsCount} rework log(s)."
-            };
-        }
+                return new HardDeleteResultVm
+                {
+                    Success = true,
+                    Message = $"WIP item #{id} eliminado de la BD junto con {preview.StepExecutionsCount} step execution(s), {preview.ScanEventsCount} scan event(s), {preview.ReworkLogsCount} rework log(s) y {fkDeletes} registro(s) dependiente(s) totales."
+                };
+            }
         catch (Exception ex)
         {
             tx.Rollback();
@@ -115,6 +122,165 @@ public class HardModService
         using var cmd = new MySqlCommand(sql, cn, tx);
         cmd.Parameters.AddWithValue("@id", id);
         return cmd.ExecuteNonQuery();
+    }
+
+    private static uint? ResolveWipItemId(MySqlConnection cn, string lookup, out string? message)
+    {
+        message = null;
+        var trimmed = lookup.Trim();
+        if (uint.TryParse(trimmed, out var wipItemId))
+        {
+            message = $"Búsqueda por ID de WIP item: {wipItemId}.";
+            return wipItemId;
+        }
+
+        using var cmd = new MySqlCommand(@"
+            SELECT wip.id
+            FROM wip_item wip
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            WHERE wo.wo_number = @woNumber
+            ORDER BY wip.created_at DESC, wip.id DESC
+            LIMIT 1;", cn);
+
+        cmd.Parameters.AddWithValue("@woNumber", trimmed);
+        var result = cmd.ExecuteScalar();
+        if (result == null)
+        {
+            message = $"No se encontró WIP item para el No. de orden '{trimmed}'.";
+            return null;
+        }
+
+        var resolvedId = Convert.ToUInt32(result);
+        message = $"Búsqueda por No. de orden '{trimmed}': se cargó el WIP item más reciente #{resolvedId}.";
+        return resolvedId;
+    }
+
+    private static int DeleteReferencingRows(
+        MySqlConnection cn,
+        MySqlTransaction tx,
+        string referencedTable,
+        string referencedColumn,
+        uint id)
+    {
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        return DeleteReferencingRowsRecursive(cn, tx, referencedTable, referencedColumn, id, visited);
+    }
+
+    private static int DeleteReferencingRowsRecursive(
+        MySqlConnection cn,
+        MySqlTransaction tx,
+        string referencedTable,
+        string referencedColumn,
+        uint id,
+        HashSet<string> visited)
+    {
+        var visitKey = $"{referencedTable}:{referencedColumn}:{id}";
+        if (!visited.Add(visitKey))
+            return 0;
+
+        var foreignKeys = GetReferencingForeignKeys(cn, tx, referencedTable, referencedColumn);
+        var totalDeleted = 0;
+
+        foreach (var fk in foreignKeys)
+        {
+            var primaryKeyColumn = GetPrimaryKeyColumn(cn, tx, fk.TableName);
+            if (!string.IsNullOrWhiteSpace(primaryKeyColumn))
+            {
+                foreach (var childId in GetChildPrimaryIds(cn, tx, fk.TableName, fk.ColumnName, primaryKeyColumn, id))
+                {
+                    totalDeleted += DeleteReferencingRowsRecursive(
+                        cn,
+                        tx,
+                        fk.TableName,
+                        primaryKeyColumn,
+                        childId,
+                        visited);
+                }
+            }
+
+            var sql = $"DELETE FROM `{fk.TableName}` WHERE `{fk.ColumnName}` = @id";
+            using var cmd = new MySqlCommand(sql, cn, tx);
+            cmd.Parameters.AddWithValue("@id", id);
+            totalDeleted += cmd.ExecuteNonQuery();
+        }
+
+        return totalDeleted;
+    }
+
+    private static List<(string TableName, string ColumnName)> GetReferencingForeignKeys(
+        MySqlConnection cn,
+        MySqlTransaction tx,
+        string referencedTable,
+        string referencedColumn)
+    {
+        var refs = new List<(string TableName, string ColumnName)>();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT DISTINCT kcu.TABLE_NAME, kcu.COLUMN_NAME
+            FROM information_schema.KEY_COLUMN_USAGE kcu
+            WHERE kcu.REFERENCED_TABLE_SCHEMA = DATABASE()
+              AND kcu.REFERENCED_TABLE_NAME = @referencedTable
+              AND kcu.REFERENCED_COLUMN_NAME = @referencedColumn
+              AND kcu.TABLE_NAME <> @referencedTable;", cn, tx);
+
+        cmd.Parameters.AddWithValue("@referencedTable", referencedTable);
+        cmd.Parameters.AddWithValue("@referencedColumn", referencedColumn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            refs.Add((rd.GetString("TABLE_NAME"), rd.GetString("COLUMN_NAME")));
+        }
+
+        return refs;
+    }
+
+    private static string? GetPrimaryKeyColumn(MySqlConnection cn, MySqlTransaction tx, string tableName)
+    {
+        using var cmd = new MySqlCommand(@"
+            SELECT kcu.COLUMN_NAME
+            FROM information_schema.TABLE_CONSTRAINTS tc
+            JOIN information_schema.KEY_COLUMN_USAGE kcu
+              ON tc.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
+             AND tc.TABLE_NAME = kcu.TABLE_NAME
+             AND tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+            WHERE tc.CONSTRAINT_SCHEMA = DATABASE()
+              AND tc.TABLE_NAME = @tableName
+              AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+            ORDER BY kcu.ORDINAL_POSITION
+            LIMIT 1;", cn, tx);
+
+        cmd.Parameters.AddWithValue("@tableName", tableName);
+        var result = cmd.ExecuteScalar();
+        return result?.ToString();
+    }
+
+    private static List<uint> GetChildPrimaryIds(
+        MySqlConnection cn,
+        MySqlTransaction tx,
+        string tableName,
+        string fkColumnName,
+        string pkColumnName,
+        uint parentId)
+    {
+        var ids = new List<uint>();
+        var sql = $@"
+            SELECT DISTINCT `{pkColumnName}`
+            FROM `{tableName}`
+            WHERE `{fkColumnName}` = @parentId";
+
+        using var cmd = new MySqlCommand(sql, cn, tx);
+        cmd.Parameters.AddWithValue("@parentId", parentId);
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            if (!rd.IsDBNull(0))
+            {
+                ids.Add(Convert.ToUInt32(rd.GetValue(0)));
+            }
+        }
+
+        return ids;
     }
 
     private static WipItemPreviewVm? GetWipItemPreview(MySqlConnection cn, uint id, MySqlTransaction? tx = null)
