@@ -17,9 +17,9 @@ public class HardModController : Controller
     }
 
     [HttpGet("")]
-    public IActionResult Index(uint? wipItemId, uint? wipStepExecutionId)
+    public IActionResult Index(string? wipItemLookup, uint? wipStepExecutionId)
     {
-        var vm = _svc.GetViewModel(wipItemId, wipStepExecutionId);
+        var vm = _svc.GetViewModel(wipItemLookup, wipStepExecutionId);
         vm.SuccessMessage = TempData["Success"] as string;
         vm.ErrorMessage = TempData["Error"] as string;
         return View($"{ViewBase}Index.cshtml", vm);

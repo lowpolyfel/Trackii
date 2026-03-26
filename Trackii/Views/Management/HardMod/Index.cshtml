@@ -44,12 +44,23 @@
 
             <form method="get" action="/Admin/HardMod" class="hardmod-form">
                 <input type="hidden" name="wipStepExecutionId" value="@(Model.WipStepExecutionPreview?.Id)" />
-                <label for="wipItemIdLookup">Consultar WIP item</label>
+                <label for="wipItemLookup">Consultar WIP item</label>
                 <div class="hardmod-input-row">
-                    <input id="wipItemIdLookup" name="wipItemId" type="number" min="1" class="input" placeholder="ID de wip_item" required />
+                    <input id="wipItemLookup"
+                           name="wipItemLookup"
+                           value="@Model.WipItemLookup"
+                           type="text"
+                           class="input"
+                           placeholder="No. de orden o ID de wip_item"
+                           required />
                     <button type="submit" class="btn btn-secondary">Cargar</button>
                 </div>
             </form>
+
+            @if (!string.IsNullOrWhiteSpace(Model.WipItemLookupMessage))
+            {
+                <div class="hardmod-lookup-message">@Model.WipItemLookupMessage</div>
+            }
 
             @if (Model.WipItemPreview != null)
             {
@@ -80,7 +91,7 @@
                     <i class="fa-regular fa-hard-drive"></i>
                     <div>
                         <strong>Sin WIP item cargado.</strong>
-                        <p>Captura un ID para revisar el registro antes de eliminarlo.</p>
+                        <p>Captura el No. de orden o el ID para revisar el registro antes de eliminarlo.</p>
                     </div>
                 </div>
             }
@@ -95,7 +106,7 @@
             </div>
 
             <form method="get" action="/Admin/HardMod" class="hardmod-form">
-                <input type="hidden" name="wipItemId" value="@(Model.WipItemPreview?.Id)" />
+                <input type="hidden" name="wipItemLookup" value="@(Model.WipItemPreview?.Id.ToString() ?? Model.WipItemLookup)" />
                 <label for="wipStepExecutionIdLookup">Consultar step execution</label>
                 <div class="hardmod-input-row">
                     <input id="wipStepExecutionIdLookup" name="wipStepExecutionId" type="number" min="1" class="input" placeholder="ID de wip_step_execution" required />

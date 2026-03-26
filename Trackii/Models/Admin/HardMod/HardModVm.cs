@@ -2,6 +2,8 @@ namespace Trackii.Models.Admin.HardMod;
 
 public class HardModVm
 {
+    public string? WipItemLookup { get; set; }
+    public string? WipItemLookupMessage { get; set; }
     public string? SuccessMessage { get; set; }
     public string? ErrorMessage { get; set; }
     public WipItemPreviewVm? WipItemPreview { get; set; }
