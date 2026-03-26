@@ -97,6 +97,67 @@ public class ProductService
         return vm;
     }
 
+    public ProductBulkSubfamilyVm GetBulkSubfamilyVm(
+        uint? areaId,
+        uint? familyId,
+        uint? subfamilyId,
+        string? search,
+        bool showInactive)
+    {
+        var vm = new ProductBulkSubfamilyVm
+        {
+            AreaId = areaId,
+            FamilyId = familyId,
+            SubfamilyId = subfamilyId,
+            Search = search,
+            ShowInactive = showInactive
+        };
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        vm.Areas = GetActiveAreas(cn);
+        vm.Families = GetActiveFamilies(cn, areaId);
+        vm.Subfamilies = GetActiveSubfamilies(cn, familyId);
+        vm.TargetSubfamilies = GetActiveSubfamiliesWithFamily();
+
+        var where = " WHERE 1=1 ";
+        if (!showInactive) where += " AND p.active = 1 ";
+        if (areaId.HasValue) where += " AND a.id = @area ";
+        if (familyId.HasValue) where += " AND f.id = @family ";
+        if (subfamilyId.HasValue) where += " AND s.id = @subfamily ";
+        if (!string.IsNullOrWhiteSpace(search)) where += " AND p.part_number LIKE @search ";
+
+        using var cmd = new MySqlCommand($@"
+            SELECT p.id, p.part_number, p.active,
+                   s.name AS subfamily,
+                   f.name AS family,
+                   a.name AS area
+            FROM product p
+            JOIN subfamily s ON s.id = p.id_subfamily
+            JOIN family f ON f.id = s.id_family
+            JOIN area a ON a.id = f.id_area
+            {where}
+            ORDER BY p.part_number", cn);
+
+        AddFilters(cmd, areaId, familyId, subfamilyId, search);
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            vm.Items.Add(new ProductBulkSubfamilyVm.Row
+            {
+                Id = rd.GetUInt32("id"),
+                PartNumber = rd.GetString("part_number"),
+                Active = rd.GetBoolean("active"),
+                Subfamily = rd.GetString("subfamily"),
+                Family = rd.GetString("family"),
+                Area = rd.GetString("area")
+            });
+        }
+
+        return vm;
+    }
+
     // ===================== CRUD =====================
     public ProductEditVm? GetById(uint id)
     {
@@ -194,6 +255,63 @@ public class ProductService
         }
 
         tx.Commit();
+    }
+
+    public int BulkChangeSubfamily(List<uint> productIds, uint targetSubfamilyId, bool adminOverride = false)
+    {
+        if (productIds == null || productIds.Count == 0) return 0;
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+        using var tx = cn.BeginTransaction();
+
+        using (var check = new MySqlCommand("SELECT active FROM subfamily WHERE id=@sid", cn, tx))
+        {
+            check.Parameters.AddWithValue("@sid", targetSubfamilyId);
+            var active = check.ExecuteScalar();
+            if (!adminOverride && (active == null || !Convert.ToBoolean(active)))
+                throw new Exception("No se puede actualizar: La Subfamilia destino está inactiva.");
+        }
+
+        var idParams = new List<string>();
+        using var update = new MySqlCommand();
+        update.Connection = cn;
+        update.Transaction = tx;
+        update.Parameters.AddWithValue("@targetSubfamilyId", targetSubfamilyId);
+
+        for (var i = 0; i < productIds.Count; i++)
+        {
+            var param = $"@p{i}";
+            idParams.Add(param);
+            update.Parameters.AddWithValue(param, productIds[i]);
+        }
+
+        update.CommandText = $@"
+            UPDATE product
+            SET id_subfamily = @targetSubfamilyId
+            WHERE id IN ({string.Join(",", idParams)})";
+
+        var changed = update.ExecuteNonQuery();
+
+        if (adminOverride && changed > 0)
+        {
+            using var syncWip = new MySqlCommand($@"
+                UPDATE wip_item w
+                JOIN work_order wo ON wo.id = w.wo_order_id
+                JOIN product p ON p.id = wo.product_id
+                JOIN subfamily s ON s.id = p.id_subfamily
+                SET w.route_id = s.active_route_id
+                WHERE p.id IN ({string.Join(",", idParams)})
+                  AND wo.status IN ('OPEN', 'IN_PROGRESS')", cn, tx);
+
+            for (var i = 0; i < productIds.Count; i++)
+                syncWip.Parameters.AddWithValue($"@p{i}", productIds[i]);
+
+            syncWip.ExecuteNonQuery();
+        }
+
+        tx.Commit();
+        return changed;
     }
 
     // ===================== TOGGLE (Con Validación) =====================
