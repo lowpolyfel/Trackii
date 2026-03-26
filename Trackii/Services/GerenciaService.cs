@@ -1,4 +1,5 @@
 using MySql.Data.MySqlClient;
+using System.Globalization;
 using Trackii.Models.Gerencia;
 
 namespace Trackii.Services;
@@ -37,6 +38,61 @@ public class GerenciaService
 
         LoadWipStatusChart(cn, vm.WipStatusChart);
         LoadScanEventChart(cn, vm.ScanEventChart);
+        vm.WeeklyOutput = GetWeeklyOutputMatrix(cn, GetStartOfWeek(DateTime.UtcNow.Date), GetStartOfWeek(DateTime.UtcNow.Date).AddDays(6));
+
+        return vm;
+    }
+
+    public GerenciaWeeklyOutputVm GetWeeklyOutput(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate)
+    {
+        var vm = new GerenciaWeeklyOutputVm
+        {
+            PeriodType = string.IsNullOrWhiteSpace(periodType) ? "week" : periodType,
+            WeekValue = weekValue,
+            MonthValue = monthValue,
+            FromDate = fromDate,
+            ToDate = toDate
+        };
+
+        var today = DateTime.UtcNow.Date;
+        DateTime start;
+        DateTime end;
+
+        switch (vm.PeriodType)
+        {
+            case "month" when !string.IsNullOrWhiteSpace(monthValue) && DateTime.TryParse($"{monthValue}-01", out var monthDate):
+                start = new DateTime(monthDate.Year, monthDate.Month, 1);
+                end = start.AddMonths(1).AddDays(-1);
+                break;
+            case "custom" when fromDate.HasValue && toDate.HasValue:
+                start = fromDate.Value.Date;
+                end = toDate.Value.Date;
+                if (end < start) (start, end) = (end, start);
+                break;
+            case "week" when !string.IsNullOrWhiteSpace(weekValue) && TryParseWeekValue(weekValue, out var weekStart):
+                start = weekStart;
+                end = weekStart.AddDays(6);
+                break;
+            default:
+                start = GetStartOfWeek(today);
+                end = start.AddDays(6);
+                vm.PeriodType = "week";
+                vm.WeekValue = $"{ISOWeek.GetYear(start)}-W{ISOWeek.GetWeekOfYear(start):00}";
+                break;
+        }
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+        vm.Matrix = GetWeeklyOutputMatrix(cn, start, end);
+
+        if (string.IsNullOrWhiteSpace(vm.WeekValue))
+        {
+            vm.WeekValue = $"{ISOWeek.GetYear(start)}-W{ISOWeek.GetWeekOfYear(start):00}";
+        }
+        if (string.IsNullOrWhiteSpace(vm.MonthValue))
+        {
+            vm.MonthValue = $"{start:yyyy-MM}";
+        }
 
         return vm;
     }
@@ -227,6 +283,101 @@ public class GerenciaService
         }
 
         return items;
+    }
+
+    private static WeeklyOutputMatrixVm GetWeeklyOutputMatrix(MySqlConnection cn, DateTime startDate, DateTime endDate)
+    {
+        var matrix = new WeeklyOutputMatrixVm
+        {
+            StartDate = startDate,
+            EndDate = endDate
+        };
+
+        var locationNames = new List<string>();
+        using (var locationsCmd = new MySqlCommand("SELECT name FROM location ORDER BY name", cn))
+        using (var locationRd = locationsCmd.ExecuteReader())
+        {
+            while (locationRd.Read())
+            {
+                locationNames.Add(locationRd.GetString("name"));
+            }
+        }
+
+        matrix.Locations.AddRange(locationNames);
+
+        var map = new Dictionary<string, (int Qty, int Scrap)>(StringComparer.OrdinalIgnoreCase);
+        using (var dataCmd = new MySqlCommand(@"
+            SELECT DATE(wse.create_at) AS day,
+                   l.name AS location_name,
+                   COALESCE(SUM(wse.qty_in - wse.qty_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(wse.qty_scrap), 0) AS qty_scrap
+            FROM wip_step_execution wse
+            JOIN location l ON l.id = wse.location_id
+            WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
+            GROUP BY DATE(wse.create_at), l.name", cn))
+        {
+            dataCmd.Parameters.AddWithValue("@startDate", startDate);
+            dataCmd.Parameters.AddWithValue("@endDate", endDate);
+
+            using var rd = dataCmd.ExecuteReader();
+            while (rd.Read())
+            {
+                var key = $"{rd.GetDateTime("day"):yyyy-MM-dd}|{rd.GetString("location_name")}";
+                map[key] = (
+                    Qty: Convert.ToInt32(rd.GetInt64("qty_produced")),
+                    Scrap: Convert.ToInt32(rd.GetInt64("qty_scrap")));
+            }
+        }
+
+        for (var day = startDate.Date; day <= endDate.Date; day = day.AddDays(1))
+        {
+            var row = new WeeklyOutputDayRowVm { Day = day };
+
+            foreach (var location in locationNames)
+            {
+                var key = $"{day:yyyy-MM-dd}|{location}";
+                var values = map.TryGetValue(key, out var found) ? found : (Qty: 0, Scrap: 0);
+
+                row.Cells.Add(new WeeklyOutputCellVm
+                {
+                    Location = location,
+                    Qty = values.Qty,
+                    Scrap = values.Scrap
+                });
+
+                row.TotalQty += values.Qty;
+                row.TotalScrap += values.Scrap;
+            }
+
+            matrix.Rows.Add(row);
+        }
+
+        return matrix;
+    }
+
+    private static DateTime GetStartOfWeek(DateTime date)
+    {
+        var diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return date.AddDays(-diff).Date;
+    }
+
+    private static bool TryParseWeekValue(string weekValue, out DateTime weekStart)
+    {
+        weekStart = DateTime.MinValue;
+        var parts = weekValue.Split("-W");
+        if (parts.Length != 2) return false;
+        if (!int.TryParse(parts[0], out var year)) return false;
+        if (!int.TryParse(parts[1], out var week)) return false;
+
+        try
+        {
+            weekStart = ISOWeek.ToDateTime(year, week, DayOfWeek.Monday);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static void LoadWipStatusChart(MySqlConnection cn, ChartVm chart)
