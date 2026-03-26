@@ -339,6 +339,7 @@ public class LobbyService
             SELECT wo.id AS work_order_id,
                    wo.wo_number,
                    wo.status,
+                   COALESCE(wip.status, '') AS wip_status,
                    p.part_number,
                    f.id AS family_id,
                    f.name AS family_name,
@@ -348,6 +349,15 @@ public class LobbyService
                    COALESCE(CONCAT(r.name, ' v', r.version), 'Sin ruta') AS route_name,
                    l.id AS location_id,
                    COALESCE(l.name, 'Sin localidad') AS location_name,
+                   CASE
+                       WHEN rs.id IS NULL THEN 'Sin paso actual'
+                       ELSE CONCAT('Paso ', rs.step_number, ' · ', COALESCE(l.name, 'Sin localidad'))
+                   END AS current_step_label,
+                   wse.qty_in AS current_step_qty,
+                   CASE
+                       WHEN next_rs.id IS NULL THEN (CASE WHEN COALESCE(wip.route_id, s.active_route_id) IS NULL THEN 'Sin ruta' ELSE 'Fin de ruta' END)
+                       ELSE CONCAT('Paso ', next_rs.step_number, ' · ', COALESCE(next_loc.name, 'Sin localidad'))
+                   END AS next_step_label,
                    next_loc.name AS next_location_name,
                    wip.created_at,
                    DATEDIFF(NOW(), wip.created_at) AS age_days
@@ -365,6 +375,14 @@ public class LobbyService
                                          END
             LEFT JOIN location l ON l.id = rs.location_id
             LEFT JOIN location next_loc ON next_loc.id = next_rs.location_id
+            LEFT JOIN wip_step_execution wse ON wse.id = (
+                SELECT wse2.id
+                FROM wip_step_execution wse2
+                WHERE wse2.wip_item_id = wip.id
+                  AND (wip.current_step_id IS NULL OR wse2.route_step_id = wip.current_step_id)
+                ORDER BY wse2.create_at DESC, wse2.id DESC
+                LIMIT 1
+            )
             WHERE wo.status IN ('OPEN', 'IN_PROGRESS')
             ORDER BY wo.wo_number", cn);
 
@@ -381,6 +399,8 @@ public class LobbyService
                 WorkOrderId = rd.GetUInt32("work_order_id"),
                 WoNumber = rd.GetString("wo_number"),
                 Status = rd.GetString("status"),
+                WipStatus = rd.GetString("wip_status"),
+                WipStatusNormalized = NormalizeStatusLabel(rd.GetString("wip_status")),
                 Product = rd.GetString("part_number"),
                 FamilyId = rd.GetUInt32("family_id"),
                 Family = rd.GetString("family_name"),
@@ -390,6 +410,9 @@ public class LobbyService
                 Route = rd.GetString("route_name"),
                 LocationId = rd.IsDBNull(locationIdOrdinal) ? null : rd.GetUInt32(locationIdOrdinal),
                 Location = rd.GetString("location_name"),
+                CurrentStep = rd.GetString("current_step_label"),
+                CurrentStepQty = rd.IsDBNull(rd.GetOrdinal("current_step_qty")) ? null : Convert.ToInt32(rd.GetUInt32("current_step_qty")),
+                NextStep = rd.GetString("next_step_label"),
                 NextLocation = rd.IsDBNull(rd.GetOrdinal("next_location_name"))
                     ? (rd.IsDBNull(routeIdOrdinal) ? "Sin ruta" : "Fin de ruta")
                     : rd.GetString("next_location_name"),
@@ -399,6 +422,19 @@ public class LobbyService
         }
 
         return items;
+    }
+
+    private static string NormalizeStatusLabel(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+            return "Sin estado";
+
+        var cleaned = status.Trim().Replace('_', ' ').ToLowerInvariant();
+        var words = cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0)
+            return "Sin estado";
+
+        return string.Join(" ", words.Select(word => char.ToUpperInvariant(word[0]) + word[1..]));
     }
 
     private static void LoadActiveDevices(MySqlConnection cn, AdminLobbyVm vm)
