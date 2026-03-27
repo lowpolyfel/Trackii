@@ -108,7 +108,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -166,14 +166,15 @@ public class GerenciaService
         cn.Open();
 
         using var cmd = new MySqlCommand(@"
-            SELECT COALESCE(NULLIF(TRIM(wrl.reason), ''), 'Sin motivo capturado') AS cause,
-                   COALESCE(SUM(wrl.qty), 0) AS qty,
+            SELECT CONCAT(ec.code, ' · ', ec.description) AS cause,
+                   COALESCE(SUM(sl.qty), 0) AS qty,
                    COUNT(*) AS events
-            FROM wip_rework_log wrl
-            JOIN wip_item wip ON wip.id = wrl.wip_item_id
+            FROM scrap_log sl
+            JOIN wip_item wip ON wip.id = sl.wip_item_id
             JOIN work_order wo ON wo.id = wip.wo_order_id
             JOIN product p ON p.id = wo.product_id
-            WHERE (@day IS NULL OR DATE(wrl.created_at) = @day)
+            JOIN error_code ec ON ec.id = sl.error_code_id
+            WHERE (@day IS NULL OR DATE(sl.created_at) = @day)
               AND (@wo IS NULL OR wo.wo_number = @wo)
               AND (@product IS NULL OR p.part_number = @product)
             GROUP BY cause
@@ -183,14 +184,69 @@ public class GerenciaService
         cmd.Parameters.AddWithValue("@wo", string.IsNullOrWhiteSpace(vm.WoNumber) ? null : vm.WoNumber);
         cmd.Parameters.AddWithValue("@product", string.IsNullOrWhiteSpace(vm.Product) ? null : vm.Product);
 
-        using var rd = cmd.ExecuteReader();
-        while (rd.Read())
         {
-            vm.Causes.Add(new ScrapCauseVm
+            using var rd = cmd.ExecuteReader();
+            while (rd.Read())
             {
-                Cause = rd.GetString("cause"),
-                Qty = Convert.ToInt32(rd.GetInt64("qty")),
-                Events = Convert.ToInt32(rd.GetInt64("events"))
+                vm.Causes.Add(new ScrapCauseVm
+                {
+                    Cause = rd.GetString("cause"),
+                    Qty = Convert.ToInt32(rd.GetInt64("qty")),
+                    Events = Convert.ToInt32(rd.GetInt64("events"))
+                });
+            }
+        }
+
+        vm.TotalQty = vm.Causes.Sum(item => item.Qty);
+        vm.TotalEvents = vm.Causes.Sum(item => item.Events);
+
+        using var detailCmd = new MySqlCommand(@"
+            SELECT sl.created_at,
+                   wo.wo_number,
+                   p.part_number,
+                   ec.code AS error_code,
+                   ecat.name AS error_category,
+                   ec.description AS error_description,
+                   l.name AS location_name,
+                   u.username,
+                   sl.qty,
+                   sl.comments
+            FROM scrap_log sl
+            JOIN wip_item wip ON wip.id = sl.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            JOIN error_code ec ON ec.id = sl.error_code_id
+            JOIN error_category ecat ON ecat.id = ec.category_id
+            JOIN route_step rs ON rs.id = sl.route_step_id
+            JOIN location l ON l.id = rs.location_id
+            JOIN `user` u ON u.id = sl.user_id
+            WHERE (@day IS NULL OR DATE(sl.created_at) = @day)
+              AND (@wo IS NULL OR wo.wo_number = @wo)
+              AND (@product IS NULL OR p.part_number = @product)
+            ORDER BY sl.created_at DESC, sl.id DESC
+            LIMIT 200", cn);
+
+        detailCmd.Parameters.AddWithValue("@day", vm.Day);
+        detailCmd.Parameters.AddWithValue("@wo", string.IsNullOrWhiteSpace(vm.WoNumber) ? null : vm.WoNumber);
+        detailCmd.Parameters.AddWithValue("@product", string.IsNullOrWhiteSpace(vm.Product) ? null : vm.Product);
+
+        using var detailRd = detailCmd.ExecuteReader();
+        while (detailRd.Read())
+        {
+            var commentsOrdinal = detailRd.GetOrdinal("comments");
+
+            vm.Entries.Add(new ScrapLogEntryVm
+            {
+                CreatedAt = detailRd.GetDateTime("created_at"),
+                WoNumber = detailRd.GetString("wo_number"),
+                Product = detailRd.GetString("part_number"),
+                ErrorCode = detailRd.GetString("error_code"),
+                ErrorCategory = detailRd.GetString("error_category"),
+                ErrorDescription = detailRd.GetString("error_description"),
+                Location = detailRd.GetString("location_name"),
+                UserName = detailRd.GetString("username"),
+                Qty = Convert.ToInt32(detailRd.GetInt64("qty")),
+                Comments = detailRd.IsDBNull(commentsOrdinal) ? null : detailRd.GetString(commentsOrdinal)
             });
         }
 
@@ -254,7 +310,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -354,7 +410,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -462,7 +518,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -523,7 +579,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -558,7 +614,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse

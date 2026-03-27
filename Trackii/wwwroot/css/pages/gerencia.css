@@ -135,8 +135,58 @@
     padding: 10px;
 }
 
+.chart-card.apple-card .chart-host {
+    min-height: 290px;
+    border-radius: 16px;
+    background: radial-gradient(circle at 15% 15%, rgba(255,255,255,.82), rgba(233,241,255,.56));
+    padding: 8px;
+}
+
 .discrete-filters {
     gap: 10px;
+}
+
+.discrete-filters-enhanced {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.discrete-filter-main {
+    max-width: 420px;
+}
+
+.discrete-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.discrete-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.discrete-filter-field label {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #455b7c;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.discrete-filter-field small {
+    color: #7286a5;
+    font-size: .78rem;
+}
+
+.period-field {
+    display: none;
+}
+
+.period-field.is-visible {
+    display: flex;
 }
 
 .discrete-filters input[type="date"],
@@ -154,6 +204,72 @@
 .discrete-filters input[type="week"]::-webkit-calendar-picker-indicator {
     opacity: .75;
     cursor: pointer;
+}
+
+.new-orders-list {
+    list-style: none;
+    margin: 2px 0 16px;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.new-order-item {
+    border: 1px solid rgba(32, 84, 164, 0.14);
+    border-radius: 14px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(236, 247, 255, 0.9));
+    padding: 10px 12px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.new-order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.new-order-header strong {
+    color: #163a68;
+}
+
+.new-order-status {
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: .73rem;
+    font-weight: 700;
+    color: #0e4f89;
+    background: rgba(63, 146, 255, 0.18);
+}
+
+.delayed-orders-list .delayed-order-item {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 239, 243, 0.92));
+    border-color: rgba(212, 92, 120, 0.2);
+}
+
+.delayed-status {
+    color: #8a2446;
+    background: rgba(238, 95, 137, 0.19);
+}
+
+.new-order-product {
+    margin: 0 0 4px;
+    font-size: .9rem;
+    font-weight: 600;
+    color: #1e3b62;
+}
+
+.new-order-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 4px 10px;
+    font-size: .78rem;
+    color: #4a607f;
+}
+
+.new-order-meta i {
+    color: #2a7be0;
 }
 
 .reveal-on-scroll {

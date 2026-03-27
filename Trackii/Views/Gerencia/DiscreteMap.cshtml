@@ -15,16 +15,43 @@
     </div>
 
     <div class="card">
-        <form method="get" class="filters discrete-filters">
-            <select name="periodType">
-                <option value="week" selected="@(Model.PeriodType == "week")">Semana</option>
-                <option value="month" selected="@(Model.PeriodType == "month")">Mes</option>
-                <option value="custom" selected="@(Model.PeriodType == "custom")">Rango personalizado</option>
-            </select>
-            <input type="week" name="weekValue" value="@Model.WeekValue" />
-            <input type="month" name="monthValue" value="@Model.MonthValue" />
-            <input type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
-            <input type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+        <form method="get" class="filters discrete-filters discrete-filters-enhanced">
+            <div class="discrete-filter-field discrete-filter-main">
+                <label for="periodType">Tipo de período</label>
+                <select id="periodType" name="periodType">
+                    <option value="week" selected="@(Model.PeriodType == "week")">Semana</option>
+                    <option value="month" selected="@(Model.PeriodType == "month")">Mes</option>
+                    <option value="custom" selected="@(Model.PeriodType == "custom")">Rango personalizado</option>
+                </select>
+                <small>Selecciona cómo quieres agrupar la vista del mapa.</small>
+            </div>
+
+            <div class="discrete-filter-grid">
+                <div class="discrete-filter-field period-field period-week" data-period="week">
+                    <label for="weekValue">Semana ISO</label>
+                    <input id="weekValue" type="week" name="weekValue" value="@Model.WeekValue" />
+                    <small>Ejemplo: semana 13 del año 2026.</small>
+                </div>
+
+                <div class="discrete-filter-field period-field period-month" data-period="month">
+                    <label for="monthValue">Mes</label>
+                    <input id="monthValue" type="month" name="monthValue" value="@Model.MonthValue" />
+                    <small>Selecciona el mes completo a consultar.</small>
+                </div>
+
+                <div class="discrete-filter-field period-field period-custom" data-period="custom">
+                    <label for="fromDate">Desde</label>
+                    <input id="fromDate" type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+                    <small>Fecha inicial del rango personalizado.</small>
+                </div>
+
+                <div class="discrete-filter-field period-field period-custom" data-period="custom">
+                    <label for="toDate">Hasta</label>
+                    <input id="toDate" type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+                    <small>Fecha final del rango personalizado.</small>
+                </div>
+            </div>
+
             <button type="submit" class="btn btn-primary">Aplicar</button>
         </form>
     </div>
@@ -65,3 +92,25 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const periodType = document.getElementById('periodType');
+            const fields = document.querySelectorAll('.period-field');
+            if (!periodType || !fields.length) return;
+
+            const toggleFields = () => {
+                const selected = periodType.value;
+                fields.forEach((field) => {
+                    const visible = field.dataset.period === selected;
+                    field.classList.toggle('is-visible', visible);
+                    field.querySelector('input')?.toggleAttribute('disabled', !visible);
+                });
+            };
+
+            periodType.addEventListener('change', toggleFields);
+            toggleFields();
+        })();
+    </script>
+}
