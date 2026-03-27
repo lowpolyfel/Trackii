@@ -5,14 +5,21 @@
 }
 <div class="dashboard">
     <div class="page-header">
-        <div><h2>Causas de errores más grandes</h2><p class="subtitle">Top de scrap acumulado por motivo.</p></div>
+        <div><h2>Causas de errores más grandes</h2><p class="subtitle">Top de scrap acumulado por código/categoría desde <strong>scrap_log</strong>.</p></div>
         <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
     </div>
     <div class="chart-grid">
         <div class="card chart-card"><canvas id="errorsChart"></canvas></div>
         <div class="card">
             <div class="table-wrapper"><table class="table"><thead><tr><th>Causa</th><th>Scrap</th><th>Eventos</th></tr></thead><tbody>
-                @foreach (var item in Model.Causes) { <tr><td>@item.Cause</td><td>@item.Qty</td><td>@item.Events</td></tr> }
+                @if (!Model.Causes.Any())
+                {
+                    <tr><td colspan="3" class="empty">Sin datos en scrap_log para mostrar causas.</td></tr>
+                }
+                else
+                {
+                    @foreach (var item in Model.Causes) { <tr><td>@item.Cause</td><td>@item.Qty</td><td>@item.Events</td></tr> }
+                }
             </tbody></table></div>
         </div>
     </div>

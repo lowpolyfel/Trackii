@@ -274,12 +274,14 @@ public class GerenciaService
         cn.Open();
 
         using var cmd = new MySqlCommand(@"
-            SELECT COALESCE(NULLIF(TRIM(reason), ''), 'Sin motivo capturado') AS cause,
-                   COALESCE(SUM(qty), 0) AS qty,
+            SELECT CONCAT(ec.code, ' · ', ec.description, ' (', ecat.name, ')') AS cause,
+                   COALESCE(SUM(sl.qty), 0) AS qty,
                    COUNT(*) AS events
-            FROM wip_rework_log
-            GROUP BY cause
-            ORDER BY qty DESC
+            FROM scrap_log sl
+            JOIN error_code ec ON ec.id = sl.error_code_id
+            JOIN error_category ecat ON ecat.id = ec.category_id
+            GROUP BY ec.id, ec.code, ec.description, ecat.name
+            ORDER BY qty DESC, events DESC
             LIMIT 10", cn);
 
         using var rd = cmd.ExecuteReader();
