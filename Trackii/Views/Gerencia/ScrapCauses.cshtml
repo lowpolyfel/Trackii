@@ -11,10 +11,22 @@
         <a asp-controller="Gerencia" asp-action="DiscreteDay" asp-route-day="@Model.Day?.ToString("yyyy-MM-dd")" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
     </div>
 
+    <div class="kpi-grid">
+        <div class="card kpi-highlight apple-card">
+            <h3>Total scrap</h3>
+            <p class="kpi-value">@Model.TotalQty</p>
+        </div>
+        <div class="card kpi-highlight apple-card">
+            <h3>Eventos de scrap</h3>
+            <p class="kpi-value">@Model.TotalEvents</p>
+        </div>
+    </div>
+
     <div class="card">
+        <h3>Resumen por código de error</h3>
         <div class="table-wrapper">
             <table class="table">
-                <thead><tr><th>Causa</th><th>Cantidad scrap</th><th>Eventos</th></tr></thead>
+                <thead><tr><th>Causa (código + descripción)</th><th>Cantidad scrap</th><th>Eventos</th></tr></thead>
                 <tbody>
                 @if (!Model.Causes.Any())
                 {
@@ -25,6 +37,52 @@
                     foreach (var cause in Model.Causes)
                     {
                         <tr><td>@cause.Cause</td><td>@cause.Qty</td><td>@cause.Events</td></tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Detalle de scrap log</h3>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>WO</th>
+                        <th>Producto</th>
+                        <th>Código</th>
+                        <th>Categoría</th>
+                        <th>Descripción</th>
+                        <th>Localidad</th>
+                        <th>Usuario</th>
+                        <th>Cantidad</th>
+                        <th>Comentarios</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.Entries.Any())
+                {
+                    <tr><td colspan="10" class="empty">Sin eventos en scrap_log para estos filtros.</td></tr>
+                }
+                else
+                {
+                    foreach (var entry in Model.Entries)
+                    {
+                        <tr>
+                            <td>@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@entry.WoNumber</td>
+                            <td>@entry.Product</td>
+                            <td>@entry.ErrorCode</td>
+                            <td>@entry.ErrorCategory</td>
+                            <td>@entry.ErrorDescription</td>
+                            <td>@entry.Location</td>
+                            <td>@entry.UserName</td>
+                            <td>@entry.Qty</td>
+                            <td>@(string.IsNullOrWhiteSpace(entry.Comments) ? "-" : entry.Comments)</td>
+                        </tr>
                     }
                 }
                 </tbody>

@@ -80,11 +80,11 @@
     <div class="chart-grid">
         <div class="card chart-card apple-card">
             <h3>Órdenes por estado (normalizado)</h3>
-            <canvas id="ordersPieChart"></canvas>
+            <div id="ordersPieChart" class="chart-host"></div>
         </div>
         <div class="card chart-card apple-card">
             <h3>Piezas por localidad</h3>
-            <canvas id="productionChart"></canvas>
+            <div id="productionChart" class="chart-host"></div>
         </div>
     </div>
 
@@ -97,10 +97,20 @@
             }
             else
             {
-                <ul class="compact-list">
+                <ul class="new-orders-list delayed-orders-list">
                     @foreach (var order in Model.DelayedOrders)
                     {
-                        <li><strong>@order.WoNumber</strong> · @order.Product · @order.DaysDelayed días</li>
+                        <li class="new-order-item delayed-order-item">
+                            <div class="new-order-header">
+                                <strong>#@order.WoNumber</strong>
+                                <span class="new-order-status delayed-status">@order.DaysDelayed días</span>
+                            </div>
+                            <p class="new-order-product">@order.Product</p>
+                            <div class="new-order-meta">
+                                <span><i class="fa-solid fa-location-dot"></i> @(string.IsNullOrWhiteSpace(order.CurrentLocation) ? "Sin localidad" : order.CurrentLocation)</span>
+                                <span><i class="fa-solid fa-hourglass-half"></i> @UiTextHelper.NormalizeStatus(order.Status)</span>
+                            </div>
+                        </li>
                     }
                 </ul>
             }
@@ -115,10 +125,20 @@
             }
             else
             {
-                <ul class="compact-list">
+                <ul class="new-orders-list">
                     @foreach (var order in Model.NewOrders)
                     {
-                        <li><strong>@order.WoNumber</strong> · @order.Product · @UiTextHelper.NormalizeStatus(order.Status)</li>
+                        <li class="new-order-item">
+                            <div class="new-order-header">
+                                <strong>#@order.WoNumber</strong>
+                                <span class="new-order-status">@UiTextHelper.NormalizeStatus(order.Status)</span>
+                            </div>
+                            <p class="new-order-product">@order.Product</p>
+                            <div class="new-order-meta">
+                                <span><i class="fa-solid fa-location-dot"></i> @(string.IsNullOrWhiteSpace(order.CurrentLocation) ? "Sin localidad" : order.CurrentLocation)</span>
+                                <span><i class="fa-solid fa-clock"></i> @(order.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "Sin fecha WIP")</span>
+                            </div>
+                        </li>
                     }
                 </ul>
             }
@@ -128,7 +148,7 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
         const normalizeStatusLabel = (value) => {
             const map = {
@@ -151,67 +171,95 @@
         const orderValues = @Html.Raw(JsonSerializer.Serialize(Model.OrderStatusChart.Values));
         const productionLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Labels));
         const productionValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Values));
-        const commonLegend = {
-            labels: {
-                usePointStyle: true,
-                pointStyle: 'circle',
-                boxWidth: 10,
-                color: '#30435f',
-                font: { family: 'Inter, sans-serif', size: 12, weight: '600' }
-            }
-        };
+        const topProduction = productionLabels
+            .map((label, index) => ({ label, value: productionValues[index] ?? 0 }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10);
+        const productionTopLabels = topProduction.map((item) => item.label);
+        const productionTopValues = topProduction.map((item) => item.value);
+        const pieContainer = document.getElementById('ordersPieChart');
+        const barContainer = document.getElementById('productionChart');
 
-        new Chart(document.getElementById('ordersPieChart'), {
-            type: 'pie',
-            data: {
-                labels: orderLabels,
-                datasets: [{
-                    data: orderValues,
-                    borderWidth: 2,
-                    borderColor: '#ffffff',
-                    hoverOffset: 12,
-                    backgroundColor: ['#5ea3ff', '#8a8fff', '#36d6b6', '#ff7e8a', '#ffc66d']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: { padding: 12 },
-                plugins: {
-                    legend: { ...commonLegend, position: 'bottom' }
-                }
-            }
-        });
-
-        new Chart(document.getElementById('productionChart'), {
-            type: 'bar',
-            data: {
-                labels: productionLabels,
-                datasets: [{
-                    label: 'Piezas producidas',
-                    data: productionValues,
-                    borderRadius: 12,
-                    borderSkipped: false,
-                    backgroundColor: ['#66b3ff', '#5d9dff', '#7cc3ff', '#93d4ff', '#7bb2ff']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
+        if (pieContainer) {
+            pieContainer.innerHTML = '';
+            new ApexCharts(pieContainer, {
+                chart: {
+                    type: 'donut',
+                    height: 280,
+                    fontFamily: 'Inter, sans-serif',
+                    toolbar: { show: false },
+                    animations: { easing: 'easeinout', speed: 420 }
                 },
-                scales: {
-                    x: {
-                        ticks: { color: '#536b8f', font: { weight: '600' } },
-                        grid: { display: false }
-                    },
-                    y: {
-                        ticks: { color: '#6a7f9f' },
-                        grid: { color: 'rgba(80, 110, 150, 0.12)' }
+                labels: orderLabels,
+                series: orderValues,
+                stroke: { width: 2, colors: ['#ffffff'] },
+                legend: {
+                    position: 'bottom',
+                    fontSize: '13px',
+                    labels: { colors: '#30435f' }
+                },
+                dataLabels: { enabled: true, style: { fontSize: '12px', fontWeight: 600 } },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '55%',
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    label: 'Órdenes',
+                                    formatter: () => orderValues.reduce((sum, value) => sum + value, 0)
+                                }
+                            }
+                        }
                     }
-                }
-            }
-        });
+                },
+                colors: ['#2f80ed', '#4f63ff', '#1ec7a5', '#ff8d7d', '#b392ff', '#37a6ff']
+            }).render();
+        }
+
+        if (barContainer) {
+            barContainer.innerHTML = '';
+            new ApexCharts(barContainer, {
+                chart: {
+                    type: 'bar',
+                    height: 280,
+                    fontFamily: 'Inter, sans-serif',
+                    toolbar: { show: false },
+                    animations: { easing: 'easeinout', speed: 420 }
+                },
+                series: [{
+                    name: 'Piezas producidas',
+                    data: productionTopValues
+                }],
+                colors: ['#2f80ed'],
+                plotOptions: {
+                    bar: {
+                        borderRadius: 7,
+                        columnWidth: '60%',
+                        distributed: false
+                    }
+                },
+                dataLabels: { enabled: false },
+                legend: { show: false },
+                xaxis: {
+                    categories: productionTopLabels,
+                    labels: {
+                        rotate: 0,
+                        trim: true,
+                        style: { colors: '#4d6283', fontSize: '12px', fontWeight: 600 }
+                    },
+                    axisBorder: { color: 'rgba(80, 110, 150, 0.2)' }
+                },
+                yaxis: {
+                    labels: { style: { colors: '#5f7392' } }
+                },
+                grid: {
+                    borderColor: 'rgba(80, 110, 150, 0.12)',
+                    strokeDashArray: 4
+                },
+                tooltip: { theme: 'light' }
+            }).render();
+        }
     </script>
 }

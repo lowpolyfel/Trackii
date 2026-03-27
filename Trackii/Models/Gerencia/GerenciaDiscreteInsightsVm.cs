@@ -35,6 +35,9 @@ public class GerenciaScrapCausesVm
     public string? WoNumber { get; set; }
     public string? Product { get; set; }
     public List<ScrapCauseVm> Causes { get; } = new();
+    public List<ScrapLogEntryVm> Entries { get; } = new();
+    public int TotalQty { get; set; }
+    public int TotalEvents { get; set; }
 }
 
 public class ScrapCauseVm
@@ -42,6 +45,20 @@ public class ScrapCauseVm
     public string Cause { get; set; } = "Sin motivo";
     public int Qty { get; set; }
     public int Events { get; set; }
+}
+
+public class ScrapLogEntryVm
+{
+    public DateTime CreatedAt { get; set; }
+    public string WoNumber { get; set; } = string.Empty;
+    public string Product { get; set; } = string.Empty;
+    public string ErrorCode { get; set; } = string.Empty;
+    public string ErrorCategory { get; set; } = string.Empty;
+    public string ErrorDescription { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public int Qty { get; set; }
+    public string? Comments { get; set; }
 }
 
 public class GerenciaActiveOrdersVm
