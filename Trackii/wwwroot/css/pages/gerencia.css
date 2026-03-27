@@ -83,3 +83,42 @@
     color: var(--text-muted);
     font-size: .78rem;
 }
+
+.day-link {
+    font-weight: 700;
+    color: #0f4ca2;
+    text-decoration: none;
+}
+
+.day-link:hover {
+    text-decoration: underline;
+}
+
+.kpi-highlight {
+    border: 1px solid rgba(23, 88, 177, 0.12);
+}
+
+.kpi-highlight.delay {
+    background: linear-gradient(160deg, #fff, #fff1f2);
+}
+
+.kpi-highlight.incoming {
+    background: linear-gradient(160deg, #fff, #eefbff);
+}
+
+.compact-list {
+    margin: 0 0 14px;
+    padding-left: 16px;
+    color: #31415a;
+}
+
+.compact-list li {
+    margin-bottom: 7px;
+}
+
+.btn-sm-inline {
+    min-height: 34px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: .8rem;
+}

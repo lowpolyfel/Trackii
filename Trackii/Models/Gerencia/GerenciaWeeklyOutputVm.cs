@@ -28,6 +28,8 @@ public class WeeklyOutputOrderDetailVm
 {
     public string WoNumber { get; set; } = string.Empty;
     public string Product { get; set; } = string.Empty;
+    public string? Location { get; set; }
+    public DateTime? WipStartAt { get; set; }
     public int Qty { get; set; }
     public int Scrap { get; set; }
 }

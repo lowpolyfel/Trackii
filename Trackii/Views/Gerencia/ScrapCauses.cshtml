@@ -1,0 +1,34 @@
+@model Trackii.Models.Gerencia.GerenciaScrapCausesVm
+@{
+    ViewData["Title"] = "Causas de Scrap";
+}
+<div class="dashboard">
+    <div class="page-header">
+        <div>
+            <h2>Causas de scrap</h2>
+            <p class="subtitle">Filtro: día @Model.Day?.ToString("yyyy-MM-dd") · WO @(Model.WoNumber ?? "Todas") · Producto @(Model.Product ?? "Todos")</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="DiscreteDay" asp-route-day="@Model.Day?.ToString("yyyy-MM-dd")" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+    </div>
+
+    <div class="card">
+        <div class="table-wrapper">
+            <table class="table">
+                <thead><tr><th>Causa</th><th>Cantidad scrap</th><th>Eventos</th></tr></thead>
+                <tbody>
+                @if (!Model.Causes.Any())
+                {
+                    <tr><td colspan="3" class="empty">Sin causas registradas para los filtros seleccionados.</td></tr>
+                }
+                else
+                {
+                    foreach (var cause in Model.Causes)
+                    {
+                        <tr><td>@cause.Cause</td><td>@cause.Qty</td><td>@cause.Events</td></tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

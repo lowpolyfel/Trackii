@@ -1,0 +1,20 @@
+@using System.Text.Json
+@model Trackii.Models.Gerencia.GerenciaDailyTrendVm
+@{
+    ViewData["Title"] = "Tendencia diaria";
+}
+<div class="dashboard">
+    <div class="page-header">
+        <div><h2>Tendencia diaria de piezas</h2><p class="subtitle">Comportamiento de salida neta en los últimos 30 días.</p></div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+    </div>
+    <div class="card chart-card"><canvas id="dailyTrendChart"></canvas></div>
+</div>
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const labels = @Html.Raw(JsonSerializer.Serialize(Model.TrendChart.Labels));
+const values = @Html.Raw(JsonSerializer.Serialize(Model.TrendChart.Values));
+new Chart(document.getElementById('dailyTrendChart'), { type: 'line', data: { labels, datasets:[{ label:'Piezas', data: values, borderColor:'#1d4ed8', backgroundColor:'rgba(29,78,216,.12)', fill:true, tension:.3 }] }, options:{ responsive:true, maintainAspectRatio:false } });
+</script>
+}

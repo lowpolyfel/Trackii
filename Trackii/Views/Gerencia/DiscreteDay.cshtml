@@ -1,0 +1,59 @@
+@model Trackii.Models.Gerencia.GerenciaDayDetailVm
+@{
+    ViewData["Title"] = "Detalle diario de Discretos";
+}
+<div class="dashboard">
+    <div class="page-header">
+        <div>
+            <h2>Detalle diario - @Model.Day.ToString("yyyy-MM-dd")</h2>
+            <p class="subtitle">Órdenes del día con piezas, scrap y navegación a causas.</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="DiscreteMap" asp-route-sortBy="@Model.SortBy" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver al mapa</a>
+    </div>
+
+    <div class="card">
+        <form method="get" class="filters" asp-action="DiscreteDay">
+            <input type="date" name="day" value="@Model.Day.ToString("yyyy-MM-dd")" />
+            <select name="sortBy">
+                <option value="fifo" selected="@(Model.SortBy == "fifo")">FIFO</option>
+                <option value="qty_desc" selected="@(Model.SortBy == "qty_desc")">Mayor piezas</option>
+                <option value="scrap_desc" selected="@(Model.SortBy == "scrap_desc")">Mayor scrap</option>
+                <option value="wo" selected="@(Model.SortBy == "wo")">No. orden</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Aplicar</button>
+        </form>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>WO</th><th>Producto</th><th>Subfamilia</th><th>Localidad</th><th>Inicio WIP</th><th>Piezas</th><th>Scrap</th><th>Causas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.Orders.Any())
+                {
+                    <tr><td colspan="8" class="empty">Sin órdenes para ese día.</td></tr>
+                }
+                else
+                {
+                    foreach (var order in Model.Orders)
+                    {
+                        <tr>
+                            <td>@order.WoNumber</td>
+                            <td>@order.Product</td>
+                            <td>@order.Subfamily</td>
+                            <td>@(order.Location ?? "-")</td>
+                            <td>@(order.WipStartAt?.ToString("yyyy-MM-dd") ?? "-")</td>
+                            <td>@order.Qty</td>
+                            <td>@order.Scrap</td>
+                            <td>
+                                <a asp-controller="Gerencia" asp-action="ScrapCauses" asp-route-day="@Model.Day.ToString("yyyy-MM-dd")" asp-route-woNumber="@order.WoNumber" asp-route-product="@order.Product" class="btn btn-secondary btn-sm-inline">Ver scrap</a>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,27 @@
+@using System.Text.Json
+@model Trackii.Models.Gerencia.GerenciaErrorCausesVm
+@{
+    ViewData["Title"] = "Causas de errores";
+}
+<div class="dashboard">
+    <div class="page-header">
+        <div><h2>Causas de errores más grandes</h2><p class="subtitle">Top de scrap acumulado por motivo.</p></div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+    </div>
+    <div class="chart-grid">
+        <div class="card chart-card"><canvas id="errorsChart"></canvas></div>
+        <div class="card">
+            <div class="table-wrapper"><table class="table"><thead><tr><th>Causa</th><th>Scrap</th><th>Eventos</th></tr></thead><tbody>
+                @foreach (var item in Model.Causes) { <tr><td>@item.Cause</td><td>@item.Qty</td><td>@item.Events</td></tr> }
+            </tbody></table></div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const labels = @Html.Raw(JsonSerializer.Serialize(Model.CausesChart.Labels));
+const values = @Html.Raw(JsonSerializer.Serialize(Model.CausesChart.Values));
+new Chart(document.getElementById('errorsChart'), { type: 'bar', data: { labels, datasets:[{ data: values, backgroundColor:'#f87171'}] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } });
+</script>
+}

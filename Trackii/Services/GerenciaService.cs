@@ -23,12 +23,8 @@ public class GerenciaService
 
         var production = LoadProductionByLocation(cn);
         vm.ProductionByLocation.AddRange(production);
-        vm.TopLocations.AddRange(production
-            .OrderByDescending(item => item.QtyProduced)
-            .Take(5));
-        vm.BottomLocations.AddRange(production
-            .OrderBy(item => item.QtyProduced)
-            .Take(5));
+        vm.TopLocations.AddRange(production.OrderByDescending(item => item.QtyProduced).Take(5));
+        vm.BottomLocations.AddRange(production.OrderBy(item => item.QtyProduced).Take(5));
 
         foreach (var item in production)
         {
@@ -38,7 +34,12 @@ public class GerenciaService
 
         LoadWipStatusChart(cn, vm.WipStatusChart);
         LoadScanEventChart(cn, vm.ScanEventChart);
-        vm.WeeklyOutput = GetWeeklyOutputMatrix(cn, GetStartOfWeek(DateTime.UtcNow.Date), GetStartOfWeek(DateTime.UtcNow.Date).AddDays(6));
+        LoadWorkOrderStatusChart(cn, vm.OrderStatusChart);
+
+        var weekStart = GetStartOfWeek(DateTime.UtcNow.Date);
+        vm.WeeklyOutput = GetWeeklyOutputMatrix(cn, weekStart, weekStart.AddDays(6), "fifo");
+        vm.DelayedOrders.AddRange(LoadDelayedWorkOrders(cn).Take(6));
+        vm.NewOrders.AddRange(LoadNewestWorkOrders(cn, 6));
 
         return vm;
     }
@@ -54,44 +55,213 @@ public class GerenciaService
             ToDate = toDate
         };
 
-        var today = DateTime.UtcNow.Date;
-        DateTime start;
-        DateTime end;
+        ResolvePeriod(vm.PeriodType, vm.WeekValue, vm.MonthValue, vm.FromDate, vm.ToDate, out var start, out var end, out var normalizedPeriodType, out var normalizedWeek, out var normalizedMonth);
 
-        switch (vm.PeriodType)
-        {
-            case "month" when !string.IsNullOrWhiteSpace(monthValue) && DateTime.TryParse($"{monthValue}-01", out var monthDate):
-                start = new DateTime(monthDate.Year, monthDate.Month, 1);
-                end = start.AddMonths(1).AddDays(-1);
-                break;
-            case "custom" when fromDate.HasValue && toDate.HasValue:
-                start = fromDate.Value.Date;
-                end = toDate.Value.Date;
-                if (end < start) (start, end) = (end, start);
-                break;
-            case "week" when !string.IsNullOrWhiteSpace(weekValue) && TryParseWeekValue(weekValue, out var weekStart):
-                start = weekStart;
-                end = weekStart.AddDays(6);
-                break;
-            default:
-                start = GetStartOfWeek(today);
-                end = start.AddDays(6);
-                vm.PeriodType = "week";
-                vm.WeekValue = $"{ISOWeek.GetYear(start)}-W{ISOWeek.GetWeekOfYear(start):00}";
-                break;
-        }
+        vm.PeriodType = normalizedPeriodType;
+        vm.WeekValue = normalizedWeek;
+        vm.MonthValue = normalizedMonth;
 
         using var cn = new MySqlConnection(_conn);
         cn.Open();
-        vm.Matrix = GetWeeklyOutputMatrix(cn, start, end);
+        vm.Matrix = GetWeeklyOutputMatrix(cn, start, end, "fifo");
 
-        if (string.IsNullOrWhiteSpace(vm.WeekValue))
+        return vm;
+    }
+
+    public GerenciaDiscreteMapVm GetDiscreteMap(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, string? sortBy)
+    {
+        var vm = new GerenciaDiscreteMapVm
         {
-            vm.WeekValue = $"{ISOWeek.GetYear(start)}-W{ISOWeek.GetWeekOfYear(start):00}";
+            PeriodType = string.IsNullOrWhiteSpace(periodType) ? "week" : periodType,
+            WeekValue = weekValue,
+            MonthValue = monthValue,
+            FromDate = fromDate,
+            ToDate = toDate,
+            SortBy = string.IsNullOrWhiteSpace(sortBy) ? "fifo" : sortBy
+        };
+
+        ResolvePeriod(vm.PeriodType, vm.WeekValue, vm.MonthValue, vm.FromDate, vm.ToDate, out var start, out var end, out var normalizedPeriodType, out var normalizedWeek, out var normalizedMonth);
+
+        vm.PeriodType = normalizedPeriodType;
+        vm.WeekValue = normalizedWeek;
+        vm.MonthValue = normalizedMonth;
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+        vm.Matrix = GetWeeklyOutputMatrix(cn, start, end, vm.SortBy);
+
+        return vm;
+    }
+
+    public GerenciaDayDetailVm GetDiscreteDayDetail(DateTime day, string? sortBy)
+    {
+        var vm = new GerenciaDayDetailVm
+        {
+            Day = day.Date,
+            SortBy = string.IsNullOrWhiteSpace(sortBy) ? "fifo" : sortBy
+        };
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT wo.wo_number,
+                   p.part_number,
+                   COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name,
+                   l.name AS location_name,
+                   MIN(wip.created_at) AS wip_start_at,
+                   COALESCE(SUM(wse.qty_in - wse.qty_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(wse.qty_scrap), 0) AS qty_scrap
+            FROM wip_step_execution wse
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily sf ON sf.id = p.id_subfamily
+            LEFT JOIN location l ON l.id = wse.location_id
+            WHERE DATE(wse.create_at) = @day
+            GROUP BY wo.wo_number, p.part_number, subfamily_name, location_name
+            ORDER BY " + BuildSortSql(vm.SortBy), cn);
+
+        cmd.Parameters.AddWithValue("@day", vm.Day);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            var locationOrdinal = rd.GetOrdinal("location_name");
+            var startOrdinal = rd.GetOrdinal("wip_start_at");
+
+            vm.Orders.Add(new DailyOrderDetailVm
+            {
+                WoNumber = rd.GetString("wo_number"),
+                Product = rd.GetString("part_number"),
+                Subfamily = rd.GetString("subfamily_name"),
+                Location = rd.IsDBNull(locationOrdinal) ? null : rd.GetString(locationOrdinal),
+                WipStartAt = rd.IsDBNull(startOrdinal) ? null : rd.GetDateTime(startOrdinal),
+                Qty = Convert.ToInt32(rd.GetInt64("qty_produced")),
+                Scrap = Convert.ToInt32(rd.GetInt64("qty_scrap"))
+            });
         }
-        if (string.IsNullOrWhiteSpace(vm.MonthValue))
+
+        return vm;
+    }
+
+    public GerenciaScrapCausesVm GetScrapCauses(DateTime? day, string? woNumber, string? product)
+    {
+        var vm = new GerenciaScrapCausesVm
         {
-            vm.MonthValue = $"{start:yyyy-MM}";
+            Day = day?.Date,
+            WoNumber = woNumber,
+            Product = product
+        };
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT COALESCE(NULLIF(TRIM(wrl.reason), ''), 'Sin motivo capturado') AS cause,
+                   COALESCE(SUM(wrl.qty), 0) AS qty,
+                   COUNT(*) AS events
+            FROM wip_rework_log wrl
+            JOIN wip_item wip ON wip.id = wrl.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            WHERE (@day IS NULL OR DATE(wrl.created_at) = @day)
+              AND (@wo IS NULL OR wo.wo_number = @wo)
+              AND (@product IS NULL OR p.part_number = @product)
+            GROUP BY cause
+            ORDER BY qty DESC, events DESC", cn);
+
+        cmd.Parameters.AddWithValue("@day", vm.Day);
+        cmd.Parameters.AddWithValue("@wo", string.IsNullOrWhiteSpace(vm.WoNumber) ? null : vm.WoNumber);
+        cmd.Parameters.AddWithValue("@product", string.IsNullOrWhiteSpace(vm.Product) ? null : vm.Product);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            vm.Causes.Add(new ScrapCauseVm
+            {
+                Cause = rd.GetString("cause"),
+                Qty = Convert.ToInt32(rd.GetInt64("qty")),
+                Events = Convert.ToInt32(rd.GetInt64("events"))
+            });
+        }
+
+        return vm;
+    }
+
+    public GerenciaActiveOrdersVm GetActiveOrdersDetail()
+    {
+        var vm = new GerenciaActiveOrdersVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        vm.ActiveOrders.AddRange(LoadWorkOrdersByStatus(cn, "OPEN"));
+        vm.InProgressOrders.AddRange(LoadWorkOrdersByStatus(cn, "IN_PROGRESS"));
+
+        return vm;
+    }
+
+    public GerenciaErrorCausesVm GetErrorCauses()
+    {
+        var vm = new GerenciaErrorCausesVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT COALESCE(NULLIF(TRIM(reason), ''), 'Sin motivo capturado') AS cause,
+                   COALESCE(SUM(qty), 0) AS qty,
+                   COUNT(*) AS events
+            FROM wip_rework_log
+            GROUP BY cause
+            ORDER BY qty DESC
+            LIMIT 10", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            var cause = new ScrapCauseVm
+            {
+                Cause = rd.GetString("cause"),
+                Qty = Convert.ToInt32(rd.GetInt64("qty")),
+                Events = Convert.ToInt32(rd.GetInt64("events"))
+            };
+            vm.Causes.Add(cause);
+            vm.CausesChart.Labels.Add(cause.Cause);
+            vm.CausesChart.Values.Add(cause.Qty);
+        }
+
+        return vm;
+    }
+
+    public GerenciaDailyTrendVm GetDailyTrend()
+    {
+        var vm = new GerenciaDailyTrendVm();
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT DATE(create_at) AS day,
+                   COALESCE(SUM(qty_in - qty_scrap), 0) AS qty
+            FROM wip_step_execution
+            GROUP BY DATE(create_at)
+            ORDER BY day DESC
+            LIMIT 30", cn);
+
+        using var rd = cmd.ExecuteReader();
+        var rows = new List<(DateTime Day, int Qty)>();
+        while (rd.Read())
+        {
+            rows.Add((rd.GetDateTime("day"), Convert.ToInt32(rd.GetInt64("qty"))));
+        }
+
+        rows.Reverse();
+        foreach (var row in rows)
+        {
+            vm.TrendChart.Labels.Add(row.Day.ToString("MM-dd"));
+            vm.TrendChart.Values.Add(row.Qty);
         }
 
         return vm;
@@ -285,7 +455,7 @@ public class GerenciaService
         return items;
     }
 
-    private static WeeklyOutputMatrixVm GetWeeklyOutputMatrix(MySqlConnection cn, DateTime startDate, DateTime endDate)
+    private static WeeklyOutputMatrixVm GetWeeklyOutputMatrix(MySqlConnection cn, DateTime startDate, DateTime endDate, string? sortBy)
     {
         var matrix = new WeeklyOutputMatrixVm
         {
@@ -349,6 +519,8 @@ public class GerenciaService
                    COALESCE(s.name, 'Sin subfamilia') AS subfamily_name,
                    wo.wo_number,
                    p.part_number,
+                   MIN(wip.created_at) AS wip_start_at,
+                   l.name AS location_name,
                    COALESCE(SUM(wse.qty_in - wse.qty_scrap), 0) AS qty_produced,
                    COALESCE(SUM(wse.qty_scrap), 0) AS qty_scrap
             FROM wip_step_execution wse
@@ -356,9 +528,10 @@ public class GerenciaService
             JOIN work_order wo ON wo.id = wip.wo_order_id
             JOIN product p ON p.id = wo.product_id
             LEFT JOIN subfamily s ON s.id = p.id_subfamily
+            LEFT JOIN location l ON l.id = wse.location_id
             WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
-            GROUP BY DATE(wse.create_at), subfamily_name, wo.wo_number, p.part_number
-            ORDER BY day, subfamily_name, wo.wo_number", cn))
+            GROUP BY DATE(wse.create_at), subfamily_name, wo.wo_number, p.part_number, location_name
+            ORDER BY day, subfamily_name, " + BuildSortSql(sortBy), cn))
         {
             detailCmd.Parameters.AddWithValue("@startDate", startDate);
             detailCmd.Parameters.AddWithValue("@endDate", endDate);
@@ -373,10 +546,15 @@ public class GerenciaService
                     detailMap[key] = list;
                 }
 
+                var locationOrdinal = rd.GetOrdinal("location_name");
+                var startOrdinal = rd.GetOrdinal("wip_start_at");
+
                 list.Add(new WeeklyOutputOrderDetailVm
                 {
                     WoNumber = rd.GetString("wo_number"),
                     Product = rd.GetString("part_number"),
+                    Location = rd.IsDBNull(locationOrdinal) ? null : rd.GetString(locationOrdinal),
+                    WipStartAt = rd.IsDBNull(startOrdinal) ? null : rd.GetDateTime(startOrdinal),
                     Qty = Convert.ToInt32(rd.GetInt64("qty_produced")),
                     Scrap = Convert.ToInt32(rd.GetInt64("qty_scrap"))
                 });
@@ -411,6 +589,37 @@ public class GerenciaService
         return matrix;
     }
 
+    private static void ResolvePeriod(string periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, out DateTime start, out DateTime end, out string normalizedPeriodType, out string normalizedWeek, out string normalizedMonth)
+    {
+        var today = DateTime.UtcNow.Date;
+        normalizedPeriodType = periodType;
+
+        switch (periodType)
+        {
+            case "month" when !string.IsNullOrWhiteSpace(monthValue) && DateTime.TryParse($"{monthValue}-01", out var monthDate):
+                start = new DateTime(monthDate.Year, monthDate.Month, 1);
+                end = start.AddMonths(1).AddDays(-1);
+                break;
+            case "custom" when fromDate.HasValue && toDate.HasValue:
+                start = fromDate.Value.Date;
+                end = toDate.Value.Date;
+                if (end < start) (start, end) = (end, start);
+                break;
+            case "week" when !string.IsNullOrWhiteSpace(weekValue) && TryParseWeekValue(weekValue, out var weekStart):
+                start = weekStart;
+                end = weekStart.AddDays(6);
+                break;
+            default:
+                start = GetStartOfWeek(today);
+                end = start.AddDays(6);
+                normalizedPeriodType = "week";
+                break;
+        }
+
+        normalizedWeek = $"{ISOWeek.GetYear(start)}-W{ISOWeek.GetWeekOfYear(start):00}";
+        normalizedMonth = $"{start:yyyy-MM}";
+    }
+
     private static DateTime GetStartOfWeek(DateTime date)
     {
         var diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
@@ -433,6 +642,33 @@ public class GerenciaService
         catch
         {
             return false;
+        }
+    }
+
+    private static string BuildSortSql(string? sortBy)
+    {
+        return (sortBy ?? "fifo").ToLowerInvariant() switch
+        {
+            "qty_desc" => "qty_produced DESC, wo.wo_number",
+            "scrap_desc" => "qty_scrap DESC, wo.wo_number",
+            "wo" => "wo.wo_number",
+            _ => "wip_start_at ASC, wo.wo_number"
+        };
+    }
+
+    private static void LoadWorkOrderStatusChart(MySqlConnection cn, ChartVm chart)
+    {
+        using var cmd = new MySqlCommand(@"
+            SELECT status, COUNT(*) AS total
+            FROM work_order
+            GROUP BY status
+            ORDER BY status", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            chart.Labels.Add(rd.GetString("status"));
+            chart.Values.Add(Convert.ToInt32(rd.GetInt64("total")));
         }
     }
 
@@ -466,6 +702,51 @@ public class GerenciaService
             chart.Labels.Add(rd.GetString("scan_type"));
             chart.Values.Add(Convert.ToInt32(rd.GetInt64("total")));
         }
+    }
+
+    private static List<WorkOrderVm> LoadNewestWorkOrders(MySqlConnection cn, int take)
+    {
+        var items = new List<WorkOrderVm>();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT wo.wo_number,
+                   wo.status,
+                   p.part_number,
+                   wip.id AS wip_id,
+                   wip.status AS wip_status,
+                   wip.created_at,
+                   l.name AS location_name
+            FROM work_order wo
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN wip_item wip ON wip.wo_order_id = wo.id
+            LEFT JOIN route_step rs ON rs.id = wip.current_step_id
+            LEFT JOIN location l ON l.id = rs.location_id
+            ORDER BY COALESCE(wip.created_at, NOW()) DESC, wo.id DESC
+            LIMIT @take", cn);
+
+        cmd.Parameters.AddWithValue("@take", take);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            var wipIdOrdinal = rd.GetOrdinal("wip_id");
+            var wipStatusOrdinal = rd.GetOrdinal("wip_status");
+            var locationOrdinal = rd.GetOrdinal("location_name");
+            var createdAtOrdinal = rd.GetOrdinal("created_at");
+
+            items.Add(new WorkOrderVm
+            {
+                WoNumber = rd.GetString("wo_number"),
+                Status = rd.GetString("status"),
+                Product = rd.GetString("part_number"),
+                WipItemId = rd.IsDBNull(wipIdOrdinal) ? null : rd.GetUInt32(wipIdOrdinal),
+                WipStatus = rd.IsDBNull(wipStatusOrdinal) ? null : rd.GetString(wipStatusOrdinal),
+                CurrentLocation = rd.IsDBNull(locationOrdinal) ? null : rd.GetString(locationOrdinal),
+                WipCreatedAt = rd.IsDBNull(createdAtOrdinal) ? null : rd.GetDateTime(createdAtOrdinal)
+            });
+        }
+
+        return items;
     }
 
     private static List<WorkOrderVm> LoadWorkOrdersByStatus(MySqlConnection cn, string status)
