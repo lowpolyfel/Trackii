@@ -10,41 +10,17 @@
 <div class="dashboard">
     <div class="page-header">
         <div>
-            <h2>Gerencia</h2>
-            <p class="subtitle">Resumen ejecutivo de producción, WIP y eventos de escaneo</p>
+            <h2>Gerencia - Discretos</h2>
+            <p class="subtitle">Vista ejecutiva con foco en cronograma semanal, desempeño de órdenes y alertas críticas.</p>
         </div>
         <div class="header-actions">
-            <a asp-controller="Gerencia" asp-action="Production" class="btn btn-secondary">
-                <i class="fa-solid fa-industry"></i>
-                Producción por localidad
+            <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-primary">
+                <i class="fa-solid fa-map"></i>
+                Ver mapa completo
             </a>
-            <a asp-controller="Gerencia" asp-action="Wip" class="btn btn-secondary">
-                <i class="fa-solid fa-boxes-stacked"></i>
-                Estado de la orden detallado
-            </a>
-            <a asp-controller="Gerencia" asp-action="ScanEvents" class="btn btn-secondary">
-                <i class="fa-solid fa-qrcode"></i>
-                Eventos de escaneo
-            </a>
-            <a asp-controller="Gerencia" asp-action="WorkOrders" class="btn btn-secondary">
-                <i class="fa-solid fa-clipboard-list"></i>
-                Órdenes de trabajo
-            </a>
-            <a asp-controller="Gerencia" asp-action="Throughput" class="btn btn-secondary">
-                <i class="fa-solid fa-chart-line"></i>
-                Throughput diario
-            </a>
-            <a asp-controller="Gerencia" asp-action="ReworkSummary" class="btn btn-secondary">
-                <i class="fa-solid fa-rotate"></i>
-                Rework por localidad
-            </a>
-            <a asp-controller="Gerencia" asp-action="WoHealth" class="btn btn-secondary">
-                <i class="fa-solid fa-heart-pulse"></i>
-                Salud de órdenes
-            </a>
-            <a asp-controller="Gerencia" asp-action="WeeklyOutput" class="btn btn-primary">
-                <i class="fa-solid fa-table-cells-large"></i>
-                Ver más (semanas / meses)
+            <a asp-controller="Gerencia" asp-action="ActiveOrders" class="btn btn-secondary">
+                <i class="fa-solid fa-list-check"></i>
+                Órdenes activas (detalle)
             </a>
         </div>
     </div>
@@ -52,19 +28,11 @@
     <div class="card gerencia-weekly-card">
         <div class="page-header">
             <div>
-                <h3>Salida semanal por subfamilia — Semana actual</h3>
-                <p class="subtitle">
-                    Periodo:
-                    <strong>@Model.WeeklyOutput.StartDate.ToString("yyyy-MM-dd")</strong>
-                    al
-                    <strong>@Model.WeeklyOutput.EndDate.ToString("yyyy-MM-dd")</strong>.
-                    Cada celda muestra <strong>Piezas / Scrap</strong>.
-                </p>
+                <h3>Cronograma semanal por subfamilia (solo piezas)</h3>
+                <p class="subtitle">Haz click en un día para abrir el detalle de órdenes.</p>
             </div>
             <div class="header-actions">
-                <a asp-controller="Gerencia" asp-action="WeeklyOutput" class="btn btn-secondary">
-                    Ver más
-                </a>
+                <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-secondary">Ver más</a>
             </div>
         </div>
         <div class="table-wrapper">
@@ -77,14 +45,13 @@
                             <th>@subfamily</th>
                         }
                         <th class="text-right">Total piezas</th>
-                        <th class="text-right">Total scrap</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (!Model.WeeklyOutput.Rows.Any())
                     {
                         <tr>
-                            <td colspan="@(Model.WeeklyOutput.Subfamilies.Count + 3)" class="empty">Sin datos para la semana actual.</td>
+                            <td colspan="@(Model.WeeklyOutput.Subfamilies.Count + 2)" class="empty">Sin datos para la semana actual.</td>
                         </tr>
                     }
                     else
@@ -92,16 +59,16 @@
                         foreach (var row in Model.WeeklyOutput.Rows)
                         {
                             <tr>
-                                <td>@row.Day.ToString("dddd dd MMM", spanish)</td>
+                                <td>
+                                    <a asp-controller="Gerencia" asp-action="DiscreteDay" asp-route-day="@row.Day.ToString("yyyy-MM-dd")" class="day-link">
+                                        @row.Day.ToString("dddd dd MMM", spanish)
+                                    </a>
+                                </td>
                                 @foreach (var cell in row.Cells)
                                 {
-                                    <td>
-                                        <span class="weekly-pill qty">@cell.Qty</span>
-                                        <span class="weekly-pill scrap">@cell.Scrap</span>
-                                    </td>
+                                    <td><span class="weekly-pill qty">@cell.Qty</span></td>
                                 }
                                 <td class="text-right">@row.TotalQty</td>
-                                <td class="text-right">@row.TotalScrap</td>
                             </tr>
                         }
                     }
@@ -111,90 +78,57 @@
     </div>
 
     <div class="chart-grid">
-        <div class="card chart-card">
-            <h3>Producción por localidad</h3>
+        <div class="card chart-card apple-card">
+            <h3>Órdenes por estado (normalizado)</h3>
+            <canvas id="ordersPieChart"></canvas>
+        </div>
+        <div class="card chart-card apple-card">
+            <h3>Piezas por localidad</h3>
             <canvas id="productionChart"></canvas>
-        </div>
-        <div class="card chart-card">
-            <h3>Estado de la orden</h3>
-            <canvas id="wipChart"></canvas>
-        </div>
-        <div class="card chart-card">
-            <h3>Eventos de escaneo</h3>
-            <canvas id="scanChart"></canvas>
         </div>
     </div>
 
-    <div class="chart-grid">
-        <div class="card">
-            <h3>Localidades con mayor producción</h3>
-            <div class="table-wrapper">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Localidad</th>
-                            <th class="text-right">Piezas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.TopLocations.Any())
-                        {
-                            <tr>
-                                <td colspan="2" class="empty">Sin datos disponibles</td>
-                            </tr>
-                        }
-                        else
-                        {
-                            foreach (var item in Model.TopLocations)
-                            {
-                                <tr>
-                                    <td>@item.Location</td>
-                                    <td class="text-right">@item.QtyProduced</td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
-            </div>
+    <div class="kpi-grid">
+        <div class="card kpi-highlight delay apple-card">
+            <h3>Órdenes atrasadas (+7 días)</h3>
+            @if (!Model.DelayedOrders.Any())
+            {
+                <p class="subtitle">Sin atrasos críticos actualmente.</p>
+            }
+            else
+            {
+                <ul class="compact-list">
+                    @foreach (var order in Model.DelayedOrders)
+                    {
+                        <li><strong>@order.WoNumber</strong> · @order.Product · @order.DaysDelayed días</li>
+                    }
+                </ul>
+            }
+            <a asp-controller="Gerencia" asp-action="WorkOrders" class="btn btn-secondary">Ver más</a>
         </div>
 
-        <div class="card">
-            <h3>Localidades con menor producción</h3>
-            <div class="table-wrapper">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Localidad</th>
-                            <th class="text-right">Piezas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.BottomLocations.Any())
-                        {
-                            <tr>
-                                <td colspan="2" class="empty">Sin datos disponibles</td>
-                            </tr>
-                        }
-                        else
-                        {
-                            foreach (var item in Model.BottomLocations)
-                            {
-                                <tr>
-                                    <td>@item.Location</td>
-                                    <td class="text-right">@item.QtyProduced</td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
-            </div>
+        <div class="card kpi-highlight incoming apple-card">
+            <h3>Órdenes nuevas</h3>
+            @if (!Model.NewOrders.Any())
+            {
+                <p class="subtitle">Sin nuevas órdenes registradas.</p>
+            }
+            else
+            {
+                <ul class="compact-list">
+                    @foreach (var order in Model.NewOrders)
+                    {
+                        <li><strong>@order.WoNumber</strong> · @order.Product · @UiTextHelper.NormalizeStatus(order.Status)</li>
+                    }
+                </ul>
+            }
+            <a asp-controller="Gerencia" asp-action="ActiveOrders" class="btn btn-secondary">Ver más</a>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <script>
         const normalizeStatusLabel = (value) => {
             const map = {
@@ -212,13 +146,42 @@
             return map[key] || value;
         };
 
+        const orderLabelsRaw = @Html.Raw(JsonSerializer.Serialize(Model.OrderStatusChart.Labels));
+        const orderLabels = orderLabelsRaw.map(normalizeStatusLabel);
+        const orderValues = @Html.Raw(JsonSerializer.Serialize(Model.OrderStatusChart.Values));
         const productionLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Labels));
         const productionValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Values));
-        const wipLabelsRaw = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Labels));
-        const wipLabels = wipLabelsRaw.map(normalizeStatusLabel);
-        const wipValues = @Html.Raw(JsonSerializer.Serialize(Model.WipStatusChart.Values));
-        const scanLabels = @Html.Raw(JsonSerializer.Serialize(Model.ScanEventChart.Labels));
-        const scanValues = @Html.Raw(JsonSerializer.Serialize(Model.ScanEventChart.Values));
+        const commonLegend = {
+            labels: {
+                usePointStyle: true,
+                pointStyle: 'circle',
+                boxWidth: 10,
+                color: '#30435f',
+                font: { family: 'Inter, sans-serif', size: 12, weight: '600' }
+            }
+        };
+
+        new Chart(document.getElementById('ordersPieChart'), {
+            type: 'pie',
+            data: {
+                labels: orderLabels,
+                datasets: [{
+                    data: orderValues,
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 12,
+                    backgroundColor: ['#5ea3ff', '#8a8fff', '#36d6b6', '#ff7e8a', '#ffc66d']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: 12 },
+                plugins: {
+                    legend: { ...commonLegend, position: 'bottom' }
+                }
+            }
+        });
 
         new Chart(document.getElementById('productionChart'), {
             type: 'bar',
@@ -227,38 +190,28 @@
                 datasets: [{
                     label: 'Piezas producidas',
                     data: productionValues,
-                    backgroundColor: '#38bdf8'
+                    borderRadius: 12,
+                    borderSkipped: false,
+                    backgroundColor: ['#66b3ff', '#5d9dff', '#7cc3ff', '#93d4ff', '#7bb2ff']
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } }
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#536b8f', font: { weight: '600' } },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: { color: '#6a7f9f' },
+                        grid: { color: 'rgba(80, 110, 150, 0.12)' }
+                    }
+                }
             }
-        });
-
-        new Chart(document.getElementById('wipChart'), {
-            type: 'pie',
-            data: {
-                labels: wipLabels,
-                datasets: [{
-                    data: wipValues,
-                    backgroundColor: ['#60a5fa', '#a78bfa', '#34d399', '#f87171']
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-
-        new Chart(document.getElementById('scanChart'), {
-            type: 'doughnut',
-            data: {
-                labels: scanLabels,
-                datasets: [{
-                    data: scanValues,
-                    backgroundColor: ['#fbbf24', '#22c55e', '#f87171', '#94a3b8']
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
         });
     </script>
 }

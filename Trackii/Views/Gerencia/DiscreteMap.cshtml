@@ -1,0 +1,67 @@
+@model Trackii.Models.Gerencia.GerenciaDiscreteMapVm
+@using System.Globalization
+@{
+    ViewData["Title"] = "Mapa de Discretos";
+    var spanish = new CultureInfo("es-MX");
+}
+
+<div class="dashboard">
+    <div class="page-header">
+        <div>
+            <h2>Mapa de Discretos</h2>
+            <p class="subtitle">Vista extendida con periodo configurable y navegación por día.</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+    </div>
+
+    <div class="card">
+        <form method="get" class="filters discrete-filters">
+            <select name="periodType">
+                <option value="week" selected="@(Model.PeriodType == "week")">Semana</option>
+                <option value="month" selected="@(Model.PeriodType == "month")">Mes</option>
+                <option value="custom" selected="@(Model.PeriodType == "custom")">Rango personalizado</option>
+            </select>
+            <input type="week" name="weekValue" value="@Model.WeekValue" />
+            <input type="month" name="monthValue" value="@Model.MonthValue" />
+            <input type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+            <input type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+            <button type="submit" class="btn btn-primary">Aplicar</button>
+        </form>
+    </div>
+
+    <div class="card gerencia-weekly-card">
+        <p class="subtitle">Período: <strong>@Model.Matrix.StartDate.ToString("yyyy-MM-dd")</strong> a <strong>@Model.Matrix.EndDate.ToString("yyyy-MM-dd")</strong>.</p>
+        <div class="table-wrapper">
+            <table class="table gerencia-weekly-table">
+                <thead>
+                    <tr>
+                        <th>Día</th>
+                        @foreach (var subfamily in Model.Matrix.Subfamilies)
+                        {
+                            <th>@subfamily</th>
+                        }
+                        <th>Total piezas</th>
+                        <th>Total scrap</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.Matrix.Rows)
+                {
+                    <tr>
+                        <td><a asp-controller="Gerencia" asp-action="DiscreteDay" asp-route-day="@row.Day.ToString("yyyy-MM-dd")" class="day-link">@row.Day.ToString("dddd dd MMM", spanish)</a></td>
+                        @foreach (var cell in row.Cells)
+                        {
+                            <td>
+                                <span class="weekly-pill qty">@cell.Qty</span>
+                                <span class="weekly-pill scrap">@cell.Scrap</span>
+                            </td>
+                        }
+                        <td>@row.TotalQty</td>
+                        <td>@row.TotalScrap</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -23,6 +23,48 @@ public class GerenciaController : Controller
         return View($"{ViewBase}Index.cshtml", vm);
     }
 
+    [HttpGet("MapaDiscretos")]
+    public IActionResult DiscreteMap(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, string? sortBy)
+    {
+        var vm = _svc.GetDiscreteMap(periodType, weekValue, monthValue, fromDate, toDate, sortBy);
+        return View($"{ViewBase}DiscreteMap.cshtml", vm);
+    }
+
+    [HttpGet("DiaDiscretos")]
+    public IActionResult DiscreteDay(DateTime day, string? sortBy)
+    {
+        var vm = _svc.GetDiscreteDayDetail(day, sortBy);
+        return View($"{ViewBase}DiscreteDay.cshtml", vm);
+    }
+
+    [HttpGet("CausasScrap")]
+    public IActionResult ScrapCauses(DateTime? day, string? woNumber, string? product)
+    {
+        var vm = _svc.GetScrapCauses(day, woNumber, product);
+        return View($"{ViewBase}ScrapCauses.cshtml", vm);
+    }
+
+    [HttpGet("OrdenesActivas")]
+    public IActionResult ActiveOrders()
+    {
+        var vm = _svc.GetActiveOrdersDetail();
+        return View($"{ViewBase}ActiveOrders.cshtml", vm);
+    }
+
+    [HttpGet("CausasErrores")]
+    public IActionResult ErrorCauses()
+    {
+        var vm = _svc.GetErrorCauses();
+        return View($"{ViewBase}ErrorCauses.cshtml", vm);
+    }
+
+    [HttpGet("TendenciaDiaria")]
+    public IActionResult DailyTrend()
+    {
+        var vm = _svc.GetDailyTrend();
+        return View($"{ViewBase}DailyTrend.cshtml", vm);
+    }
+
     [HttpGet("Produccion")]
     public IActionResult Production()
     {

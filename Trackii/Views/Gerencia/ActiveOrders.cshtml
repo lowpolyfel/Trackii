@@ -1,0 +1,27 @@
+@model Trackii.Models.Gerencia.GerenciaActiveOrdersVm
+@{
+    ViewData["Title"] = "Órdenes activas - Detalle";
+}
+<div class="dashboard">
+    <div class="page-header">
+        <div>
+            <h2>Órdenes activas detalladas</h2>
+            <p class="subtitle">Panel extendido para órdenes abiertas y en progreso.</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+    </div>
+
+    <div class="card">
+        <h3>Abiertas</h3>
+        <div class="table-wrapper"><table class="table"><thead><tr><th>WO</th><th>Producto</th><th>Estado</th><th>WIP</th><th>Localidad</th></tr></thead><tbody>
+            @foreach (var item in Model.ActiveOrders) { <tr><td>@item.WoNumber</td><td>@item.Product</td><td>@UiTextHelper.NormalizeStatus(item.Status)</td><td>@(item.WipItemId?.ToString() ?? "-")</td><td>@(item.CurrentLocation ?? "-")</td></tr> }
+        </tbody></table></div>
+    </div>
+
+    <div class="card">
+        <h3>En progreso</h3>
+        <div class="table-wrapper"><table class="table"><thead><tr><th>WO</th><th>Producto</th><th>Estado</th><th>WIP</th><th>Estado WIP</th><th>Localidad</th></tr></thead><tbody>
+            @foreach (var item in Model.InProgressOrders) { <tr><td>@item.WoNumber</td><td>@item.Product</td><td>@UiTextHelper.NormalizeStatus(item.Status)</td><td>@(item.WipItemId?.ToString() ?? "-")</td><td>@(item.WipStatus is null ? "-" : UiTextHelper.NormalizeStatus(item.WipStatus))</td><td>@(item.CurrentLocation ?? "-")</td></tr> }
+        </tbody></table></div>
+    </div>
+</div>
