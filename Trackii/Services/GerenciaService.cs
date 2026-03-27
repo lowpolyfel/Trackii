@@ -108,7 +108,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -254,7 +254,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -354,7 +354,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -462,7 +462,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -523,7 +523,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -558,7 +558,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
