@@ -1,27 +1,254 @@
+@using System.Text.Json
 @model Trackii.Models.Gerencia.GerenciaActiveOrdersVm
 @{
     ViewData["Title"] = "Órdenes activas - Detalle";
+
+    var allOrders = Model.ActiveOrders.Concat(Model.InProgressOrders).ToList();
+    var recentThreshold = DateTime.UtcNow.AddHours(-24);
+    var recentCreatedCount = allOrders.Count(x => x.WipCreatedAt.HasValue && x.WipCreatedAt.Value >= recentThreshold);
+    var withLocationCount = allOrders.Count(x => !string.IsNullOrWhiteSpace(x.CurrentLocation));
+
+    var locationRows = allOrders
+        .Where(x => !string.IsNullOrWhiteSpace(x.CurrentLocation))
+        .GroupBy(x => x.CurrentLocation!)
+        .Select(g => new { Location = g.Key, Count = g.Count() })
+        .OrderByDescending(x => x.Count)
+        .ThenBy(x => x.Location)
+        .Take(10)
+        .ToList();
+
+    var locationLabels = locationRows.Select(x => x.Location).ToList();
+    var locationValues = locationRows.Select(x => x.Count).ToList();
+
+    var statusRows = new[]
+    {
+        new { Label = "Abiertas", Count = Model.ActiveOrders.Count },
+        new { Label = "En progreso", Count = Model.InProgressOrders.Count }
+    };
+
+    var statusLabels = statusRows.Select(x => x.Label).ToList();
+    var statusValues = statusRows.Select(x => x.Count).ToList();
+
+    var dailyRows = allOrders
+        .Where(x => x.WipCreatedAt.HasValue)
+        .GroupBy(x => x.WipCreatedAt!.Value.Date)
+        .Select(g => new { Day = g.Key, Count = g.Count() })
+        .OrderByDescending(x => x.Day)
+        .Take(7)
+        .OrderBy(x => x.Day)
+        .ToList();
+
+    var dailyLabels = dailyRows.Select(x => x.Day.ToString("MM-dd")).ToList();
+    var dailyValues = dailyRows.Select(x => x.Count).ToList();
 }
 <div class="dashboard">
-    <div class="page-header">
+    <div class="page-header error-causes-header">
         <div>
             <h2>Órdenes activas detalladas</h2>
-            <p class="subtitle">Panel extendido para órdenes abiertas y en progreso.</p>
+            <p class="subtitle">Panel operativo con métricas, distribución y detalle de órdenes abiertas/en progreso.</p>
         </div>
         <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
     </div>
 
-    <div class="card">
-        <h3>Abiertas</h3>
-        <div class="table-wrapper"><table class="table"><thead><tr><th>WO</th><th>Producto</th><th>Estado</th><th>WIP</th><th>Localidad</th></tr></thead><tbody>
-            @foreach (var item in Model.ActiveOrders) { <tr><td>@item.WoNumber</td><td>@item.Product</td><td>@UiTextHelper.NormalizeStatus(item.Status)</td><td>@(item.WipItemId?.ToString() ?? "-")</td><td>@(item.CurrentLocation ?? "-")</td></tr> }
-        </tbody></table></div>
+    <section class="error-kpis" aria-label="KPIs de órdenes activas">
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Órdenes abiertas</span>
+            <strong class="kpi-value">@Model.ActiveOrders.Count.ToString("N0")</strong>
+            <small>Estado OPEN.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Órdenes en progreso</span>
+            <strong class="kpi-value">@Model.InProgressOrders.Count.ToString("N0")</strong>
+            <small>Estado IN_PROGRESS.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Recién creadas (24h)</span>
+            <strong class="kpi-value">@recentCreatedCount.ToString("N0")</strong>
+            <small>Basado en fecha de creación de WIP.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Con localidad asignada</span>
+            <strong class="kpi-value">@withLocationCount.ToString("N0")</strong>
+            <small>Sobre @allOrders.Count órdenes activas.</small>
+        </article>
+    </section>
+
+    <div class="chart-grid error-causes-grid">
+        <div class="card chart-card apple-card error-causes-card">
+            <div class="card-heading">
+                <h3>Órdenes activas por localidad</h3>
+                <span class="chip">Top 10</span>
+            </div>
+            <div id="activeOrdersLocationChart" class="chart-host chart-host-lg"></div>
+        </div>
+        <div class="card chart-card apple-card error-causes-card">
+            <div class="card-heading">
+                <h3>Distribución de estados</h3>
+                <span class="chip chip-muted">Abiertas vs progreso</span>
+            </div>
+            <div id="activeOrdersStatusChart" class="chart-host chart-host-lg"></div>
+        </div>
     </div>
 
-    <div class="card">
-        <h3>En progreso</h3>
-        <div class="table-wrapper"><table class="table"><thead><tr><th>WO</th><th>Producto</th><th>Estado</th><th>WIP</th><th>Estado WIP</th><th>Localidad</th></tr></thead><tbody>
-            @foreach (var item in Model.InProgressOrders) { <tr><td>@item.WoNumber</td><td>@item.Product</td><td>@UiTextHelper.NormalizeStatus(item.Status)</td><td>@(item.WipItemId?.ToString() ?? "-")</td><td>@(item.WipStatus is null ? "-" : UiTextHelper.NormalizeStatus(item.WipStatus))</td><td>@(item.CurrentLocation ?? "-")</td></tr> }
-        </tbody></table></div>
+    <div class="chart-grid error-causes-grid">
+        <div class="card chart-card apple-card error-causes-card">
+            <div class="card-heading">
+                <h3>Tendencia de creación (7 días)</h3>
+                <span class="chip chip-muted">Recientes</span>
+            </div>
+            <div id="activeOrdersTrendChart" class="chart-host chart-host-lg"></div>
+        </div>
+        <div class="card apple-card error-causes-card">
+            <div class="card-heading">
+                <h3>Abiertas</h3>
+                <span class="chip">OPEN</span>
+            </div>
+            <div class="table-wrapper table-wrapper-tall">
+                <table class="table">
+                    <thead><tr><th>WO</th><th>Producto</th><th>Estado</th><th>WIP</th><th>Localidad</th></tr></thead>
+                    <tbody>
+                        @if (!Model.ActiveOrders.Any())
+                        {
+                            <tr><td colspan="5" class="empty">No hay órdenes abiertas activas.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var item in Model.ActiveOrders)
+                            {
+                                <tr>
+                                    <td>@item.WoNumber</td>
+                                    <td>@item.Product</td>
+                                    <td><span class="chip chip-muted">@UiTextHelper.NormalizeStatus(item.Status)</span></td>
+                                    <td>@(item.WipItemId?.ToString() ?? "-")</td>
+                                    <td>@(item.CurrentLocation ?? "-")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card apple-card error-causes-card">
+        <div class="card-heading">
+            <h3>En progreso</h3>
+            <span class="chip">IN_PROGRESS</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead><tr><th>WO</th><th>Producto</th><th>Estado</th><th>WIP</th><th>Estado WIP</th><th>Localidad</th></tr></thead>
+                <tbody>
+                    @if (!Model.InProgressOrders.Any())
+                    {
+                        <tr><td colspan="6" class="empty">No hay órdenes en progreso activas.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.InProgressOrders)
+                        {
+                            <tr>
+                                <td>@item.WoNumber</td>
+                                <td>@item.Product</td>
+                                <td><span class="chip chip-muted">@UiTextHelper.NormalizeStatus(item.Status)</span></td>
+                                <td>@(item.WipItemId?.ToString() ?? "-")</td>
+                                <td>@(item.WipStatus is null ? "-" : UiTextHelper.NormalizeStatus(item.WipStatus))</td>
+                                <td>@(item.CurrentLocation ?? "-")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+const locationLabels = @Html.Raw(JsonSerializer.Serialize(locationLabels));
+const locationValues = @Html.Raw(JsonSerializer.Serialize(locationValues));
+const statusLabels = @Html.Raw(JsonSerializer.Serialize(statusLabels));
+const statusValues = @Html.Raw(JsonSerializer.Serialize(statusValues));
+const dailyLabels = @Html.Raw(JsonSerializer.Serialize(dailyLabels));
+const dailyValues = @Html.Raw(JsonSerializer.Serialize(dailyValues));
+
+const sharedChartConfig = {
+    chart: {
+        height: 360,
+        toolbar: { show: false },
+        fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+        animations: { enabled: true, easing: 'easeinout', speed: 420 }
+    },
+    noData: { text: 'Sin datos para mostrar', align: 'center', verticalAlign: 'middle' },
+    grid: { borderColor: 'rgba(80, 110, 150, 0.12)', strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    tooltip: { theme: 'light' }
+};
+
+new ApexCharts(document.getElementById('activeOrdersLocationChart'), {
+    ...sharedChartConfig,
+    chart: { ...sharedChartConfig.chart, type: 'bar' },
+    series: [{ name: 'Órdenes', data: locationValues }],
+    colors: ['#2d8bff'],
+    plotOptions: { bar: { borderRadius: 9, horizontal: true, barHeight: '56%' } },
+    legend: { show: false },
+    xaxis: {
+        categories: locationLabels,
+        labels: { formatter: value => Math.round(value).toLocaleString('es-MX'), style: { colors: '#5f7392' } }
+    },
+    yaxis: { labels: { style: { colors: '#4d6283', fontSize: '12px', fontWeight: 600 } } }
+}).render();
+
+new ApexCharts(document.getElementById('activeOrdersStatusChart'), {
+    ...sharedChartConfig,
+    chart: { ...sharedChartConfig.chart, type: 'donut' },
+    labels: statusLabels,
+    series: statusValues,
+    colors: ['#0ea5e9', '#7c3aed'],
+    legend: { position: 'bottom' },
+    plotOptions: {
+        pie: {
+            donut: {
+                size: '64%',
+                labels: {
+                    show: true,
+                    total: {
+                        show: true,
+                        label: 'Total',
+                        formatter: function (w) {
+                            return w.globals.seriesTotals.reduce((a, b) => a + b, 0).toLocaleString('es-MX');
+                        }
+                    }
+                }
+            }
+        }
+    }
+}).render();
+
+new ApexCharts(document.getElementById('activeOrdersTrendChart'), {
+    ...sharedChartConfig,
+    chart: { ...sharedChartConfig.chart, type: 'area' },
+    series: [{ name: 'Órdenes creadas', data: dailyValues }],
+    colors: ['#16a34a'],
+    stroke: { curve: 'smooth', width: 3 },
+    fill: {
+        type: 'gradient',
+        gradient: {
+            shadeIntensity: 1,
+            opacityFrom: 0.32,
+            opacityTo: 0.04,
+            stops: [0, 90, 100]
+        }
+    },
+    markers: { size: 4 },
+    xaxis: { categories: dailyLabels, labels: { style: { colors: '#4d6283' } } },
+    yaxis: {
+        labels: {
+            formatter: value => Math.round(value).toLocaleString('es-MX'),
+            style: { colors: '#5f7392' }
+        }
+    }
+}).render();
+</script>
+}

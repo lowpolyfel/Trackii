@@ -7,8 +7,20 @@ public class GerenciaDiscreteMapVm
     public string? MonthValue { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
+    public string MetricView { get; set; } = "pieces";
+    public string? SelectedSubfamily { get; set; }
     public string SortBy { get; set; } = "fifo";
     public WeeklyOutputMatrixVm Matrix { get; set; } = new();
+    public ChartVm SubfamilyTopProductsChart { get; } = new();
+    public List<SubfamilyProductStatVm> SubfamilyTopProducts { get; } = new();
+}
+
+public class SubfamilyProductStatVm
+{
+    public string Product { get; set; } = string.Empty;
+    public int Qty { get; set; }
+    public int Scrap { get; set; }
+    public int Orders { get; set; }
 }
 
 public class GerenciaDayDetailVm

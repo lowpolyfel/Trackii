@@ -21,6 +21,8 @@ public class WeeklyOutputCellVm
     public string Subfamily { get; set; } = string.Empty;
     public int Qty { get; set; }
     public int Scrap { get; set; }
+    public int OrdersCount { get; set; }
+    public int ProductsCount { get; set; }
     public List<WeeklyOutputOrderDetailVm> Details { get; set; } = new();
 }
 

@@ -68,7 +68,7 @@ public class GerenciaService
         return vm;
     }
 
-    public GerenciaDiscreteMapVm GetDiscreteMap(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, string? sortBy)
+    public GerenciaDiscreteMapVm GetDiscreteMap(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, string? sortBy, string? metricView, string? selectedSubfamily)
     {
         var vm = new GerenciaDiscreteMapVm
         {
@@ -77,6 +77,8 @@ public class GerenciaService
             MonthValue = monthValue,
             FromDate = fromDate,
             ToDate = toDate,
+            MetricView = NormalizeMetricView(metricView),
+            SelectedSubfamily = selectedSubfamily,
             SortBy = string.IsNullOrWhiteSpace(sortBy) ? "fifo" : sortBy
         };
 
@@ -89,6 +91,8 @@ public class GerenciaService
         using var cn = new MySqlConnection(_conn);
         cn.Open();
         vm.Matrix = GetWeeklyOutputMatrix(cn, start, end, vm.SortBy);
+        vm.SelectedSubfamily = ResolveSelectedSubfamily(vm.Matrix.Subfamilies, vm.SelectedSubfamily);
+        LoadSubfamilyTopProducts(cn, vm, start, end);
 
         return vm;
     }
@@ -695,6 +699,37 @@ public class GerenciaService
             }
         }
 
+        var countMap = new Dictionary<string, (int OrdersCount, int ProductsCount)>(StringComparer.OrdinalIgnoreCase);
+        using (var countCmd = new MySqlCommand(@"
+            WITH step_metrics AS (
+                SELECT wse.*
+                FROM wip_step_execution wse
+            )
+            SELECT DATE(sm.create_at) AS day,
+                   COALESCE(s.name, 'Sin subfamilia') AS subfamily_name,
+                   COUNT(DISTINCT wo.id) AS orders_count,
+                   COUNT(DISTINCT p.id) AS products_count
+            FROM step_metrics sm
+            JOIN wip_item wip ON wip.id = sm.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily s ON s.id = p.id_subfamily
+            WHERE DATE(sm.create_at) BETWEEN @startDate AND @endDate
+            GROUP BY DATE(sm.create_at), subfamily_name", cn))
+        {
+            countCmd.Parameters.AddWithValue("@startDate", startDate);
+            countCmd.Parameters.AddWithValue("@endDate", endDate);
+
+            using var rd = countCmd.ExecuteReader();
+            while (rd.Read())
+            {
+                var key = $"{rd.GetDateTime("day"):yyyy-MM-dd}|{rd.GetString("subfamily_name")}";
+                countMap[key] = (
+                    OrdersCount: Convert.ToInt32(rd.GetInt64("orders_count")),
+                    ProductsCount: Convert.ToInt32(rd.GetInt64("products_count")));
+            }
+        }
+
         for (var day = startDate.Date; day <= endDate.Date; day = day.AddDays(1))
         {
             var row = new WeeklyOutputDayRowVm { Day = day };
@@ -704,12 +739,15 @@ public class GerenciaService
                 var key = $"{day:yyyy-MM-dd}|{subfamily}";
                 var values = map.TryGetValue(key, out var found) ? found : (Qty: 0, Scrap: 0);
                 var details = detailMap.TryGetValue(key, out var detailRows) ? detailRows : new List<WeeklyOutputOrderDetailVm>();
+                var counts = countMap.TryGetValue(key, out var foundCounts) ? foundCounts : (OrdersCount: 0, ProductsCount: 0);
 
                 row.Cells.Add(new WeeklyOutputCellVm
                 {
                     Subfamily = subfamily,
                     Qty = values.Qty,
                     Scrap = values.Scrap,
+                    OrdersCount = counts.OrdersCount,
+                    ProductsCount = counts.ProductsCount,
                     Details = details
                 });
 
@@ -721,6 +759,79 @@ public class GerenciaService
         }
 
         return matrix;
+    }
+
+    private static string NormalizeMetricView(string? metricView)
+    {
+        return metricView?.ToLowerInvariant() switch
+        {
+            "orders" => "orders",
+            "products" => "products",
+            _ => "pieces"
+        };
+    }
+
+    private static string? ResolveSelectedSubfamily(List<string> subfamilies, string? selectedSubfamily)
+    {
+        if (subfamilies.Count == 0) return null;
+        if (!string.IsNullOrWhiteSpace(selectedSubfamily) && subfamilies.Contains(selectedSubfamily))
+        {
+            return selectedSubfamily;
+        }
+
+        return subfamilies[0];
+    }
+
+    private static void LoadSubfamilyTopProducts(MySqlConnection cn, GerenciaDiscreteMapVm vm, DateTime startDate, DateTime endDate)
+    {
+        if (string.IsNullOrWhiteSpace(vm.SelectedSubfamily))
+        {
+            return;
+        }
+
+        using var cmd = new MySqlCommand(@"
+            WITH step_metrics AS (
+                SELECT wse.*,
+                       GREATEST(
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
+                           0
+                       ) AS calc_scrap
+                FROM wip_step_execution wse
+            )
+            SELECT p.part_number,
+                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap,
+                   COUNT(DISTINCT wo.id) AS orders_count
+            FROM step_metrics sm
+            JOIN wip_item wip ON wip.id = sm.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily s ON s.id = p.id_subfamily
+            WHERE DATE(sm.create_at) BETWEEN @startDate AND @endDate
+              AND COALESCE(s.name, 'Sin subfamilia') = @subfamily
+            GROUP BY p.id, p.part_number
+            ORDER BY qty_produced DESC, orders_count DESC, p.part_number
+            LIMIT 10", cn);
+
+        cmd.Parameters.AddWithValue("@startDate", startDate);
+        cmd.Parameters.AddWithValue("@endDate", endDate);
+        cmd.Parameters.AddWithValue("@subfamily", vm.SelectedSubfamily);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            var row = new SubfamilyProductStatVm
+            {
+                Product = rd.GetString("part_number"),
+                Qty = Convert.ToInt32(rd.GetInt64("qty_produced")),
+                Scrap = Convert.ToInt32(rd.GetInt64("qty_scrap")),
+                Orders = Convert.ToInt32(rd.GetInt64("orders_count"))
+            };
+
+            vm.SubfamilyTopProducts.Add(row);
+            vm.SubfamilyTopProductsChart.Labels.Add(row.Product);
+            vm.SubfamilyTopProductsChart.Values.Add(row.Qty);
+        }
     }
 
     private static void ResolvePeriod(string periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, out DateTime start, out DateTime end, out string normalizedPeriodType, out string normalizedWeek, out string normalizedMonth)

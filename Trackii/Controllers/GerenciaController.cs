@@ -24,9 +24,9 @@ public class GerenciaController : Controller
     }
 
     [HttpGet("MapaDiscretos")]
-    public IActionResult DiscreteMap(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, string? sortBy)
+    public IActionResult DiscreteMap(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, string? sortBy, string? metricView, string? selectedSubfamily)
     {
-        var vm = _svc.GetDiscreteMap(periodType, weekValue, monthValue, fromDate, toDate, sortBy);
+        var vm = _svc.GetDiscreteMap(periodType, weekValue, monthValue, fromDate, toDate, sortBy, metricView, selectedSubfamily);
         return View($"{ViewBase}DiscreteMap.cshtml", vm);
     }
 
