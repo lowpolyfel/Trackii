@@ -10,7 +10,7 @@
 <div class="dashboard">
     <div class="page-header">
         <div>
-            <h2>Gerencia 360° - Discretos</h2>
+            <h2>Gerencia - Discretos</h2>
             <p class="subtitle">Vista ejecutiva con foco en cronograma semanal, desempeño de órdenes y alertas críticas.</p>
         </div>
         <div class="header-actions">
@@ -29,7 +29,7 @@
         <div class="page-header">
             <div>
                 <h3>Cronograma semanal por subfamilia (solo piezas)</h3>
-                <p class="subtitle">Orden base FIFO. Haz click en un día para abrir detalle de órdenes.</p>
+                <p class="subtitle">Haz click en un día para abrir el detalle de órdenes.</p>
             </div>
             <div class="header-actions">
                 <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-secondary">Ver más</a>
@@ -78,18 +78,18 @@
     </div>
 
     <div class="chart-grid">
-        <div class="card chart-card">
+        <div class="card chart-card apple-card">
             <h3>Órdenes por estado (normalizado)</h3>
             <canvas id="ordersPieChart"></canvas>
         </div>
-        <div class="card chart-card">
+        <div class="card chart-card apple-card">
             <h3>Piezas por localidad</h3>
             <canvas id="productionChart"></canvas>
         </div>
     </div>
 
     <div class="kpi-grid">
-        <div class="card kpi-highlight delay">
+        <div class="card kpi-highlight delay apple-card">
             <h3>Órdenes atrasadas (+7 días)</h3>
             @if (!Model.DelayedOrders.Any())
             {
@@ -107,7 +107,7 @@
             <a asp-controller="Gerencia" asp-action="WorkOrders" class="btn btn-secondary">Ver más</a>
         </div>
 
-        <div class="card kpi-highlight incoming">
+        <div class="card kpi-highlight incoming apple-card">
             <h3>Órdenes nuevas</h3>
             @if (!Model.NewOrders.Any())
             {
@@ -151,6 +151,15 @@
         const orderValues = @Html.Raw(JsonSerializer.Serialize(Model.OrderStatusChart.Values));
         const productionLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Labels));
         const productionValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Values));
+        const commonLegend = {
+            labels: {
+                usePointStyle: true,
+                pointStyle: 'circle',
+                boxWidth: 10,
+                color: '#30435f',
+                font: { family: 'Inter, sans-serif', size: 12, weight: '600' }
+            }
+        };
 
         new Chart(document.getElementById('ordersPieChart'), {
             type: 'pie',
@@ -158,10 +167,20 @@
                 labels: orderLabels,
                 datasets: [{
                     data: orderValues,
-                    backgroundColor: ['#60a5fa', '#a78bfa', '#34d399', '#f87171', '#fbbf24']
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 12,
+                    backgroundColor: ['#5ea3ff', '#8a8fff', '#36d6b6', '#ff7e8a', '#ffc66d']
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: 12 },
+                plugins: {
+                    legend: { ...commonLegend, position: 'bottom' }
+                }
+            }
         });
 
         new Chart(document.getElementById('productionChart'), {
@@ -171,13 +190,27 @@
                 datasets: [{
                     label: 'Piezas producidas',
                     data: productionValues,
-                    backgroundColor: '#38bdf8'
+                    borderRadius: 12,
+                    borderSkipped: false,
+                    backgroundColor: ['#66b3ff', '#5d9dff', '#7cc3ff', '#93d4ff', '#7bb2ff']
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } }
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#536b8f', font: { weight: '600' } },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: { color: '#6a7f9f' },
+                        grid: { color: 'rgba(80, 110, 150, 0.12)' }
+                    }
+                }
             }
         });
     </script>

@@ -105,20 +105,28 @@ public class GerenciaService
         cn.Open();
 
         using var cmd = new MySqlCommand(@"
+            WITH step_metrics AS (
+                SELECT wse.*,
+                       GREATEST(
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           0
+                       ) AS calc_scrap
+                FROM wip_step_execution wse
+            )
             SELECT wo.wo_number,
                    p.part_number,
                    COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name,
                    l.name AS location_name,
                    MIN(wip.created_at) AS wip_start_at,
-                   COALESCE(SUM(wse.qty_in - wse.qty_scrap), 0) AS qty_produced,
-                   COALESCE(SUM(wse.qty_scrap), 0) AS qty_scrap
-            FROM wip_step_execution wse
-            JOIN wip_item wip ON wip.id = wse.wip_item_id
+                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap
+            FROM step_metrics sm
+            JOIN wip_item wip ON wip.id = sm.wip_item_id
             JOIN work_order wo ON wo.id = wip.wo_order_id
             JOIN product p ON p.id = wo.product_id
             LEFT JOIN subfamily sf ON sf.id = p.id_subfamily
-            LEFT JOIN location l ON l.id = wse.location_id
-            WHERE DATE(wse.create_at) = @day
+            LEFT JOIN location l ON l.id = sm.location_id
+            WHERE DATE(sm.create_at) = @day
             GROUP BY wo.wo_number, p.part_number, subfamily_name, location_name
             ORDER BY " + BuildSortSql(vm.SortBy), cn);
 
@@ -243,9 +251,17 @@ public class GerenciaService
         cn.Open();
 
         using var cmd = new MySqlCommand(@"
+            WITH step_metrics AS (
+                SELECT wse.*,
+                       GREATEST(
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           0
+                       ) AS calc_scrap
+                FROM wip_step_execution wse
+            )
             SELECT DATE(create_at) AS day,
-                   COALESCE(SUM(qty_in - qty_scrap), 0) AS qty
-            FROM wip_step_execution
+                   COALESCE(SUM(qty_in - calc_scrap), 0) AS qty
+            FROM step_metrics
             GROUP BY DATE(create_at)
             ORDER BY day DESC
             LIMIT 30", cn);
@@ -335,10 +351,18 @@ public class GerenciaService
         cn.Open();
 
         using var cmd = new MySqlCommand(@"
-            SELECT DATE(wse.create_at) AS day,
-                   SUM(wse.qty_in - wse.qty_scrap) AS qty
-            FROM wip_step_execution wse
-            GROUP BY DATE(wse.create_at)
+            WITH step_metrics AS (
+                SELECT wse.*,
+                       GREATEST(
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           0
+                       ) AS calc_scrap
+                FROM wip_step_execution wse
+            )
+            SELECT DATE(create_at) AS day,
+                   SUM(qty_in - calc_scrap) AS qty
+            FROM step_metrics
+            GROUP BY DATE(create_at)
             ORDER BY day DESC
             LIMIT 14", cn);
 
@@ -435,10 +459,18 @@ public class GerenciaService
         var items = new List<LocationProductionVm>();
 
         using var cmd = new MySqlCommand(@"
+            WITH step_metrics AS (
+                SELECT wse.*,
+                       GREATEST(
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           0
+                       ) AS calc_scrap
+                FROM wip_step_execution wse
+            )
             SELECT l.name,
-                   COALESCE(SUM(wse.qty_in - wse.qty_scrap), 0) AS qty
+                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty
             FROM location l
-            LEFT JOIN wip_step_execution wse ON wse.location_id = l.id
+            LEFT JOIN step_metrics sm ON sm.location_id = l.id
             GROUP BY l.id, l.name
             ORDER BY qty DESC, l.name", cn);
 
@@ -488,17 +520,25 @@ public class GerenciaService
 
         var map = new Dictionary<string, (int Qty, int Scrap)>(StringComparer.OrdinalIgnoreCase);
         using (var dataCmd = new MySqlCommand(@"
-            SELECT DATE(wse.create_at) AS day,
+            WITH step_metrics AS (
+                SELECT wse.*,
+                       GREATEST(
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           0
+                       ) AS calc_scrap
+                FROM wip_step_execution wse
+            )
+            SELECT DATE(sm.create_at) AS day,
                    COALESCE(s.name, 'Sin subfamilia') AS subfamily_name,
-                   COALESCE(SUM(wse.qty_in - wse.qty_scrap), 0) AS qty_produced,
-                   COALESCE(SUM(wse.qty_scrap), 0) AS qty_scrap
-            FROM wip_step_execution wse
-            JOIN wip_item wip ON wip.id = wse.wip_item_id
+                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap
+            FROM step_metrics sm
+            JOIN wip_item wip ON wip.id = sm.wip_item_id
             JOIN work_order wo ON wo.id = wip.wo_order_id
             JOIN product p ON p.id = wo.product_id
             LEFT JOIN subfamily s ON s.id = p.id_subfamily
-            WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
-            GROUP BY DATE(wse.create_at), subfamily_name", cn))
+            WHERE DATE(sm.create_at) BETWEEN @startDate AND @endDate
+            GROUP BY DATE(sm.create_at), subfamily_name", cn))
         {
             dataCmd.Parameters.AddWithValue("@startDate", startDate);
             dataCmd.Parameters.AddWithValue("@endDate", endDate);
@@ -515,22 +555,30 @@ public class GerenciaService
 
         var detailMap = new Dictionary<string, List<WeeklyOutputOrderDetailVm>>(StringComparer.OrdinalIgnoreCase);
         using (var detailCmd = new MySqlCommand(@"
-            SELECT DATE(wse.create_at) AS day,
+            WITH step_metrics AS (
+                SELECT wse.*,
+                       GREATEST(
+                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at), wse.qty_in) - wse.qty_in,
+                           0
+                       ) AS calc_scrap
+                FROM wip_step_execution wse
+            )
+            SELECT DATE(sm.create_at) AS day,
                    COALESCE(s.name, 'Sin subfamilia') AS subfamily_name,
                    wo.wo_number,
                    p.part_number,
                    MIN(wip.created_at) AS wip_start_at,
                    l.name AS location_name,
-                   COALESCE(SUM(wse.qty_in - wse.qty_scrap), 0) AS qty_produced,
-                   COALESCE(SUM(wse.qty_scrap), 0) AS qty_scrap
-            FROM wip_step_execution wse
-            JOIN wip_item wip ON wip.id = wse.wip_item_id
+                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap
+            FROM step_metrics sm
+            JOIN wip_item wip ON wip.id = sm.wip_item_id
             JOIN work_order wo ON wo.id = wip.wo_order_id
             JOIN product p ON p.id = wo.product_id
             LEFT JOIN subfamily s ON s.id = p.id_subfamily
-            LEFT JOIN location l ON l.id = wse.location_id
-            WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
-            GROUP BY DATE(wse.create_at), subfamily_name, wo.wo_number, p.part_number, location_name
+            LEFT JOIN location l ON l.id = sm.location_id
+            WHERE DATE(sm.create_at) BETWEEN @startDate AND @endDate
+            GROUP BY DATE(sm.create_at), subfamily_name, wo.wo_number, p.part_number, location_name
             ORDER BY day, subfamily_name, " + BuildSortSql(sortBy), cn))
         {
             detailCmd.Parameters.AddWithValue("@startDate", startDate);

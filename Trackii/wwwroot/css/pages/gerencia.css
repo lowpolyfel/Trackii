@@ -122,3 +122,48 @@
     border-radius: 10px;
     font-size: .8rem;
 }
+
+.apple-card {
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.96), rgba(242, 247, 255, 0.9));
+    box-shadow: 0 20px 40px rgba(15, 40, 80, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.chart-card.apple-card canvas {
+    border-radius: 16px;
+    background: radial-gradient(circle at 15% 15%, rgba(255,255,255,.8), rgba(233,241,255,.55));
+    padding: 10px;
+}
+
+.discrete-filters {
+    gap: 10px;
+}
+
+.discrete-filters input[type="date"],
+.discrete-filters input[type="month"],
+.discrete-filters input[type="week"] {
+    min-width: 180px;
+    border-radius: 14px;
+    border: 1px solid rgba(23, 88, 177, 0.14);
+    background: linear-gradient(180deg, #ffffff, #f8fbff);
+    color: #24344d;
+}
+
+.discrete-filters input[type="date"]::-webkit-calendar-picker-indicator,
+.discrete-filters input[type="month"]::-webkit-calendar-picker-indicator,
+.discrete-filters input[type="week"]::-webkit-calendar-picker-indicator {
+    opacity: .75;
+    cursor: pointer;
+}
+
+.reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(24px) scale(.985);
+    transition: opacity .65s ease, transform .75s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal-on-scroll.revealed {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}

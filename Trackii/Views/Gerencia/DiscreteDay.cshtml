@@ -8,11 +8,11 @@
             <h2>Detalle diario - @Model.Day.ToString("yyyy-MM-dd")</h2>
             <p class="subtitle">Órdenes del día con piezas, scrap y navegación a causas.</p>
         </div>
-        <a asp-controller="Gerencia" asp-action="DiscreteMap" asp-route-sortBy="@Model.SortBy" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver al mapa</a>
+        <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver al mapa</a>
     </div>
 
     <div class="card">
-        <form method="get" class="filters" asp-action="DiscreteDay">
+        <form method="get" class="filters discrete-filters" asp-action="DiscreteDay">
             <input type="date" name="day" value="@Model.Day.ToString("yyyy-MM-dd")" />
             <select name="sortBy">
                 <option value="fifo" selected="@(Model.SortBy == "fifo")">FIFO</option>
