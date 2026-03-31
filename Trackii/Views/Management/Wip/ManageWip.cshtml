@@ -1,0 +1,199 @@
+@model Trackii.Models.Admin.Wip.AdminWipManagerVm
+
+@{
+    ViewData["Title"] = "Admin WIP Manager";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Admin WIP Manager</h2>
+            <p class="subtitle">Escanea/carga una WO y registra avances manuales por paso de ruta.</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert" style="margin-bottom:12px;">
+            <i class="fa-solid fa-circle-check"></i>
+            @success
+        </div>
+    }
+
+    <div asp-validation-summary="ModelOnly" class="field-error"></div>
+
+    <form method="post" action="/Admin/Wip/CargarOrden" class="form" style="margin-bottom:20px;">
+        @Html.AntiForgeryToken()
+        <div class="form-grid">
+            <div class="form-field">
+                <label asp-for="WoNumber"></label>
+                <input asp-for="WoNumber" class="input" id="woInput" />
+            </div>
+            <div class="form-field">
+                <label asp-for="PartNumber"></label>
+                <input asp-for="PartNumber" class="input" id="partInput" />
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                Cargar / Crear Orden
+            </button>
+        </div>
+
+        <div style="margin-top:12px;">
+            <div id="reader" style="width:300px;max-width:100%;"></div>
+            <div id="scannerFallback" style="display:none;">
+                <label for="qrImageInput">Escanear QR desde imagen (funciona también en HTTP):</label>
+                <input id="qrImageInput" type="file" accept="image/*" class="input" style="margin-top:6px;" />
+            </div>
+            <small id="scannerHint">Formato esperado en QR: <strong>WO-12345|PART-999</strong>.</small>
+        </div>
+    </form>
+
+    @if (Model.RouteSteps.Any())
+    {
+        <form method="post" action="/Admin/Wip/GuardarProgreso" class="form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="WoNumber" />
+            <input type="hidden" asp-for="PartNumber" />
+            <input type="hidden" asp-for="WorkOrderId" />
+            <input type="hidden" asp-for="WipItemId" />
+            <input type="hidden" asp-for="IsNewOrder" />
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Paso</th>
+                        <th>Location</th>
+                        <th>Qty In</th>
+                        <th>Qty Scrap</th>
+                        <th>Error Code</th>
+                        <th>Comentarios</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.RouteSteps.Count; i++)
+                    {
+                        var step = Model.RouteSteps[i];
+                        <tr>
+                            <td>
+                                @step.StepNumber
+                                <input type="hidden" name="RouteSteps[@i].RouteStepId" value="@step.RouteStepId" />
+                                <input type="hidden" name="RouteSteps[@i].LocationId" value="@step.LocationId" />
+                                <input type="hidden" name="RouteSteps[@i].StepNumber" value="@step.StepNumber" />
+                                <input type="hidden" name="RouteSteps[@i].LocationName" value="@step.LocationName" />
+                                <input type="hidden" name="RouteSteps[@i].IsCompleted" value="@step.IsCompleted" />
+                            </td>
+                            <td>@step.LocationName</td>
+                            <td>
+                                <input type="number" min="0" class="input" name="RouteSteps[@i].QtyIn" value="@step.QtyIn" @(step.IsCompleted ? "readonly" : string.Empty) />
+                            </td>
+                            <td>
+                                <input type="number" min="0" class="input js-scrap" data-index="@i" name="RouteSteps[@i].QtyScrap" value="@step.QtyScrap" @(step.IsCompleted ? "readonly" : string.Empty) />
+                            </td>
+                            <td>
+                                <select class="input" name="RouteSteps[@i].ErrorCodeId" id="errorCode_@i" @(step.IsCompleted ? "disabled" : string.Empty)>
+                                    <option value="">-- Selecciona --</option>
+                                    @foreach (var errorCode in Model.ErrorCodes)
+                                    {
+                                        if (step.ErrorCodeId.HasValue && step.ErrorCodeId.Value == errorCode.Id)
+                                        {
+                                            <option value="@errorCode.Id" selected>@errorCode.Code - @errorCode.Description</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@errorCode.Id">@errorCode.Code - @errorCode.Description</option>
+                                        }
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <input class="input" name="RouteSteps[@i].ScrapComments" value="@step.ScrapComments" @(step.IsCompleted ? "readonly" : string.Empty) />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    Guardar Todo
+                </button>
+            </div>
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script>
+        (function () {
+            const woInput = document.getElementById('woInput');
+            const partInput = document.getElementById('partInput');
+            const reader = document.getElementById('reader');
+            const scannerFallback = document.getElementById('scannerFallback');
+            const qrImageInput = document.getElementById('qrImageInput');
+            const scannerHint = document.getElementById('scannerHint');
+
+            function parseBarcodeText(decodedText) {
+                const parts = decodedText.split('|');
+                if (parts.length !== 2) return;
+
+                const woPart = parts[0].trim();
+                const productPart = parts[1].trim();
+
+                if (woPart.startsWith('WO-')) {
+                    woInput.value = woPart.substring(3);
+                }
+
+                if (productPart.startsWith('PART-')) {
+                    partInput.value = productPart.substring(5);
+                }
+            }
+
+            const hasSecureCameraContext = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+            if (window.Html5QrcodeScanner && hasSecureCameraContext) {
+                const scanner = new Html5QrcodeScanner('reader', { fps: 5, qrbox: 220 });
+                scanner.render(function (decodedText) {
+                    parseBarcodeText(decodedText);
+                });
+            } else if (window.Html5Qrcode && qrImageInput) {
+                // En HTTP normal los navegadores bloquean cámara; habilitamos escaneo por imagen.
+                if (reader) {
+                    reader.style.display = 'none';
+                }
+                scannerFallback.style.display = 'block';
+                scannerHint.innerHTML = 'Tu navegador bloquea la cámara en HTTP. Usa imagen QR o abre por HTTPS/localhost.';
+
+                const fileScanner = new Html5Qrcode('reader');
+                qrImageInput.addEventListener('change', function (event) {
+                    const file = event.target.files && event.target.files[0];
+                    if (!file) return;
+
+                    fileScanner.scanFile(file, true)
+                        .then((decodedText) => parseBarcodeText(decodedText))
+                        .catch(() => {
+                            scannerHint.innerHTML = 'No se pudo leer el QR de la imagen. Verifica el formato.';
+                        });
+                });
+            }
+
+            document.querySelectorAll('.js-scrap').forEach((input) => {
+                input.addEventListener('input', function () {
+                    const index = this.dataset.index;
+                    const select = document.getElementById(`errorCode_${index}`);
+                    const scrap = parseInt(this.value || '0');
+                    if (scrap > 0) {
+                        select.required = true;
+                    } else {
+                        select.required = false;
+                    }
+                });
+            });
+        })();
+    </script>
+}
