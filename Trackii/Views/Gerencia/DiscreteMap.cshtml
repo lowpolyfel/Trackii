@@ -40,38 +40,41 @@
             <span class="chip">Fecha de corte</span>
         </div>
 
-        <form method="get" class="filters discrete-filters discrete-filters-enhanced discrete-map-attached-filters discrete-side-panel">
-            <div class="discrete-filter-grid">
-                <div class="discrete-filter-field discrete-filter-main">
-                    <label for="periodType">Tipo de período</label>
-                    <select id="periodType" name="periodType">
-                        <option value="week" selected="@(Model.PeriodType == "week")">Semana</option>
-                        <option value="month" selected="@(Model.PeriodType == "month")">Mes</option>
-                        <option value="custom" selected="@(Model.PeriodType == "custom")">Rango personalizado</option>
-                    </select>
-                </div>
+        <form method="get" class="filters discrete-filters" style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;">
+            <div class="discrete-filter-field" style="min-width:220px;">
+                <label for="periodType">Tipo de período</label>
+                <select id="periodType" name="periodType">
+                    <option value="day" selected="@(Model.PeriodType == "day")">Día</option>
+                    <option value="week" selected="@(Model.PeriodType == "week")">Semana</option>
+                    <option value="month" selected="@(Model.PeriodType == "month")">Mes</option>
+                    <option value="custom" selected="@(Model.PeriodType == "custom")">Rango personalizado</option>
+                    <option value="historic" selected="@(Model.PeriodType == "historic")">Histórico</option>
+                </select>
             </div>
 
-            <div class="discrete-filter-grid">
-                <div class="discrete-filter-field period-field period-week" data-period="week">
-                    <label for="weekValue">Semana ISO</label>
-                    <input id="weekValue" type="week" name="weekValue" value="@Model.WeekValue" />
-                </div>
+            <div class="discrete-filter-field period-field period-day" data-period="day">
+                <label for="dayValue">Día</label>
+                <input id="dayValue" type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+            </div>
 
-                <div class="discrete-filter-field period-field period-month" data-period="month">
-                    <label for="monthValue">Mes</label>
-                    <input id="monthValue" type="month" name="monthValue" value="@Model.MonthValue" />
-                </div>
+            <div class="discrete-filter-field period-field period-week" data-period="week">
+                <label for="weekValue">Semana ISO</label>
+                <input id="weekValue" type="week" name="weekValue" value="@Model.WeekValue" />
+            </div>
 
-                <div class="discrete-filter-field period-field period-custom" data-period="custom">
-                    <label for="fromDate">Desde</label>
-                    <input id="fromDate" type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
-                </div>
+            <div class="discrete-filter-field period-field period-month" data-period="month">
+                <label for="monthValue">Mes</label>
+                <input id="monthValue" type="month" name="monthValue" value="@Model.MonthValue" />
+            </div>
 
-                <div class="discrete-filter-field period-field period-custom" data-period="custom">
-                    <label for="toDate">Hasta</label>
-                    <input id="toDate" type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
-                </div>
+            <div class="discrete-filter-field period-field period-custom" data-period="custom">
+                <label for="fromDate">Desde</label>
+                <input id="fromDate" type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+            </div>
+
+            <div class="discrete-filter-field period-field period-custom" data-period="custom">
+                <label for="toDate">Hasta</label>
+                <input id="toDate" type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
             </div>
 
             <button type="submit" class="btn btn-primary">Actualizar mapa</button>
@@ -81,15 +84,16 @@
     </div>
 
     <section class="error-kpis" aria-label="Resumen inventario real">
-        <article class="kpi-highlight apple-card error-kpi-card">
-            <span class="kpi-label">Total piezas</span>
-            <strong class="kpi-value">@Model.Matrix.TotalPieces.ToString("N0")</strong>
-            <small>Inventario real distribuido por localidad.</small>
-        </article>
-        <article class="kpi-highlight apple-card error-kpi-card incoming">
-            <span class="kpi-label">Total órdenes</span>
-            <strong class="kpi-value">@Model.Matrix.TotalOrders.ToString("N0")</strong>
-            <small>Conteo real de work_orders por ubicación actual.</small>
+        <article class="kpi-highlight apple-card error-kpi-card" style="display:flex;justify-content:space-between;gap:18px;align-items:flex-start;">
+            <div>
+                <span class="kpi-label">Total piezas</span>
+                <strong class="kpi-value">@Model.Matrix.TotalPieces.ToString("N0")</strong>
+            </div>
+            <div>
+                <span class="kpi-label">Total órdenes</span>
+                <strong class="kpi-value">@Model.Matrix.TotalOrders.ToString("N0")</strong>
+            </div>
+            <small>Inventario real y órdenes del periodo seleccionado.</small>
         </article>
     </section>
 
@@ -125,7 +129,19 @@
                             <td>@row.Location</td>
                             @foreach (var cell in row.Cells)
                             {
-                                <td>@cell.Pieces.ToString("N0")</td>
+                                <td>
+                                    <a asp-controller="Gerencia"
+                                       asp-action="DiscreteMapDetail"
+                                       asp-route-location="@row.Location"
+                                       asp-route-subfamily="@cell.Subfamily"
+                                       asp-route-periodType="@Model.PeriodType"
+                                       asp-route-weekValue="@Model.WeekValue"
+                                       asp-route-monthValue="@Model.MonthValue"
+                                       asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                                       asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">
+                                        @cell.Pieces.ToString("N0")
+                                    </a>
+                                </td>
                             }
                             <td><strong>@row.TotalPieces.ToString("N0")</strong></td>
                         </tr>
@@ -168,7 +184,19 @@
                             <td>@row.Location</td>
                             @foreach (var cell in row.Cells)
                             {
-                                <td>@cell.Orders.ToString("N0")</td>
+                                <td>
+                                    <a asp-controller="Gerencia"
+                                       asp-action="DiscreteMapDetail"
+                                       asp-route-location="@row.Location"
+                                       asp-route-subfamily="@cell.Subfamily"
+                                       asp-route-periodType="@Model.PeriodType"
+                                       asp-route-weekValue="@Model.WeekValue"
+                                       asp-route-monthValue="@Model.MonthValue"
+                                       asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                                       asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">
+                                        @cell.Orders.ToString("N0")
+                                    </a>
+                                </td>
                             }
                             <td><strong>@row.TotalOrders.ToString("N0")</strong></td>
                         </tr>
@@ -192,6 +220,7 @@
                 fields.forEach((field) => {
                     const visible = field.dataset.period === selected;
                     field.classList.toggle('is-visible', visible);
+                    field.style.display = visible ? '' : 'none';
                     field.querySelector('input')?.toggleAttribute('disabled', !visible);
                 });
             };

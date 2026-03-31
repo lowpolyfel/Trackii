@@ -53,6 +53,14 @@
             </div>
         </a>
 
+        <a asp-controller="AdminWip" asp-action="Index" class="card kpi-card altas-bajas-card">
+            <div class="kpi-icon"><i class="fa-solid fa-industry"></i></div>
+            <div class="kpi-content">
+                <div class="kpi-title">Módulo</div>
+                <div class="kpi-value">WIP Manager</div>
+            </div>
+        </a>
+
         @if (esAdmin)
         {
             <a asp-controller="UnregisteredParts" asp-action="Index" class="card kpi-card altas-bajas-card">

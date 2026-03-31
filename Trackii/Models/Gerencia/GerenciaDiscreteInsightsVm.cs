@@ -56,6 +56,45 @@ public class GerenciaDayDetailVm
     public List<DailyOrderDetailVm> Orders { get; } = new();
 }
 
+public class GerenciaDiscreteCellDetailVm
+{
+    public string PeriodType { get; set; } = "week";
+    public string? WeekValue { get; set; }
+    public string? MonthValue { get; set; }
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public DateTime? Day { get; set; }
+    public string Location { get; set; } = string.Empty;
+    public string Subfamily { get; set; } = string.Empty;
+    public int TotalQty { get; set; }
+    public int TotalScrap { get; set; }
+    public int TotalOrders { get; set; }
+    public List<DiscreteCellDailyRowVm> DailyRows { get; } = new();
+    public List<DiscreteCellOrderRowVm> OrderRows { get; } = new();
+}
+
+public class DiscreteCellDailyRowVm
+{
+    public DateTime Day { get; set; }
+    public int Qty { get; set; }
+    public int Scrap { get; set; }
+    public int Orders { get; set; }
+}
+
+public class DiscreteCellOrderRowVm
+{
+    public DateTime Day { get; set; }
+    public string WoNumber { get; set; } = string.Empty;
+    public string PartNumber { get; set; } = string.Empty;
+    public int Qty { get; set; }
+    public int Scrap { get; set; }
+    public DateTime? FirstCaptureAt { get; set; }
+    public DateTime? LastCaptureAt { get; set; }
+    public string WoStatus { get; set; } = string.Empty;
+}
+
 public class GerenciaDiscreteDailyPanelsVm
 {
     public DateTime Day { get; set; }

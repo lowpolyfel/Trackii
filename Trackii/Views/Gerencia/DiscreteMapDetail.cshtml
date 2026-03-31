@@ -1,0 +1,174 @@
+@model Trackii.Models.Gerencia.GerenciaDiscreteCellDetailVm
+@using System.Globalization
+@{
+    ViewData["Title"] = "Detalle de mapa discreto";
+    var es = new CultureInfo("es-MX");
+}
+
+<div class="dashboard">
+    <div class="page-header">
+        <div>
+            <h2>Detalle · @Model.Location / @Model.Subfamily</h2>
+            <p class="subtitle">Periodo: <strong>@Model.StartDate.ToString("yyyy-MM-dd")</strong> a <strong>@Model.EndDate.ToString("yyyy-MM-dd")</strong>.</p>
+        </div>
+        <a asp-controller="Gerencia" asp-action="DiscreteMap" asp-route-periodType="@Model.PeriodType" asp-route-weekValue="@Model.WeekValue" asp-route-monthValue="@Model.MonthValue" asp-route-fromDate="@(Model.StartDate.ToString("yyyy-MM-dd"))" asp-route-toDate="@(Model.EndDate.ToString("yyyy-MM-dd"))" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver al mapa</a>
+    </div>
+
+    <div class="card">
+        <form method="get" class="filters discrete-filters" asp-action="DiscreteMapDetail" style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;">
+            <input type="hidden" name="location" value="@Model.Location" />
+            <input type="hidden" name="subfamily" value="@Model.Subfamily" />
+
+            <div class="discrete-filter-field" style="min-width:220px;">
+                <label for="periodType">Tipo de período</label>
+                <select id="periodType" name="periodType">
+                    <option value="day" selected="@(Model.PeriodType == "day")">Día</option>
+                    <option value="week" selected="@(Model.PeriodType == "week")">Semana</option>
+                    <option value="month" selected="@(Model.PeriodType == "month")">Mes</option>
+                    <option value="custom" selected="@(Model.PeriodType == "custom")">Rango personalizado</option>
+                    <option value="historic" selected="@(Model.PeriodType == "historic")">Histórico</option>
+                </select>
+            </div>
+
+            <div class="discrete-filter-field period-field period-day" data-period="day">
+                <label for="dayStart">Día</label>
+                <input id="dayStart" type="date" name="fromDate" value="@(Model.StartDate.ToString("yyyy-MM-dd"))" />
+            </div>
+
+            <div class="discrete-filter-field period-field period-week" data-period="week">
+                <label for="weekValue">Semana ISO</label>
+                <input id="weekValue" type="week" name="weekValue" value="@Model.WeekValue" />
+            </div>
+
+            <div class="discrete-filter-field period-field period-month" data-period="month">
+                <label for="monthValue">Mes</label>
+                <input id="monthValue" type="month" name="monthValue" value="@Model.MonthValue" />
+            </div>
+
+            <div class="discrete-filter-field period-field period-custom" data-period="custom">
+                <label for="fromDate">Desde</label>
+                <input id="fromDate" type="date" name="fromDate" value="@(Model.StartDate.ToString("yyyy-MM-dd"))" />
+            </div>
+
+            <div class="discrete-filter-field period-field period-custom" data-period="custom">
+                <label for="toDate">Hasta</label>
+                <input id="toDate" type="date" name="toDate" value="@(Model.EndDate.ToString("yyyy-MM-dd"))" />
+            </div>
+
+            <div class="discrete-filter-field">
+                <label for="day">Ver solo día (opcional)</label>
+                <input id="day" type="date" name="day" value="@(Model.Day?.ToString("yyyy-MM-dd"))" />
+            </div>
+            <button type="submit" class="btn btn-primary">Aplicar</button>
+        </form>
+    </div>
+
+    <section class="error-kpis" aria-label="Resumen detalle discreto">
+        <article class="kpi-highlight apple-card error-kpi-card" style="display:flex;justify-content:space-between;gap:18px;align-items:flex-start;">
+            <div>
+                <span class="kpi-label">Piezas</span>
+                <strong class="kpi-value">@Model.TotalQty.ToString("N0")</strong>
+            </div>
+            <div>
+                <span class="kpi-label">Órdenes</span>
+                <strong class="kpi-value">@Model.TotalOrders.ToString("N0")</strong>
+            </div>
+            <div>
+                <span class="kpi-label">Scrap</span>
+                <strong class="kpi-value">@Model.TotalScrap.ToString("N0")</strong>
+            </div>
+        </article>
+    </section>
+
+    <div class="card">
+        <div class="card-heading">
+            <h3>Totales por día</h3>
+        </div>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Día</th><th>Piezas</th><th>Scrap</th><th>Órdenes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.DailyRows.Any())
+                {
+                    <tr><td colspan="4" class="empty">Sin datos para los filtros seleccionados.</td></tr>
+                }
+                else
+                {
+                    foreach (var row in Model.DailyRows)
+                    {
+                        <tr>
+                            <td>@row.Day.ToString("dddd dd MMM yyyy", es)</td>
+                            <td>@row.Qty.ToString("N0")</td>
+                            <td>@row.Scrap.ToString("N0")</td>
+                            <td>@row.Orders.ToString("N0")</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-heading">
+            <h3>Detalle de órdenes y productos</h3>
+        </div>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Día</th><th>WO</th><th>Producto</th><th>Piezas</th><th>Scrap</th><th>Primera captura</th><th>Última captura</th><th>Status WO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.OrderRows.Any())
+                {
+                    <tr><td colspan="8" class="empty">Sin órdenes para los filtros seleccionados.</td></tr>
+                }
+                else
+                {
+                    foreach (var row in Model.OrderRows)
+                    {
+                        <tr>
+                            <td>@row.Day.ToString("yyyy-MM-dd")</td>
+                            <td>@row.WoNumber</td>
+                            <td>@row.PartNumber</td>
+                            <td>@row.Qty.ToString("N0")</td>
+                            <td>@row.Scrap.ToString("N0")</td>
+                            <td>@(row.FirstCaptureAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                            <td>@(row.LastCaptureAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                            <td>@row.WoStatus</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const periodType = document.getElementById('periodType');
+            const fields = document.querySelectorAll('.period-field');
+            if (!periodType || !fields.length) return;
+
+            const toggleFields = () => {
+                const selected = periodType.value;
+                fields.forEach((field) => {
+                    const visible = field.dataset.period === selected;
+                    field.style.display = visible ? '' : 'none';
+                    field.querySelector('input')?.toggleAttribute('disabled', !visible);
+                });
+            };
+
+            periodType.addEventListener('change', toggleFields);
+            toggleFields();
+        })();
+    </script>
+}

@@ -9,7 +9,7 @@
     var isAdmin = User.IsInRole("Admin");
     var isEngineering = User.IsInRole("Engineering") || User.IsInRole("Ingenieria");
     var isGerencia = User.IsInRole("Gerencia");
-    var altasBajasControllers = new[] { "AltasBajas", "Area", "Family", "Subfamily", "Product", "Route", "UnregisteredParts", "HardMod", "User", "Location", "Device", "Role", "ViewCatalog" };
+    var altasBajasControllers = new[] { "AltasBajas", "Area", "Family", "Subfamily", "Product", "Route", "UnregisteredParts", "HardMod", "User", "Location", "Device", "Role", "ViewCatalog", "AdminWip" };
     var isAltasBajasActive = altasBajasControllers.Contains(currentController);
 }
 
@@ -105,6 +105,11 @@
                     <a asp-controller="AltasBajas" asp-action="Index" class="@(isAltasBajasActive ? "active" : string.Empty)">
                         <i class="fa-solid fa-folder-tree"></i>
                         <span>Altas/Bajas</span>
+                    </a>
+
+                    <a asp-controller="AdminWip" asp-action="Index" class="@(currentController == "AdminWip" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-industry"></i>
+                        <span>WIP Manager</span>
                     </a>
                 }
 

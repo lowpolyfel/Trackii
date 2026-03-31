@@ -108,28 +108,20 @@ public class GerenciaService
         cn.Open();
 
         using var cmd = new MySqlCommand(@"
-            WITH step_metrics AS (
-                SELECT wse.*,
-                       GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
-                           0
-                       ) AS calc_scrap
-                FROM wip_step_execution wse
-            )
             SELECT wo.wo_number,
                    p.part_number,
                    COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name,
                    l.name AS location_name,
                    MIN(wip.created_at) AS wip_start_at,
-                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
-                   COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap
-            FROM step_metrics sm
-            JOIN wip_item wip ON wip.id = sm.wip_item_id
+                   COALESCE(SUM(wse.qty_in), 0) AS qty_produced,
+                   COALESCE(SUM(wse.qty_scrap), 0) AS qty_scrap
+            FROM wip_step_execution wse
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
             JOIN work_order wo ON wo.id = wip.wo_order_id
             JOIN product p ON p.id = wo.product_id
             LEFT JOIN subfamily sf ON sf.id = p.id_subfamily
-            LEFT JOIN location l ON l.id = sm.location_id
-            WHERE DATE(sm.create_at) = @day
+            LEFT JOIN location l ON l.id = wse.location_id
+            WHERE DATE(wse.create_at) = @day
             GROUP BY wo.wo_number, p.part_number, subfamily_name, location_name
             ORDER BY " + BuildSortSql(vm.SortBy), cn);
 
@@ -156,6 +148,155 @@ public class GerenciaService
         return vm;
     }
 
+    public GerenciaDiscreteCellDetailVm GetDiscreteMapCellDetail(
+        string location,
+        string subfamily,
+        string? periodType,
+        string? weekValue,
+        string? monthValue,
+        DateTime? fromDate,
+        DateTime? toDate,
+        DateTime? day)
+    {
+        if (string.IsNullOrWhiteSpace(location)) throw new Exception("Localidad requerida.");
+        if (string.IsNullOrWhiteSpace(subfamily)) throw new Exception("Subfamilia requerida.");
+
+        ResolvePeriod(periodType, weekValue, monthValue, fromDate, toDate, out var start, out var end, out var normalizedPeriodType, out var normalizedWeek, out var normalizedMonth);
+
+        var vm = new GerenciaDiscreteCellDetailVm
+        {
+            Location = location,
+            Subfamily = subfamily,
+            PeriodType = normalizedPeriodType,
+            WeekValue = normalizedWeek,
+            MonthValue = normalizedMonth,
+            StartDate = start,
+            EndDate = end,
+            Day = day?.Date
+        };
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var totalCmd = new MySqlCommand(@"
+            SELECT COALESCE(SUM(wse.qty_in), 0) AS qty_total,
+                   COALESCE(SUM(wse.qty_scrap), 0) AS scrap_total,
+                   COUNT(DISTINCT wo.id) AS orders_total
+            FROM wip_step_execution wse
+            JOIN route_step rs ON rs.id = wse.route_step_id
+            JOIN location l ON l.id = rs.location_id
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily sf ON sf.id = p.id_subfamily
+            WHERE l.name = @location
+              AND COALESCE(sf.name, 'Sin subfamilia') = @subfamily
+              AND DATE(wse.create_at) BETWEEN @startDate AND @endDate
+              AND (@day IS NULL OR DATE(wse.create_at) = @day)", cn);
+
+        totalCmd.Parameters.AddWithValue("@location", vm.Location);
+        totalCmd.Parameters.AddWithValue("@subfamily", vm.Subfamily);
+        totalCmd.Parameters.AddWithValue("@startDate", vm.StartDate);
+        totalCmd.Parameters.AddWithValue("@endDate", vm.EndDate);
+        totalCmd.Parameters.AddWithValue("@day", vm.Day);
+
+        using (var rd = totalCmd.ExecuteReader())
+        {
+            if (rd.Read())
+            {
+                vm.TotalQty = Convert.ToInt32(rd.GetInt64("qty_total"));
+                vm.TotalScrap = Convert.ToInt32(rd.GetInt64("scrap_total"));
+                vm.TotalOrders = Convert.ToInt32(rd.GetInt64("orders_total"));
+            }
+        }
+
+        using var dailyCmd = new MySqlCommand(@"
+            SELECT DATE(wse.create_at) AS day,
+                   COALESCE(SUM(wse.qty_in), 0) AS qty_total,
+                   COALESCE(SUM(wse.qty_scrap), 0) AS scrap_total,
+                   COUNT(DISTINCT wo.id) AS orders_total
+            FROM wip_step_execution wse
+            JOIN route_step rs ON rs.id = wse.route_step_id
+            JOIN location l ON l.id = rs.location_id
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily sf ON sf.id = p.id_subfamily
+            WHERE l.name = @location
+              AND COALESCE(sf.name, 'Sin subfamilia') = @subfamily
+              AND DATE(wse.create_at) BETWEEN @startDate AND @endDate
+              AND (@day IS NULL OR DATE(wse.create_at) = @day)
+            GROUP BY DATE(wse.create_at)
+            ORDER BY DATE(wse.create_at)", cn);
+
+        dailyCmd.Parameters.AddWithValue("@location", vm.Location);
+        dailyCmd.Parameters.AddWithValue("@subfamily", vm.Subfamily);
+        dailyCmd.Parameters.AddWithValue("@startDate", vm.StartDate);
+        dailyCmd.Parameters.AddWithValue("@endDate", vm.EndDate);
+        dailyCmd.Parameters.AddWithValue("@day", vm.Day);
+
+        using (var rd = dailyCmd.ExecuteReader())
+        {
+            while (rd.Read())
+            {
+                vm.DailyRows.Add(new DiscreteCellDailyRowVm
+                {
+                    Day = rd.GetDateTime("day"),
+                    Qty = Convert.ToInt32(rd.GetInt64("qty_total")),
+                    Scrap = Convert.ToInt32(rd.GetInt64("scrap_total")),
+                    Orders = Convert.ToInt32(rd.GetInt64("orders_total"))
+                });
+            }
+        }
+
+        using var detailCmd = new MySqlCommand(@"
+            SELECT DATE(wse.create_at) AS day,
+                   wo.wo_number,
+                   p.part_number,
+                   COALESCE(SUM(wse.qty_in), 0) AS qty_total,
+                   COALESCE(SUM(wse.qty_scrap), 0) AS scrap_total,
+                   MIN(wse.create_at) AS first_capture_at,
+                   MAX(wse.create_at) AS last_capture_at,
+                   wo.status AS wo_status
+            FROM wip_step_execution wse
+            JOIN route_step rs ON rs.id = wse.route_step_id
+            JOIN location l ON l.id = rs.location_id
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily sf ON sf.id = p.id_subfamily
+            WHERE l.name = @location
+              AND COALESCE(sf.name, 'Sin subfamilia') = @subfamily
+              AND DATE(wse.create_at) BETWEEN @startDate AND @endDate
+              AND (@day IS NULL OR DATE(wse.create_at) = @day)
+            GROUP BY DATE(wse.create_at), wo.id, wo.wo_number, p.part_number, wo.status
+            ORDER BY DATE(wse.create_at) DESC, wo.wo_number, p.part_number", cn);
+
+        detailCmd.Parameters.AddWithValue("@location", vm.Location);
+        detailCmd.Parameters.AddWithValue("@subfamily", vm.Subfamily);
+        detailCmd.Parameters.AddWithValue("@startDate", vm.StartDate);
+        detailCmd.Parameters.AddWithValue("@endDate", vm.EndDate);
+        detailCmd.Parameters.AddWithValue("@day", vm.Day);
+
+        using var detailReader = detailCmd.ExecuteReader();
+        while (detailReader.Read())
+        {
+            vm.OrderRows.Add(new DiscreteCellOrderRowVm
+            {
+                Day = detailReader.GetDateTime("day"),
+                WoNumber = detailReader.GetString("wo_number"),
+                PartNumber = detailReader.GetString("part_number"),
+                Qty = Convert.ToInt32(detailReader.GetInt64("qty_total")),
+                Scrap = Convert.ToInt32(detailReader.GetInt64("scrap_total")),
+                FirstCaptureAt = detailReader.GetDateTime("first_capture_at"),
+                LastCaptureAt = detailReader.GetDateTime("last_capture_at"),
+                WoStatus = detailReader.GetString("wo_status")
+            });
+        }
+
+        return vm;
+    }
+
     public GerenciaDiscreteDailyPanelsVm GetDiscreteDailyPanels()
     {
         var vm = new GerenciaDiscreteDailyPanelsVm
@@ -167,23 +308,15 @@ public class GerenciaService
         cn.Open();
 
         using var cmd = new MySqlCommand(@"
-            WITH step_metrics AS (
-                SELECT wse.*,
-                       GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
-                           0
-                       ) AS calc_scrap
-                FROM wip_step_execution wse
-            ),
-            daily_location AS (
-                SELECT sm.location_id,
+            WITH daily_location AS (
+                SELECT wse.location_id,
                        COUNT(DISTINCT wo.id) AS orders_count,
-                       COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced
-                FROM step_metrics sm
-                JOIN wip_item wip ON wip.id = sm.wip_item_id
+                       COALESCE(SUM(wse.qty_in), 0) AS qty_produced
+                FROM wip_step_execution wse
+                JOIN wip_item wip ON wip.id = wse.wip_item_id
                 JOIN work_order wo ON wo.id = wip.wo_order_id
-                WHERE DATE(sm.create_at) = @day
-                GROUP BY sm.location_id
+                WHERE DATE(wse.create_at) = @day
+                GROUP BY wse.location_id
             )
             SELECT l.name AS location_name,
                    COALESCE(dl.orders_count, 0) AS orders_count,
@@ -1006,9 +1139,17 @@ public class GerenciaService
 
         switch (periodType)
         {
+            case "day" when fromDate.HasValue:
+                start = fromDate.Value.Date;
+                end = start;
+                break;
             case "month" when !string.IsNullOrWhiteSpace(monthValue) && DateTime.TryParse($"{monthValue}-01", out var monthDate):
                 start = new DateTime(monthDate.Year, monthDate.Month, 1);
                 end = start.AddMonths(1).AddDays(-1);
+                break;
+            case "historic":
+                start = new DateTime(2020, 1, 1);
+                end = today;
                 break;
             case "custom" when fromDate.HasValue && toDate.HasValue:
                 start = fromDate.Value.Date;
