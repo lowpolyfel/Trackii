@@ -427,6 +427,34 @@
     align-items: end;
 }
 
+.discrete-map-card {
+    overflow: hidden;
+}
+
+.discrete-map-wrapper {
+    overflow-x: hidden;
+}
+
+.discrete-map-table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.discrete-map-table th,
+.discrete-map-table td {
+    font-size: clamp(.62rem, .75vw, .82rem);
+    padding: 8px 6px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.discrete-map-table th:first-child,
+.discrete-map-table td:first-child {
+    text-align: left;
+}
+
 @media (max-width: 900px) {
     .discrete-subfamily-filter {
         grid-template-columns: 1fr;

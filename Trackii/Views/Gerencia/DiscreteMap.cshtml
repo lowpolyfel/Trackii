@@ -1,273 +1,186 @@
 @model Trackii.Models.Gerencia.GerenciaDiscreteMapVm
 @using System.Globalization
-@using System.Text.Json
 @{
     ViewData["Title"] = "Mapa de Discretos";
     var spanish = new CultureInfo("es-MX");
 
-    var totalPieces = Model.Matrix.Rows.Sum(r => r.TotalQty);
-    var totalScrap = Model.Matrix.Rows.Sum(r => r.TotalScrap);
-    var totalOrders = Model.Matrix.Rows.SelectMany(r => r.Cells).Sum(c => c.OrdersCount);
-    var totalProducts = Model.Matrix.Rows.SelectMany(r => r.Cells).Sum(c => c.ProductsCount);
-
-    var dailyLabels = Model.Matrix.Rows.Select(r => r.Day.ToString("MM-dd")).ToList();
-    var dailyPieces = Model.Matrix.Rows.Select(r => r.TotalQty).ToList();
-    var dailyScrap = Model.Matrix.Rows.Select(r => r.TotalScrap).ToList();
-
-    var subfamilyRows = Model.Matrix.Subfamilies
-        .Select(subfamily => new
-        {
-            Subfamily = subfamily,
-            Pieces = Model.Matrix.Rows.SelectMany(r => r.Cells).Where(c => c.Subfamily == subfamily).Sum(c => c.Qty)
-        })
-        .OrderByDescending(x => x.Pieces)
-        .Take(8)
-        .ToList();
-
-    var subfamilyLabels = subfamilyRows.Select(x => x.Subfamily).ToList();
-    var subfamilyValues = subfamilyRows.Select(x => x.Pieces).ToList();
-
-    string MetricValue(Trackii.Models.Gerencia.WeeklyOutputCellVm cell)
+    string ShortSubfamily(string name)
     {
-        return Model.MetricView switch
+        if (string.IsNullOrWhiteSpace(name)) return "-";
+        if (name.Length <= 14) return name;
+
+        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length > 1)
         {
-            "orders" => cell.OrdersCount.ToString("N0"),
-            "products" => cell.ProductsCount.ToString("N0"),
-            _ => cell.Qty.ToString("N0")
-        };
+            var acronym = string.Concat(words.Select(word => char.ToUpperInvariant(word[0])));
+            if (acronym.Length >= 2 && acronym.Length <= 8)
+            {
+                return acronym;
+            }
+        }
+
+        return name[..12] + "…";
     }
 
-    var metricLabel = Model.MetricView switch
-    {
-        "orders" => "Órdenes",
-        "products" => "Productos",
-        _ => "Piezas"
-    };
-
-    int RowMetricTotal(Trackii.Models.Gerencia.WeeklyOutputDayRowVm row)
-    {
-        return Model.MetricView switch
-        {
-            "orders" => row.Cells.Sum(c => c.OrdersCount),
-            "products" => row.Cells.Sum(c => c.ProductsCount),
-            _ => row.TotalQty
-        };
-    }
+    var shortNames = Model.Matrix.Subfamilies.ToDictionary(name => name, ShortSubfamily);
 }
 
 <div class="dashboard">
     <div class="page-header error-causes-header">
         <div>
-            <h2>Mapa de Discretos</h2>
-            <p class="subtitle">Vista renovada con métricas clave y paneles separados por contexto operativo.</p>
+            <h2>Mapa de Discretos (Inventario real)</h2>
+            <p class="subtitle">Eje Y: localidades en rutas activas · Eje X: subfamilias. Corte al <strong>@Model.SnapshotDate.ToString("dddd dd MMM yyyy", spanish)</strong>.</p>
         </div>
         <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
     </div>
 
     <div class="card gerencia-weekly-card apple-card error-causes-card">
         <div class="card-heading">
-            <h3>Tabla completa de discretos</h3>
-            <span class="chip">Primaria</span>
+            <h3>Filtros</h3>
+            <span class="chip">Fecha de corte</span>
         </div>
 
-        <div class="discrete-table-toolbar">
-            <form method="get" class="filters discrete-filters discrete-filters-enhanced discrete-map-attached-filters discrete-side-panel">
-                <input type="hidden" name="selectedSubfamily" value="@Model.SelectedSubfamily" />
-                <div class="discrete-filter-grid">
-                    <div class="discrete-filter-field discrete-filter-main">
-                        <label for="periodType">Tipo de período</label>
-                        <select id="periodType" name="periodType">
-                            <option value="week" selected="@(Model.PeriodType == "week")">Semana</option>
-                            <option value="month" selected="@(Model.PeriodType == "month")">Mes</option>
-                            <option value="custom" selected="@(Model.PeriodType == "custom")">Rango personalizado</option>
-                        </select>
-                    </div>
+        <form method="get" class="filters discrete-filters discrete-filters-enhanced discrete-map-attached-filters discrete-side-panel">
+            <div class="discrete-filter-grid">
+                <div class="discrete-filter-field discrete-filter-main">
+                    <label for="periodType">Tipo de período</label>
+                    <select id="periodType" name="periodType">
+                        <option value="week" selected="@(Model.PeriodType == "week")">Semana</option>
+                        <option value="month" selected="@(Model.PeriodType == "month")">Mes</option>
+                        <option value="custom" selected="@(Model.PeriodType == "custom")">Rango personalizado</option>
+                    </select>
+                </div>
+            </div>
 
-                    <div class="discrete-filter-field">
-                        <label for="metricView">Métrica en tabla</label>
-                        <select id="metricView" name="metricView">
-                            <option value="pieces" selected="@(Model.MetricView == "pieces")">Piezas</option>
-                            <option value="products" selected="@(Model.MetricView == "products")">Productos</option>
-                            <option value="orders" selected="@(Model.MetricView == "orders")">Órdenes</option>
-                        </select>
-                    </div>
+            <div class="discrete-filter-grid">
+                <div class="discrete-filter-field period-field period-week" data-period="week">
+                    <label for="weekValue">Semana ISO</label>
+                    <input id="weekValue" type="week" name="weekValue" value="@Model.WeekValue" />
                 </div>
 
-                <div class="discrete-filter-grid">
-                    <div class="discrete-filter-field period-field period-week" data-period="week">
-                        <label for="weekValue">Semana ISO</label>
-                        <input id="weekValue" type="week" name="weekValue" value="@Model.WeekValue" />
-                    </div>
-
-                    <div class="discrete-filter-field period-field period-month" data-period="month">
-                        <label for="monthValue">Mes</label>
-                        <input id="monthValue" type="month" name="monthValue" value="@Model.MonthValue" />
-                    </div>
-
-                    <div class="discrete-filter-field period-field period-custom" data-period="custom">
-                        <label for="fromDate">Desde</label>
-                        <input id="fromDate" type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
-                    </div>
-
-                    <div class="discrete-filter-field period-field period-custom" data-period="custom">
-                        <label for="toDate">Hasta</label>
-                        <input id="toDate" type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
-                    </div>
+                <div class="discrete-filter-field period-field period-month" data-period="month">
+                    <label for="monthValue">Mes</label>
+                    <input id="monthValue" type="month" name="monthValue" value="@Model.MonthValue" />
                 </div>
 
-                <button type="submit" class="btn btn-primary">Actualizar tabla</button>
-            </form>
+                <div class="discrete-filter-field period-field period-custom" data-period="custom">
+                    <label for="fromDate">Desde</label>
+                    <input id="fromDate" type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+                </div>
+
+                <div class="discrete-filter-field period-field period-custom" data-period="custom">
+                    <label for="toDate">Hasta</label>
+                    <input id="toDate" type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Actualizar mapa</button>
+        </form>
+
+        <p class="subtitle">Periodo consultado: <strong>@Model.Matrix.StartDate.ToString("yyyy-MM-dd")</strong> a <strong>@Model.Matrix.EndDate.ToString("yyyy-MM-dd")</strong>. Se muestra el inventario real al cierre del día final.</p>
+    </div>
+
+    <section class="error-kpis" aria-label="Resumen inventario real">
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Total piezas</span>
+            <strong class="kpi-value">@Model.Matrix.TotalPieces.ToString("N0")</strong>
+            <small>Inventario real distribuido por localidad.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card incoming">
+            <span class="kpi-label">Total órdenes</span>
+            <strong class="kpi-value">@Model.Matrix.TotalOrders.ToString("N0")</strong>
+            <small>Conteo real de work_orders por ubicación actual.</small>
+        </article>
+    </section>
+
+    <div class="card gerencia-weekly-card apple-card error-causes-card discrete-map-card">
+        <div class="card-heading">
+            <h3>Mapa principal (PIEZAS)</h3>
+            <span class="chip">Operativo</span>
         </div>
-
-        <p class="subtitle">Período: <strong>@Model.Matrix.StartDate.ToString("yyyy-MM-dd")</strong> a <strong>@Model.Matrix.EndDate.ToString("yyyy-MM-dd")</strong>. Métrica visible: <strong>@metricLabel</strong>.</p>
-        <div class="table-wrapper">
-            <table class="table gerencia-weekly-table">
+        <div class="table-wrapper discrete-map-wrapper">
+            <table class="table gerencia-weekly-table discrete-map-table">
                 <thead>
                     <tr>
-                        <th>Día</th>
+                        <th>Localidad</th>
                         @foreach (var subfamily in Model.Matrix.Subfamilies)
                         {
-                            <th>@subfamily</th>
+                            <th title="@subfamily">@shortNames[subfamily]</th>
                         }
-                        <th>Total @metricLabel.ToLowerInvariant()</th>
-                        @if (Model.MetricView == "pieces")
-                        {
-                            <th>Total scrap</th>
-                        }
+                        <th>Total piezas</th>
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var row in Model.Matrix.Rows)
+                @if (!Model.Matrix.Rows.Any())
                 {
                     <tr>
-                        <td><a asp-controller="Gerencia" asp-action="DiscreteDay" asp-route-day="@row.Day.ToString("yyyy-MM-dd")" class="day-link">@row.Day.ToString("dddd dd MMM", spanish)</a></td>
-                        @foreach (var cell in row.Cells)
-                        {
-                            <td>
-                                <span class="weekly-pill qty">@MetricValue(cell)</span>
-                                @if (Model.MetricView == "pieces")
-                                {
-                                    <span class="weekly-pill scrap">@cell.Scrap.ToString("N0")</span>
-                                }
-                            </td>
-                        }
-                        <td>@RowMetricTotal(row).ToString("N0")</td>
-                        @if (Model.MetricView == "pieces")
-                        {
-                            <td>@row.TotalScrap.ToString("N0")</td>
-                        }
+                        <td colspan="@(Model.Matrix.Subfamilies.Count + 2)" class="empty">No hay localidades con rutas activas para el corte seleccionado.</td>
                     </tr>
+                }
+                else
+                {
+                    @foreach (var row in Model.Matrix.Rows)
+                    {
+                        <tr>
+                            <td>@row.Location</td>
+                            @foreach (var cell in row.Cells)
+                            {
+                                <td>@cell.Pieces.ToString("N0")</td>
+                            }
+                            <td><strong>@row.TotalPieces.ToString("N0")</strong></td>
+                        </tr>
+                    }
                 }
                 </tbody>
             </table>
         </div>
     </div>
 
-    <section class="error-kpis" aria-label="KPIs del mapa de discretos">
-        <article class="kpi-highlight apple-card error-kpi-card">
-            <span class="kpi-label">Piezas producidas</span>
-            <strong class="kpi-value">@totalPieces.ToString("N0")</strong>
-            <small>En el período seleccionado.</small>
-        </article>
-        <article class="kpi-highlight apple-card error-kpi-card delay">
-            <span class="kpi-label">Scrap acumulado</span>
-            <strong class="kpi-value">@totalScrap.ToString("N0")</strong>
-            <small>Para contexto de rendimiento.</small>
-        </article>
-        <article class="kpi-highlight apple-card error-kpi-card incoming">
-            <span class="kpi-label">Órdenes contabilizadas</span>
-            <strong class="kpi-value">@totalOrders.ToString("N0")</strong>
-            <small>Conteo agregado por celda.</small>
-        </article>
-        <article class="kpi-highlight apple-card error-kpi-card">
-            <span class="kpi-label">Productos contabilizados</span>
-            <strong class="kpi-value">@totalProducts.ToString("N0")</strong>
-            <small>Variedad acumulada por subfamilia/día.</small>
-        </article>
-    </section>
-
-    <div class="chart-grid error-causes-grid">
-        <div class="card chart-card apple-card error-causes-card">
-            <div class="card-heading"><h3>Tendencia diaria</h3><span class="chip">Piezas vs scrap</span></div>
-            <div id="discreteTrendChart" class="chart-host chart-host-lg"></div>
-        </div>
-        <div class="card chart-card apple-card error-causes-card">
-            <div class="card-heading"><h3>Top subfamilias por piezas</h3><span class="chip chip-muted">Ranking</span></div>
-            <div id="subfamilyQtyChart" class="chart-host chart-host-lg"></div>
-        </div>
-    </div>
-
-    <div class="card apple-card error-causes-card">
+    <div class="card gerencia-weekly-card apple-card error-causes-card discrete-map-card">
         <div class="card-heading">
-            <h3>Top productos por subfamilia</h3>
-            <span class="chip">Sección dedicada</span>
+            <h3>Mapa alternativo (ORDENES · work_orders)</h3>
+            <span class="chip chip-muted">Alternativo</span>
         </div>
-
-        <form method="get" class="filters discrete-filters discrete-filters-enhanced discrete-map-attached-filters discrete-subfamily-filter">
-            <input type="hidden" name="periodType" value="@Model.PeriodType" />
-            <input type="hidden" name="metricView" value="@Model.MetricView" />
-            <input type="hidden" name="weekValue" value="@Model.WeekValue" />
-            <input type="hidden" name="monthValue" value="@Model.MonthValue" />
-            <input type="hidden" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
-            <input type="hidden" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
-
-            <div class="discrete-filter-field discrete-filter-main">
-                <label for="selectedSubfamily">Subfamilia para top productos</label>
-                <select id="selectedSubfamily" name="selectedSubfamily">
-                    @if (!Model.Matrix.Subfamilies.Any())
-                    {
-                        <option value="">Sin subfamilias</option>
-                    }
-                    else
-                    {
-                        foreach (var subfamily in Model.Matrix.Subfamilies)
+        <div class="table-wrapper discrete-map-wrapper">
+            <table class="table gerencia-weekly-table discrete-map-table">
+                <thead>
+                    <tr>
+                        <th>Localidad</th>
+                        @foreach (var subfamily in Model.Matrix.Subfamilies)
                         {
-                            <option value="@subfamily" selected="@(Model.SelectedSubfamily == subfamily)">@subfamily</option>
+                            <th title="@subfamily">@shortNames[subfamily]</th>
                         }
-                    }
-                </select>
-                <small>Este filtro solo afecta este subcomponente de top productos.</small>
-            </div>
-            <button type="submit" class="btn btn-primary">Actualizar top productos</button>
-        </form>
-
-        <div class="chart-grid error-causes-grid">
-            <div class="card chart-card apple-card error-causes-card">
-                <div class="card-heading"><h3>Gráfico de productos</h3><span class="chip chip-muted">@Model.SelectedSubfamily</span></div>
-                <div id="subfamilyProductsChart" class="chart-host chart-host-lg"></div>
-            </div>
-            <div class="card apple-card error-causes-card">
-                <div class="card-heading"><h3>Productos más fabricados</h3><span class="chip chip-muted">Detalle</span></div>
-                <div class="table-wrapper table-wrapper-tall">
-                    <table class="table">
-                        <thead><tr><th>Producto</th><th>Piezas</th><th>Scrap</th><th>Órdenes</th></tr></thead>
-                        <tbody>
-                        @if (!Model.SubfamilyTopProducts.Any())
-                        {
-                            <tr><td colspan="4" class="empty">No hay datos para la subfamilia seleccionada.</td></tr>
-                        }
-                        else
-                        {
-                            @foreach (var product in Model.SubfamilyTopProducts)
+                        <th>Total órdenes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.Matrix.Rows.Any())
+                {
+                    <tr>
+                        <td colspan="@(Model.Matrix.Subfamilies.Count + 2)" class="empty">No hay localidades con rutas activas para el corte seleccionado.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var row in Model.Matrix.Rows)
+                    {
+                        <tr>
+                            <td>@row.Location</td>
+                            @foreach (var cell in row.Cells)
                             {
-                                <tr>
-                                    <td>@product.Product</td>
-                                    <td><span class="badge-metric badge-metric-alt">@product.Qty.ToString("N0")</span></td>
-                                    <td>@product.Scrap.ToString("N0")</td>
-                                    <td>@product.Orders.ToString("N0")</td>
-                                </tr>
+                                <td>@cell.Orders.ToString("N0")</td>
                             }
-                        }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                            <td><strong>@row.TotalOrders.ToString("N0")</strong></td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
         (() => {
             const periodType = document.getElementById('periodType');
@@ -286,65 +199,5 @@
             periodType.addEventListener('change', toggleFields);
             toggleFields();
         })();
-
-        const dailyLabels = @Html.Raw(JsonSerializer.Serialize(dailyLabels));
-        const dailyPieces = @Html.Raw(JsonSerializer.Serialize(dailyPieces));
-        const dailyScrap = @Html.Raw(JsonSerializer.Serialize(dailyScrap));
-        const subfamilyLabels = @Html.Raw(JsonSerializer.Serialize(subfamilyLabels));
-        const subfamilyValues = @Html.Raw(JsonSerializer.Serialize(subfamilyValues));
-        const productLabels = @Html.Raw(JsonSerializer.Serialize(Model.SubfamilyTopProductsChart.Labels));
-        const productValues = @Html.Raw(JsonSerializer.Serialize(Model.SubfamilyTopProductsChart.Values));
-
-        const sharedChartConfig = {
-            chart: {
-                height: 360,
-                toolbar: { show: false },
-                fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-                animations: { enabled: true, easing: 'easeinout', speed: 420 }
-            },
-            noData: { text: 'Sin datos para mostrar', align: 'center', verticalAlign: 'middle' },
-            grid: { borderColor: 'rgba(80, 110, 150, 0.12)', strokeDashArray: 4 },
-            dataLabels: { enabled: false },
-            tooltip: { theme: 'light' }
-        };
-
-        new ApexCharts(document.getElementById('discreteTrendChart'), {
-            ...sharedChartConfig,
-            chart: { ...sharedChartConfig.chart, type: 'line' },
-            series: [
-                { name: 'Piezas', type: 'column', data: dailyPieces },
-                { name: 'Scrap', type: 'line', data: dailyScrap }
-            ],
-            colors: ['#10b981', '#ef5d78'],
-            stroke: { width: [0, 3], curve: 'smooth' },
-            plotOptions: { bar: { borderRadius: 7, columnWidth: '46%' } },
-            markers: { size: 4 },
-            xaxis: { categories: dailyLabels },
-            yaxis: [{ title: { text: 'Piezas' } }, { opposite: true, title: { text: 'Scrap' } }],
-            legend: { position: 'top', horizontalAlign: 'left' }
-        }).render();
-
-        new ApexCharts(document.getElementById('subfamilyQtyChart'), {
-            ...sharedChartConfig,
-            chart: { ...sharedChartConfig.chart, type: 'bar' },
-            series: [{ name: 'Piezas', data: subfamilyValues }],
-            colors: ['#2d8bff'],
-            plotOptions: { bar: { borderRadius: 9, horizontal: true, barHeight: '56%' } },
-            xaxis: { categories: subfamilyLabels },
-            legend: { show: false }
-        }).render();
-
-        new ApexCharts(document.getElementById('subfamilyProductsChart'), {
-            ...sharedChartConfig,
-            chart: { ...sharedChartConfig.chart, type: 'bar' },
-            series: [{ name: 'Piezas', data: productValues }],
-            colors: ['#7c3aed'],
-            plotOptions: { bar: { borderRadius: 9, columnWidth: '52%' } },
-            xaxis: {
-                categories: productLabels,
-                labels: { rotate: -24, trim: true, style: { fontSize: '11px', colors: '#4d6283' } }
-            },
-            legend: { show: false }
-        }).render();
     </script>
 }

@@ -10,9 +10,35 @@ public class GerenciaDiscreteMapVm
     public string MetricView { get; set; } = "pieces";
     public string? SelectedSubfamily { get; set; }
     public string SortBy { get; set; } = "fifo";
-    public WeeklyOutputMatrixVm Matrix { get; set; } = new();
+    public DateTime SnapshotDate { get; set; }
+    public DiscreteInventoryMatrixVm Matrix { get; set; } = new();
     public ChartVm SubfamilyTopProductsChart { get; } = new();
     public List<SubfamilyProductStatVm> SubfamilyTopProducts { get; } = new();
+}
+
+public class DiscreteInventoryMatrixVm
+{
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public List<string> Subfamilies { get; } = new();
+    public List<DiscreteInventoryLocationRowVm> Rows { get; } = new();
+    public int TotalPieces => Rows.Sum(row => row.TotalPieces);
+    public int TotalOrders => Rows.Sum(row => row.TotalOrders);
+}
+
+public class DiscreteInventoryLocationRowVm
+{
+    public string Location { get; set; } = string.Empty;
+    public List<DiscreteInventoryCellVm> Cells { get; } = new();
+    public int TotalPieces { get; set; }
+    public int TotalOrders { get; set; }
+}
+
+public class DiscreteInventoryCellVm
+{
+    public string Subfamily { get; set; } = string.Empty;
+    public int Pieces { get; set; }
+    public int Orders { get; set; }
 }
 
 public class SubfamilyProductStatVm

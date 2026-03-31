@@ -87,12 +87,11 @@ public class GerenciaService
         vm.PeriodType = normalizedPeriodType;
         vm.WeekValue = normalizedWeek;
         vm.MonthValue = normalizedMonth;
+        vm.SnapshotDate = end;
 
         using var cn = new MySqlConnection(_conn);
         cn.Open();
-        vm.Matrix = GetWeeklyOutputMatrix(cn, start, end, vm.SortBy);
-        vm.SelectedSubfamily = ResolveSelectedSubfamily(vm.Matrix.Subfamilies, vm.SelectedSubfamily);
-        LoadSubfamilyTopProducts(cn, vm, start, end);
+        vm.Matrix = GetDiscreteInventoryMatrix(cn, start, end);
 
         return vm;
     }
@@ -805,6 +804,120 @@ public class GerenciaService
 
                 row.TotalQty += values.Qty;
                 row.TotalScrap += values.Scrap;
+            }
+
+            matrix.Rows.Add(row);
+        }
+
+        return matrix;
+    }
+
+    private static DiscreteInventoryMatrixVm GetDiscreteInventoryMatrix(MySqlConnection cn, DateTime startDate, DateTime endDate)
+    {
+        var matrix = new DiscreteInventoryMatrixVm
+        {
+            StartDate = startDate,
+            EndDate = endDate
+        };
+
+        var locationNames = new List<string>();
+        using (var locationCmd = new MySqlCommand(@"
+            SELECT DISTINCT l.name AS location_name
+            FROM route r
+            JOIN route_step rs ON rs.route_id = r.id
+            JOIN location l ON l.id = rs.location_id
+            WHERE r.active = 1
+            ORDER BY l.name", cn))
+        {
+            using var locationRd = locationCmd.ExecuteReader();
+            while (locationRd.Read())
+            {
+                locationNames.Add(locationRd.GetString("location_name"));
+            }
+        }
+
+        var subfamilyNames = new List<string>();
+        using (var subfamilyCmd = new MySqlCommand(@"
+            SELECT DISTINCT COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name
+            FROM route r
+            JOIN subfamily sf ON sf.id = r.subfamily_id
+            WHERE r.active = 1
+            ORDER BY subfamily_name", cn))
+        {
+            using var subfamilyRd = subfamilyCmd.ExecuteReader();
+            while (subfamilyRd.Read())
+            {
+                subfamilyNames.Add(subfamilyRd.GetString("subfamily_name"));
+            }
+        }
+
+        matrix.Subfamilies.AddRange(subfamilyNames);
+
+        var snapshotMap = new Dictionary<string, (int Pieces, int Orders)>(StringComparer.OrdinalIgnoreCase);
+        using (var snapshotCmd = new MySqlCommand(@"
+            WITH active_locations AS (
+                SELECT DISTINCT rs.location_id
+                FROM route r
+                JOIN route_step rs ON rs.route_id = r.id
+                WHERE r.active = 1
+            ),
+            latest_execution AS (
+                SELECT wse.wip_item_id,
+                       wse.route_step_id,
+                       wse.qty_in,
+                       ROW_NUMBER() OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at DESC, wse.id DESC) AS rn
+                FROM wip_step_execution wse
+                WHERE wse.create_at < @snapshotCutoff
+            )
+            SELECT COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name,
+                   l.name AS location_name,
+                   COALESCE(SUM(le.qty_in), 0) AS pieces_total,
+                   COUNT(DISTINCT wo.id) AS orders_total
+            FROM latest_execution le
+            JOIN route_step rs ON rs.id = le.route_step_id
+            JOIN active_locations al ON al.location_id = rs.location_id
+            JOIN location l ON l.id = rs.location_id
+            JOIN wip_item wip ON wip.id = le.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily sf ON sf.id = p.id_subfamily
+            WHERE le.rn = 1
+              AND wo.status IN ('OPEN', 'IN_PROGRESS')
+            GROUP BY subfamily_name, location_name", cn))
+        {
+            snapshotCmd.Parameters.AddWithValue("@snapshotCutoff", endDate.Date.AddDays(1));
+
+            using var snapshotRd = snapshotCmd.ExecuteReader();
+            while (snapshotRd.Read())
+            {
+                var key = $"{snapshotRd.GetString("location_name")}|{snapshotRd.GetString("subfamily_name")}";
+                snapshotMap[key] = (
+                    Pieces: Convert.ToInt32(snapshotRd.GetInt64("pieces_total")),
+                    Orders: Convert.ToInt32(snapshotRd.GetInt64("orders_total")));
+            }
+        }
+
+        foreach (var location in locationNames)
+        {
+            var row = new DiscreteInventoryLocationRowVm
+            {
+                Location = location
+            };
+
+            foreach (var subfamily in subfamilyNames)
+            {
+                var key = $"{location}|{subfamily}";
+                var values = snapshotMap.TryGetValue(key, out var found) ? found : (Pieces: 0, Orders: 0);
+
+                row.Cells.Add(new DiscreteInventoryCellVm
+                {
+                    Subfamily = subfamily,
+                    Pieces = values.Pieces,
+                    Orders = values.Orders
+                });
+
+                row.TotalPieces += values.Pieces;
+                row.TotalOrders += values.Orders;
             }
 
             matrix.Rows.Add(row);
