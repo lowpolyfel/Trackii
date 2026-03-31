@@ -125,7 +125,19 @@
                             <td>@row.Location</td>
                             @foreach (var cell in row.Cells)
                             {
-                                <td>@cell.Pieces.ToString("N0")</td>
+                                <td>
+                                    <a asp-controller="Gerencia"
+                                       asp-action="DiscreteMapDetail"
+                                       asp-route-location="@row.Location"
+                                       asp-route-subfamily="@cell.Subfamily"
+                                       asp-route-periodType="@Model.PeriodType"
+                                       asp-route-weekValue="@Model.WeekValue"
+                                       asp-route-monthValue="@Model.MonthValue"
+                                       asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                                       asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">
+                                        @cell.Pieces.ToString("N0")
+                                    </a>
+                                </td>
                             }
                             <td><strong>@row.TotalPieces.ToString("N0")</strong></td>
                         </tr>
@@ -168,7 +180,19 @@
                             <td>@row.Location</td>
                             @foreach (var cell in row.Cells)
                             {
-                                <td>@cell.Orders.ToString("N0")</td>
+                                <td>
+                                    <a asp-controller="Gerencia"
+                                       asp-action="DiscreteMapDetail"
+                                       asp-route-location="@row.Location"
+                                       asp-route-subfamily="@cell.Subfamily"
+                                       asp-route-periodType="@Model.PeriodType"
+                                       asp-route-weekValue="@Model.WeekValue"
+                                       asp-route-monthValue="@Model.MonthValue"
+                                       asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                                       asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">
+                                        @cell.Orders.ToString("N0")
+                                    </a>
+                                </td>
                             }
                             <td><strong>@row.TotalOrders.ToString("N0")</strong></td>
                         </tr>

@@ -37,6 +37,13 @@ public class GerenciaController : Controller
         return View($"{ViewBase}DiscreteDay.cshtml", vm);
     }
 
+    [HttpGet("DetalleMapaDiscretos")]
+    public IActionResult DiscreteMapDetail(string location, string subfamily, string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, DateTime? day)
+    {
+        var vm = _svc.GetDiscreteMapCellDetail(location, subfamily, periodType, weekValue, monthValue, fromDate, toDate, day);
+        return View($"{ViewBase}DiscreteMapDetail.cshtml", vm);
+    }
+
     [HttpGet("PanelesDiariosDiscretos")]
     public IActionResult DiscreteDailyPanels()
     {

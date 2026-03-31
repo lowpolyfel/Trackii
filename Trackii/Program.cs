@@ -91,6 +91,7 @@ builder.Services.AddScoped<HardModService>();
 builder.Services.AddScoped<Trackii.Services.Search.SearchService>();
 builder.Services.AddScoped<DeviceService>();
 builder.Services.AddScoped<DeviceActivationApiService>();
+builder.Services.AddScoped<AdminWipService>();
 
 // =====================
 // Services (API)
