@@ -87,7 +87,7 @@
                             </td>
                             <td>@step.LocationName</td>
                             <td>
-                                <input type="number" min="0" class="input" name="RouteSteps[@i].QtyIn" value="@step.QtyIn" @(step.IsCompleted ? "readonly" : string.Empty) />
+                                <input type="number" min="0" class="input js-qty-in" data-index="@i" name="RouteSteps[@i].QtyIn" value="@step.QtyIn" @(step.IsCompleted ? "readonly" : string.Empty) />
                             </td>
                             <td>
                                 <input type="number" min="0" class="input js-scrap" data-index="@i" name="RouteSteps[@i].QtyScrap" value="@step.QtyScrap" @(step.IsCompleted ? "readonly" : string.Empty) />
@@ -182,17 +182,60 @@
                 });
             }
 
-            document.querySelectorAll('.js-scrap').forEach((input) => {
+            const qtyInputs = Array.from(document.querySelectorAll('.js-qty-in'));
+            const scrapInputs = Array.from(document.querySelectorAll('.js-scrap'));
+
+            function normalizeNumber(value) {
+                const parsed = parseInt(value || '0', 10);
+                return Number.isNaN(parsed) ? 0 : parsed;
+            }
+
+            function syncErrorCodeRequirement(index) {
+                const scrapInput = scrapInputs[index];
+                const select = document.getElementById(`errorCode_${index}`);
+                if (!scrapInput || !select) return;
+
+                const scrap = normalizeNumber(scrapInput.value);
+                select.required = scrap > 0;
+            }
+
+            function recalculateScrapForStep(index) {
+                if (index <= 0) return;
+
+                const previousQtyInput = qtyInputs[index - 1];
+                const currentQtyInput = qtyInputs[index];
+                const currentScrapInput = scrapInputs[index];
+                if (!previousQtyInput || !currentQtyInput || !currentScrapInput || currentScrapInput.readOnly) return;
+
+                const previousQty = normalizeNumber(previousQtyInput.value);
+                const currentQty = normalizeNumber(currentQtyInput.value);
+                const calculatedScrap = Math.max(previousQty - currentQty, 0);
+
+                currentScrapInput.value = calculatedScrap.toString();
+                syncErrorCodeRequirement(index);
+            }
+
+            qtyInputs.forEach((input) => {
                 input.addEventListener('input', function () {
-                    const index = this.dataset.index;
-                    const select = document.getElementById(`errorCode_${index}`);
-                    const scrap = parseInt(this.value || '0');
-                    if (scrap > 0) {
-                        select.required = true;
-                    } else {
-                        select.required = false;
+                    const index = normalizeNumber(this.dataset.index);
+                    recalculateScrapForStep(index);
+
+                    if (index + 1 < qtyInputs.length) {
+                        recalculateScrapForStep(index + 1);
                     }
                 });
+            });
+
+            scrapInputs.forEach((input) => {
+                input.addEventListener('input', function () {
+                    const index = normalizeNumber(this.dataset.index);
+                    syncErrorCodeRequirement(index);
+                });
+            });
+
+            scrapInputs.forEach((input) => {
+                const index = normalizeNumber(input.dataset.index);
+                syncErrorCodeRequirement(index);
             });
         })();
     </script>
