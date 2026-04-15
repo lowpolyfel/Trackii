@@ -1,3 +1,4 @@
+@using System.Text.Json
 @model Trackii.Models.Gerencia.GerenciaDiscreteMapVm
 @using System.Globalization
 @{
@@ -23,6 +24,8 @@
     }
 
     var shortNames = Model.Matrix.Subfamilies.ToDictionary(name => name, ShortSubfamily);
+    var metricLabel = Model.MetricView == "orders" ? "ÓRDENES" : "PIEZAS";
+    var rowTotalLabel = Model.MetricView == "orders" ? "Total órdenes" : "Total piezas";
 }
 
 <div class="dashboard">
@@ -34,60 +37,73 @@
         <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
     </div>
 
-    <div class="card gerencia-weekly-card apple-card error-causes-card">
-        <div class="card-heading">
-            <h3>Rango rápido</h3>
-            <span class="chip">All day / week / month / year</span>
-        </div>
-
-        <form method="get" class="quick-range-form">
-            <div class="quick-range-buttons" role="group" aria-label="Rango rápido">
-                <button class="btn @(Model.QuickRange == "day" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="day">All day</button>
-                <button class="btn @(Model.QuickRange == "week" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="week">All week</button>
-                <button class="btn @(Model.QuickRange == "month" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="month">All month</button>
-                <button class="btn @(Model.QuickRange == "historic" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="historic">All year</button>
+    <section class="discrete-overview-grid" aria-label="Resumen ejecutivo discretos">
+        <article class="kpi-highlight apple-card error-kpi-card compact-executive-card">
+            <div class="compact-executive-header">
+                <span class="kpi-label">Resumen general (piezas + órdenes)</span>
+                <form method="get" class="quick-range-form">
+                    <div class="quick-range-buttons quick-range-buttons-compact" role="group" aria-label="Rango rápido">
+                        <button class="btn @(Model.QuickRange == "day" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="day">All day</button>
+                        <button class="btn @(Model.QuickRange == "week" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="week">All week</button>
+                        <button class="btn @(Model.QuickRange == "month" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="month">All month</button>
+                        <button class="btn @(Model.QuickRange == "historic" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="historic">All year</button>
+                    </div>
+                    <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                    <input type="hidden" name="metricView" value="@Model.MetricView" />
+                    <input type="hidden" name="weekValue" value="@Model.WeekValue" />
+                    <input type="hidden" name="monthValue" value="@Model.MonthValue" />
+                    <input type="hidden" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+                    <input type="hidden" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+                </form>
             </div>
-            <input type="hidden" name="sortBy" value="@Model.SortBy" />
-            <input type="hidden" name="metricView" value="@Model.MetricView" />
-        </form>
-    </div>
-
-    <section class="error-kpis" aria-label="Resumen inventario real">
-        <article class="kpi-highlight apple-card error-kpi-card discrete-kpi-grid">
-            <div>
-                <span class="kpi-label">Total piezas</span>
-                <strong class="kpi-value">@Model.Matrix.TotalPieces.ToString("N0")</strong>
+            <div class="compact-executive-body">
+                <div class="compact-kpi-grid">
+                    <div>
+                        <span class="kpi-label">Total piezas</span>
+                        <strong class="kpi-value">@Model.Matrix.TotalPieces.ToString("N0")</strong>
+                    </div>
+                    <div>
+                        <span class="kpi-label">Total órdenes</span>
+                        <strong class="kpi-value">@Model.Matrix.TotalOrders.ToString("N0")</strong>
+                    </div>
+                    <div>
+                        <span class="kpi-label">Producción</span>
+                        <strong class="kpi-value">@Model.ProducedTotal.ToString("N0")</strong>
+                    </div>
+                    <div>
+                        <span class="kpi-label">Scrap</span>
+                        <strong class="kpi-value">@Model.ScrapTotal.ToString("N0")</strong>
+                    </div>
+                </div>
+                <div id="ordersSummaryChart" class="mini-chart-host" aria-label="Estado general de órdenes"></div>
             </div>
-            <div>
-                <span class="kpi-label">Total órdenes</span>
-                <strong class="kpi-value">@Model.Matrix.TotalOrders.ToString("N0")</strong>
-            </div>
-            <small>Subfamilias sin actividad ocultas automáticamente para reducir ruido visual.</small>
+            <small>Incluye abiertas, terminadas, canceladas y en retrabajo.</small>
         </article>
 
-        <article class="kpi-highlight apple-card error-kpi-card">
-            <span class="kpi-label">Subfamilias ocultas</span>
-            @if (!Model.HiddenSubfamilies.Any())
-            {
-                <p class="subtitle">Todas las subfamilias tienen órdenes o productos en este periodo.</p>
-            }
-            else
-            {
-                <p class="subtitle">Estas subfamilias no cuentan con ninguna orden y/o producto generado en este tiempo seleccionado:</p>
-                <ul class="compact-list">
-                    @foreach (var name in Model.HiddenSubfamilies)
-                    {
-                        <li>@name</li>
-                    }
-                </ul>
-            }
+        <article class="kpi-highlight apple-card error-kpi-card compact-scrap-card">
+            <span class="kpi-label">Scrap vs producción (líneas superpuestas)</span>
+            <div id="scrapVsProductionChart" class="chart-host compact-line-chart"></div>
+            <small>Evolución en el periodo seleccionado: tiempo vs piezas producidas y scrap.</small>
         </article>
     </section>
 
     <div class="card gerencia-weekly-card apple-card error-causes-card discrete-map-card">
         <div class="card-heading">
-            <h3>Mapa principal (PIEZAS)</h3>
-            <span class="chip">Operativo</span>
+            <h3>Mapa principal (@metricLabel)</h3>
+            <div class="map-toolbar">
+                <form method="get" class="metric-switch-form">
+                    <div class="metric-switch" role="group" aria-label="Cambiar métrica del mapa">
+                        <button type="submit" name="metricView" value="pieces" class="btn btn-sm-inline @(Model.MetricView == "pieces" ? "btn-primary" : "btn-secondary")">Piezas</button>
+                        <button type="submit" name="metricView" value="orders" class="btn btn-sm-inline @(Model.MetricView == "orders" ? "btn-primary" : "btn-secondary")">Órdenes</button>
+                    </div>
+                    <input type="hidden" name="periodType" value="@Model.PeriodType" />
+                    <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                    <input type="hidden" name="weekValue" value="@Model.WeekValue" />
+                    <input type="hidden" name="monthValue" value="@Model.MonthValue" />
+                    <input type="hidden" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+                    <input type="hidden" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+                </form>
+            </div>
         </div>
         <div class="table-wrapper discrete-map-wrapper">
             <table class="table gerencia-weekly-table discrete-map-table">
@@ -98,7 +114,7 @@
                         {
                             <th title="@subfamily">@shortNames[subfamily]</th>
                         }
-                        <th>Total piezas</th>
+                        <th>@rowTotalLabel</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -117,8 +133,10 @@
                             @foreach (var cell in row.Cells)
                             {
                                 var zeroClass = cell.Pieces == 0 ? "cell-zero" : string.Empty;
+                                var metricValue = Model.MetricView == "orders" ? cell.Orders : cell.Pieces;
+                                zeroClass = metricValue == 0 ? "cell-zero" : string.Empty;
                                 <td class="@zeroClass">
-                                    @if (cell.Pieces == 0)
+                                    @if (metricValue == 0)
                                     {
                                         <span class="zero-mask" aria-hidden="true"></span>
                                     }
@@ -134,12 +152,12 @@
                                            asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
                                            asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
                                            class="cell-link-strong">
-                                            @cell.Pieces.ToString("N0")
+                                            @metricValue.ToString("N0")
                                         </a>
                                     }
                                 </td>
                             }
-                            <td><strong>@row.TotalPieces.ToString("N0")</strong></td>
+                            <td><strong>@(Model.MetricView == "orders" ? row.TotalOrders.ToString("N0") : row.TotalPieces.ToString("N0"))</strong></td>
                         </tr>
                     }
                 }
@@ -147,4 +165,78 @@
             </table>
         </div>
     </div>
+
+    <section class="hidden-subfamilies-grid" aria-label="Detalle de subfamilias ocultas">
+        <article class="kpi-highlight apple-card error-kpi-card hidden-subfamilies-card">
+            <span class="kpi-label">Subfamilias ocultas</span>
+            @if (!Model.HiddenSubfamilies.Any())
+            {
+                <p class="subtitle">Todas las subfamilias tienen actividad en el rango seleccionado.</p>
+            }
+            else
+            {
+                <ul class="compact-list minimal-list">
+                    @foreach (var name in Model.HiddenSubfamilies)
+                    {
+                        <li>@name</li>
+                    }
+                </ul>
+            }
+        </article>
+    </section>
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        const orderStatusLabels = @Html.Raw(JsonSerializer.Serialize(Model.OrdersSummaryChart.Labels));
+        const orderStatusValues = @Html.Raw(JsonSerializer.Serialize(Model.OrdersSummaryChart.Values));
+        const productionTrendLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductionTrendChart.Labels));
+        const productionTrendValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductionTrendChart.Values));
+        const scrapTrendValues = @Html.Raw(JsonSerializer.Serialize(Model.ScrapTrendChart.Values));
+
+        const ordersSummaryContainer = document.getElementById('ordersSummaryChart');
+        const scrapVsProductionContainer = document.getElementById('scrapVsProductionChart');
+
+        if (ordersSummaryContainer) {
+            ordersSummaryContainer.innerHTML = '';
+            new ApexCharts(ordersSummaryContainer, {
+                chart: { type: 'donut', height: 240, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+                labels: orderStatusLabels,
+                series: orderStatusValues,
+                legend: { position: 'bottom' },
+                colors: ['#3078ff', '#25b46b', '#ff6b6b', '#f59e0b'],
+                stroke: { width: 2, colors: ['#fff'] },
+                dataLabels: { enabled: false },
+                plotOptions: { pie: { donut: { size: '62%' } } }
+            }).render();
+        }
+
+        if (scrapVsProductionContainer) {
+            scrapVsProductionContainer.innerHTML = '';
+            new ApexCharts(scrapVsProductionContainer, {
+                chart: { type: 'line', height: 300, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+                series: [
+                    { name: 'Producción', type: 'line', data: productionTrendValues },
+                    { name: 'Scrap', type: 'line', data: scrapTrendValues }
+                ],
+                colors: ['#14b8a6', '#ef4444'],
+                stroke: { width: [3, 3], curve: 'smooth' },
+                markers: { size: 4 },
+                xaxis: { categories: productionTrendLabels },
+                yaxis: [{ title: { text: 'Cantidad' } }],
+                dataLabels: { enabled: false },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.45,
+                        opacityTo: 0.1,
+                        stops: [0, 95, 100]
+                    }
+                },
+                legend: { position: 'top' }
+            }).render();
+        }
+    </script>
+}

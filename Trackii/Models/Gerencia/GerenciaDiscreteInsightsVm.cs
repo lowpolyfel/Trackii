@@ -14,6 +14,12 @@ public class GerenciaDiscreteMapVm
     public string QuickRange { get; set; } = "day";
     public DiscreteInventoryMatrixVm Matrix { get; set; } = new();
     public List<string> HiddenSubfamilies { get; } = new();
+    public ChartVm OrdersSummaryChart { get; } = new();
+    public ChartVm TotalsComparisonChart { get; } = new();
+    public int ProducedTotal { get; set; }
+    public int ScrapTotal { get; set; }
+    public ChartVm ProductionTrendChart { get; } = new();
+    public ChartVm ScrapTrendChart { get; } = new();
     public ChartVm SubfamilyTopProductsChart { get; } = new();
     public List<SubfamilyProductStatVm> SubfamilyTopProducts { get; } = new();
 }

@@ -582,6 +582,134 @@
     gap: 10px;
 }
 
+.map-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+}
+
+.metric-switch-form {
+    margin: 0;
+}
+
+.metric-switch {
+    display: inline-flex;
+    gap: 8px;
+}
+
+.mini-chart-host {
+    min-height: 220px;
+}
+
+.discrete-overview-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.compact-executive-card {
+    padding: 14px;
+}
+
+.compact-executive-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.quick-range-buttons-compact {
+    gap: 6px;
+}
+
+.quick-range-buttons-compact .btn {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: .78rem;
+}
+
+.compact-executive-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+    align-items: center;
+}
+
+.compact-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: 10px;
+}
+
+.compact-kpi-grid .kpi-value {
+    font-size: 1.4rem;
+}
+
+.compact-scrap-card {
+    padding: 14px;
+}
+
+.compact-line-chart {
+    min-height: 300px;
+    margin-top: 8px;
+}
+
+.kpi-with-chart {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.hidden-subfamilies-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.hidden-subfamilies-card {
+    min-height: 220px;
+}
+
+.minimal-list {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+    display: grid;
+    gap: 8px;
+}
+
+.minimal-list li {
+    border: 1px solid rgba(23, 88, 177, 0.12);
+    border-radius: 10px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.65);
+    font-size: .84rem;
+}
+
+@media (max-width: 900px) {
+    .discrete-overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .compact-executive-body {
+        grid-template-columns: 1fr;
+    }
+
+    .compact-executive-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hidden-subfamilies-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .cell-zero {
     background: rgba(136, 154, 179, 0.08);
 }

@@ -96,6 +96,8 @@ public class GerenciaService
         using var cn = new MySqlConnection(_conn);
         cn.Open();
         vm.Matrix = GetDiscreteInventoryMatrix(cn, start, end, vm);
+        LoadDiscreteOrdersSummary(cn, vm);
+        LoadDiscreteProductionVsScrap(cn, vm, start, end);
 
         return vm;
     }
@@ -532,7 +534,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
+                           CAST(COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) AS SIGNED) - CAST(wse.qty_in AS SIGNED),
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -632,7 +634,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
+                           CAST(COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) AS SIGNED) - CAST(wse.qty_in AS SIGNED),
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -740,7 +742,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
+                           CAST(COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) AS SIGNED) - CAST(wse.qty_in AS SIGNED),
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -801,7 +803,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
+                           CAST(COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) AS SIGNED) - CAST(wse.qty_in AS SIGNED),
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -836,7 +838,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
+                           CAST(COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) AS SIGNED) - CAST(wse.qty_in AS SIGNED),
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -1108,7 +1110,7 @@ public class GerenciaService
             WITH step_metrics AS (
                 SELECT wse.*,
                        GREATEST(
-                           COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) - wse.qty_in,
+                           CAST(COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) AS SIGNED) - CAST(wse.qty_in AS SIGNED),
                            0
                        ) AS calc_scrap
                 FROM wip_step_execution wse
@@ -1147,6 +1149,73 @@ public class GerenciaService
             vm.SubfamilyTopProductsChart.Labels.Add(row.Product);
             vm.SubfamilyTopProductsChart.Values.Add(row.Qty);
         }
+    }
+
+    private static void LoadDiscreteOrdersSummary(MySqlConnection cn, GerenciaDiscreteMapVm vm)
+    {
+        using var cmd = new MySqlCommand(@"
+            SELECT
+                (SELECT COUNT(*) FROM work_order WHERE status IN ('OPEN','IN_PROGRESS')) AS open_total,
+                (SELECT COUNT(*) FROM work_order WHERE status = 'FINISHED') AS finished_total,
+                (SELECT COUNT(*) FROM work_order WHERE status = 'CANCELLED') AS cancelled_total,
+                (SELECT COUNT(DISTINCT wo.id)
+                 FROM work_order wo
+                 JOIN wip_item wi ON wi.wo_order_id = wo.id
+                 WHERE wi.status = 'HOLD') AS rework_total", cn);
+
+        using var rd = cmd.ExecuteReader();
+        if (!rd.Read()) return;
+
+        vm.OrdersSummaryChart.Labels.AddRange(["Abiertas", "Terminadas", "Canceladas", "Retrabajo"]);
+        vm.OrdersSummaryChart.Values.AddRange([
+            Convert.ToInt32(rd.GetInt64("open_total")),
+            Convert.ToInt32(rd.GetInt64("finished_total")),
+            Convert.ToInt32(rd.GetInt64("cancelled_total")),
+            Convert.ToInt32(rd.GetInt64("rework_total"))
+        ]);
+    }
+
+    private static void LoadDiscreteProductionVsScrap(MySqlConnection cn, GerenciaDiscreteMapVm vm, DateTime startDate, DateTime endDate)
+    {
+        using var cmd = new MySqlCommand(@"
+            WITH step_metrics AS (
+                SELECT DATE(wse.create_at) AS metric_day,
+                       wse.qty_in,
+                       GREATEST(
+                           CAST(COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) AS SIGNED) - CAST(wse.qty_in AS SIGNED),
+                           0
+                       ) AS calc_scrap
+                FROM wip_step_execution wse
+                WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
+            )
+            SELECT metric_day,
+                   COALESCE(SUM(qty_in - calc_scrap), 0) AS produced_total,
+                   COALESCE(SUM(calc_scrap), 0) AS scrap_total
+            FROM step_metrics
+            GROUP BY metric_day
+            ORDER BY metric_day", cn);
+
+        cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+        cmd.Parameters.AddWithValue("@endDate", endDate.Date);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            var day = rd.GetDateTime("metric_day");
+            var produced = Convert.ToInt32(rd.GetInt64("produced_total"));
+            var scrap = Convert.ToInt32(rd.GetInt64("scrap_total"));
+
+            vm.ProductionTrendChart.Labels.Add(day.ToString("MM-dd"));
+            vm.ProductionTrendChart.Values.Add(produced);
+            vm.ScrapTrendChart.Labels.Add(day.ToString("MM-dd"));
+            vm.ScrapTrendChart.Values.Add(scrap);
+            vm.ProducedTotal += produced;
+            vm.ScrapTotal += scrap;
+        }
+
+        vm.TotalsComparisonChart.Labels.AddRange(["Piezas", "Órdenes"]);
+        vm.TotalsComparisonChart.Values.Add(vm.Matrix.TotalPieces);
+        vm.TotalsComparisonChart.Values.Add(vm.Matrix.TotalOrders);
     }
 
     private static void ResolvePeriod(string periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, out DateTime start, out DateTime end, out string normalizedPeriodType, out string normalizedWeek, out string normalizedMonth)
