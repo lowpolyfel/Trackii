@@ -582,6 +582,70 @@
     gap: 10px;
 }
 
+.map-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+}
+
+.metric-switch-form {
+    margin: 0;
+}
+
+.metric-switch {
+    display: inline-flex;
+    gap: 8px;
+}
+
+.mini-chart-host {
+    min-height: 220px;
+}
+
+.orders-status-card .mini-chart-host {
+    margin-top: 6px;
+}
+
+.kpi-with-chart {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.hidden-subfamilies-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.hidden-subfamilies-card {
+    min-height: 220px;
+}
+
+.minimal-list {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+    display: grid;
+    gap: 8px;
+}
+
+.minimal-list li {
+    border: 1px solid rgba(23, 88, 177, 0.12);
+    border-radius: 10px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.65);
+    font-size: .84rem;
+}
+
+@media (max-width: 900px) {
+    .hidden-subfamilies-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .cell-zero {
     background: rgba(136, 154, 179, 0.08);
 }
