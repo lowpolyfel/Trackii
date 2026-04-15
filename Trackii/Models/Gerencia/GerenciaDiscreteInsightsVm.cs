@@ -2,7 +2,7 @@ namespace Trackii.Models.Gerencia;
 
 public class GerenciaDiscreteMapVm
 {
-    public string PeriodType { get; set; } = "week";
+    public string PeriodType { get; set; } = "day";
     public string? WeekValue { get; set; }
     public string? MonthValue { get; set; }
     public DateTime? FromDate { get; set; }
@@ -11,7 +11,9 @@ public class GerenciaDiscreteMapVm
     public string? SelectedSubfamily { get; set; }
     public string SortBy { get; set; } = "fifo";
     public DateTime SnapshotDate { get; set; }
+    public string QuickRange { get; set; } = "day";
     public DiscreteInventoryMatrixVm Matrix { get; set; } = new();
+    public List<string> HiddenSubfamilies { get; } = new();
     public ChartVm SubfamilyTopProductsChart { get; } = new();
     public List<SubfamilyProductStatVm> SubfamilyTopProducts { get; } = new();
 }

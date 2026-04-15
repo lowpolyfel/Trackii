@@ -35,6 +35,8 @@ public class GerenciaService
         LoadWipStatusChart(cn, vm.WipStatusChart);
         LoadScanEventChart(cn, vm.ScanEventChart);
         LoadWorkOrderStatusChart(cn, vm.OrderStatusChart);
+        LoadDashboardExecutiveSummary(cn, vm);
+        LoadLocationBacklogChart(cn, vm);
 
         var weekStart = GetStartOfWeek(DateTime.UtcNow.Date);
         vm.WeeklyOutput = GetWeeklyOutputMatrix(cn, weekStart, weekStart.AddDays(6), "fifo");
@@ -70,16 +72,18 @@ public class GerenciaService
 
     public GerenciaDiscreteMapVm GetDiscreteMap(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, string? sortBy, string? metricView, string? selectedSubfamily)
     {
+        var normalizedQuickRange = NormalizeQuickRange(periodType);
         var vm = new GerenciaDiscreteMapVm
         {
-            PeriodType = string.IsNullOrWhiteSpace(periodType) ? "week" : periodType,
+            PeriodType = normalizedQuickRange,
             WeekValue = weekValue,
             MonthValue = monthValue,
             FromDate = fromDate,
             ToDate = toDate,
             MetricView = NormalizeMetricView(metricView),
             SelectedSubfamily = selectedSubfamily,
-            SortBy = string.IsNullOrWhiteSpace(sortBy) ? "fifo" : sortBy
+            SortBy = string.IsNullOrWhiteSpace(sortBy) ? "fifo" : sortBy,
+            QuickRange = normalizedQuickRange
         };
 
         ResolvePeriod(vm.PeriodType, vm.WeekValue, vm.MonthValue, vm.FromDate, vm.ToDate, out var start, out var end, out var normalizedPeriodType, out var normalizedWeek, out var normalizedMonth);
@@ -91,7 +95,7 @@ public class GerenciaService
 
         using var cn = new MySqlConnection(_conn);
         cn.Open();
-        vm.Matrix = GetDiscreteInventoryMatrix(cn, start, end);
+        vm.Matrix = GetDiscreteInventoryMatrix(cn, start, end, vm);
 
         return vm;
     }
@@ -945,7 +949,7 @@ public class GerenciaService
         return matrix;
     }
 
-    private static DiscreteInventoryMatrixVm GetDiscreteInventoryMatrix(MySqlConnection cn, DateTime startDate, DateTime endDate)
+    private static DiscreteInventoryMatrixVm GetDiscreteInventoryMatrix(MySqlConnection cn, DateTime startDate, DateTime endDate, GerenciaDiscreteMapVm vm)
     {
         var matrix = new DiscreteInventoryMatrixVm
         {
@@ -969,7 +973,7 @@ public class GerenciaService
             }
         }
 
-        var subfamilyNames = new List<string>();
+        var allSubfamilyNames = new List<string>();
         using (var subfamilyCmd = new MySqlCommand(@"
             SELECT DISTINCT COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name
             FROM route r
@@ -980,11 +984,9 @@ public class GerenciaService
             using var subfamilyRd = subfamilyCmd.ExecuteReader();
             while (subfamilyRd.Read())
             {
-                subfamilyNames.Add(subfamilyRd.GetString("subfamily_name"));
+                allSubfamilyNames.Add(subfamilyRd.GetString("subfamily_name"));
             }
         }
-
-        matrix.Subfamilies.AddRange(subfamilyNames);
 
         var periodMap = new Dictionary<string, (int Pieces, int Orders)>(StringComparer.OrdinalIgnoreCase);
         using (var periodCmd = new MySqlCommand(@"
@@ -1022,6 +1024,17 @@ public class GerenciaService
             }
         }
 
+        var visibleSubfamilies = allSubfamilyNames
+            .Where(subfamily => locationNames.Any(location =>
+            {
+                var key = $"{location}|{subfamily}";
+                return periodMap.TryGetValue(key, out var values) && (values.Pieces > 0 || values.Orders > 0);
+            }))
+            .ToList();
+
+        matrix.Subfamilies.AddRange(visibleSubfamilies);
+        vm.HiddenSubfamilies.AddRange(allSubfamilyNames.Except(visibleSubfamilies));
+
         foreach (var location in locationNames)
         {
             var row = new DiscreteInventoryLocationRowVm
@@ -1029,7 +1042,7 @@ public class GerenciaService
                 Location = location
             };
 
-            foreach (var subfamily in subfamilyNames)
+            foreach (var subfamily in visibleSubfamilies)
             {
                 var key = $"{location}|{subfamily}";
                 var values = periodMap.TryGetValue(key, out var found) ? found : (Pieces: 0, Orders: 0);
@@ -1058,6 +1071,18 @@ public class GerenciaService
             "orders" => "orders",
             "products" => "products",
             _ => "pieces"
+        };
+    }
+
+    private static string NormalizeQuickRange(string? periodType)
+    {
+        return periodType?.ToLowerInvariant() switch
+        {
+            "all_day" or "day" => "day",
+            "all_week" or "week" => "week",
+            "all_month" or "month" => "month",
+            "all_year" or "year" or "historic" => "historic",
+            _ => "day"
         };
     }
 
@@ -1161,6 +1186,91 @@ public class GerenciaService
 
         normalizedWeek = $"{ISOWeek.GetYear(start)}-W{ISOWeek.GetWeekOfYear(start):00}";
         normalizedMonth = $"{start:yyyy-MM}";
+    }
+
+    private static void LoadDashboardExecutiveSummary(MySqlConnection cn, GerenciaDashboardVm vm)
+    {
+        vm.SnapshotAtUtc = DateTime.UtcNow;
+        var today = vm.SnapshotAtUtc.Date;
+        var weekStart = GetStartOfWeek(today);
+        var previousWeekStart = weekStart.AddDays(-7);
+        var previousSameDay = today.AddDays(-7);
+
+        using var cmd = new MySqlCommand(@"
+            WITH wo_birth AS (
+                SELECT wo.id,
+                       DATE(COALESCE(MIN(wip.created_at), UTC_TIMESTAMP())) AS born_day
+                FROM work_order wo
+                LEFT JOIN wip_item wip ON wip.wo_order_id = wo.id
+                GROUP BY wo.id
+            )
+            SELECT
+                (SELECT COUNT(*) FROM wo_birth WHERE born_day = @today) AS new_today,
+                (SELECT COUNT(*) FROM wo_birth WHERE born_day = @previousSameDay) AS prev_same_day,
+                (SELECT COUNT(*) FROM wo_birth WHERE born_day BETWEEN @weekStart AND @today) AS week_to_date,
+                (SELECT COUNT(*) FROM wo_birth WHERE born_day BETWEEN @previousWeekStart AND @previousSameDay) AS previous_week_to_date,
+                (SELECT COUNT(*) FROM work_order WHERE status IN ('OPEN','IN_PROGRESS','FINISHED','CANCELLED','HOLD')) AS on_floor_total,
+                (SELECT COUNT(*) FROM work_order WHERE status = 'OPEN') AS open_total,
+                (SELECT COUNT(*) FROM work_order WHERE status = 'FINISHED') AS finished_total,
+                (SELECT COUNT(*) FROM work_order WHERE status = 'CANCELLED') AS cancelled_total,
+                (SELECT COUNT(*) FROM work_order WHERE status = 'HOLD') AS hold_total", cn);
+
+        cmd.Parameters.AddWithValue("@today", today);
+        cmd.Parameters.AddWithValue("@previousSameDay", previousSameDay);
+        cmd.Parameters.AddWithValue("@weekStart", weekStart);
+        cmd.Parameters.AddWithValue("@previousWeekStart", previousWeekStart);
+
+        using var rd = cmd.ExecuteReader();
+        if (!rd.Read()) return;
+
+        vm.NewOrdersToday = Convert.ToInt32(rd.GetInt64("new_today"));
+        vm.PreviousWeekSameDayNewOrders = Convert.ToInt32(rd.GetInt64("prev_same_day"));
+        var weekToDate = Convert.ToInt32(rd.GetInt64("week_to_date"));
+        var previousWeekToDate = Convert.ToInt32(rd.GetInt64("previous_week_to_date"));
+        vm.OnFloorTotal = Convert.ToInt32(rd.GetInt64("on_floor_total"));
+        vm.OpenOrdersCount = Convert.ToInt32(rd.GetInt64("open_total"));
+        vm.FinishedOrdersCount = Convert.ToInt32(rd.GetInt64("finished_total"));
+        vm.CancelledOrdersCount = Convert.ToInt32(rd.GetInt64("cancelled_total"));
+        vm.HoldOrdersCount = Convert.ToInt32(rd.GetInt64("hold_total"));
+
+        vm.DayRatioPercent = ComputeRatio(vm.NewOrdersToday, vm.PreviousWeekSameDayNewOrders);
+        vm.DayRatioUp = vm.DayRatioPercent >= 0;
+        vm.WeekRatioPercent = ComputeRatio(weekToDate, previousWeekToDate);
+        vm.WeekRatioUp = vm.WeekRatioPercent >= 0;
+    }
+
+    private static void LoadLocationBacklogChart(MySqlConnection cn, GerenciaDashboardVm vm)
+    {
+        using var cmd = new MySqlCommand(@"
+            SELECT COALESCE(l.name, 'Sin localidad') AS location_name,
+                   COUNT(*) AS pending_orders
+            FROM work_order wo
+            JOIN wip_item wip ON wip.wo_order_id = wo.id
+            LEFT JOIN route_step rs ON rs.id = wip.current_step_id
+            LEFT JOIN location l ON l.id = rs.location_id
+            LEFT JOIN (
+                SELECT se.wip_item_id, MAX(se.ts) AS last_scan
+                FROM scan_event se
+                GROUP BY se.wip_item_id
+            ) ls ON ls.wip_item_id = wip.id
+            WHERE wo.status IN ('OPEN', 'IN_PROGRESS', 'HOLD')
+              AND COALESCE(ls.last_scan, wip.created_at) <= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 4 DAY)
+            GROUP BY location_name
+            ORDER BY pending_orders DESC, location_name
+            LIMIT 8", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            vm.BacklogByLocationChart.Labels.Add(rd.GetString("location_name"));
+            vm.BacklogByLocationChart.Values.Add(Convert.ToInt32(rd.GetInt64("pending_orders")));
+        }
+    }
+
+    private static decimal ComputeRatio(int current, int baseline)
+    {
+        if (baseline == 0) return current == 0 ? 0 : 100;
+        return Math.Round(((decimal)(current - baseline) / baseline) * 100m, 1);
     }
 
     private static DateTime GetStartOfWeek(DateTime date)

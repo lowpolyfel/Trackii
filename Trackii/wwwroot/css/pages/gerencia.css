@@ -510,3 +510,91 @@
     background: #edf3fb;
     color: #233758;
 }
+
+.gerencia-dashboard-v2 .executive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.executive-card {
+    display: grid;
+    gap: 8px;
+}
+
+.executive-value {
+    font-size: 2rem;
+    color: #132e51;
+}
+
+.executive-ratios {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ratio-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.ratio-pill.ratio-up {
+    color: #0f7f45;
+    background: rgba(47, 179, 96, 0.18);
+}
+
+.ratio-pill.ratio-down {
+    color: #a82f2f;
+    background: rgba(232, 84, 84, 0.18);
+}
+
+.status-tags-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: 8px;
+}
+
+.status-tag {
+    border-radius: 10px;
+    padding: 6px 8px;
+    font-size: .8rem;
+    font-weight: 600;
+}
+
+.status-tag.open { background: rgba(60, 145, 255, 0.15); color: #0a4f9f; }
+.status-tag.finished { background: rgba(45, 191, 99, 0.16); color: #116d3c; }
+.status-tag.cancelled { background: rgba(255, 107, 107, 0.14); color: #9e2525; }
+.status-tag.hold { background: rgba(237, 168, 57, 0.18); color: #8d5600; }
+
+.quick-range-form {
+    display: flex;
+}
+
+.quick-range-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.cell-zero {
+    background: rgba(136, 154, 179, 0.08);
+}
+
+.zero-mask {
+    display: inline-block;
+    width: 26px;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(136, 154, 179, 0.35);
+}
+
+.cell-link-strong {
+    font-weight: 700;
+    color: #0a57b2;
+}

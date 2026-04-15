@@ -28,63 +28,28 @@
 <div class="dashboard">
     <div class="page-header error-causes-header">
         <div>
-            <h2>Mapa de Discretos (Inventario real)</h2>
-            <p class="subtitle">Eje Y: localidades en rutas activas · Eje X: subfamilias. Corte al <strong>@Model.SnapshotDate.ToString("dddd dd MMM yyyy", spanish)</strong>.</p>
+            <h2>Mapa de Discretos (versión ejecutiva)</h2>
+            <p class="subtitle">Corte al <strong>@Model.SnapshotDate.ToString("dddd dd MMM yyyy", spanish)</strong> · periodo: <strong>@Model.Matrix.StartDate.ToString("yyyy-MM-dd")</strong> a <strong>@Model.Matrix.EndDate.ToString("yyyy-MM-dd")</strong>.</p>
         </div>
         <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
     </div>
 
     <div class="card gerencia-weekly-card apple-card error-causes-card">
         <div class="card-heading">
-            <h3>Filtros</h3>
-            <span class="chip">Periodo de análisis</span>
+            <h3>Rango rápido</h3>
+            <span class="chip">All day / week / month / year</span>
         </div>
 
-        <form method="get" class="filters discrete-filters discrete-filters-enhanced">
-            <div class="discrete-filter-grid">
-                <div class="discrete-filter-field discrete-filter-main">
-                    <label for="periodType">Tipo de período</label>
-                    <select id="periodType" name="periodType">
-                        <option value="day" selected="@(Model.PeriodType == "day")">Día</option>
-                        <option value="week" selected="@(Model.PeriodType == "week")">Semana</option>
-                        <option value="month" selected="@(Model.PeriodType == "month")">Mes</option>
-                        <option value="custom" selected="@(Model.PeriodType == "custom")">Rango personalizado</option>
-                        <option value="historic" selected="@(Model.PeriodType == "historic")">Histórico</option>
-                    </select>
-                </div>
-
-                <div class="discrete-filter-field period-field period-day" data-period="day">
-                    <label for="dayValue">Día</label>
-                    <input id="dayValue" type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
-                </div>
-
-                <div class="discrete-filter-field period-field period-week" data-period="week">
-                    <label for="weekValue">Semana ISO</label>
-                    <input id="weekValue" type="week" name="weekValue" value="@Model.WeekValue" />
-                </div>
-
-                <div class="discrete-filter-field period-field period-month" data-period="month">
-                    <label for="monthValue">Mes</label>
-                    <input id="monthValue" type="month" name="monthValue" value="@Model.MonthValue" />
-                </div>
-
-                <div class="discrete-filter-field period-field period-custom" data-period="custom">
-                    <label for="fromDate">Desde</label>
-                    <input id="fromDate" type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
-                </div>
-
-                <div class="discrete-filter-field period-field period-custom" data-period="custom">
-                    <label for="toDate">Hasta</label>
-                    <input id="toDate" type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
-                </div>
-
-                <div class="discrete-filter-actions">
-                    <button type="submit" class="btn btn-primary">Actualizar mapa</button>
-                </div>
+        <form method="get" class="quick-range-form">
+            <div class="quick-range-buttons" role="group" aria-label="Rango rápido">
+                <button class="btn @(Model.QuickRange == "day" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="day">All day</button>
+                <button class="btn @(Model.QuickRange == "week" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="week">All week</button>
+                <button class="btn @(Model.QuickRange == "month" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="month">All month</button>
+                <button class="btn @(Model.QuickRange == "historic" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="historic">All year</button>
             </div>
+            <input type="hidden" name="sortBy" value="@Model.SortBy" />
+            <input type="hidden" name="metricView" value="@Model.MetricView" />
         </form>
-
-        <p class="subtitle">Periodo consultado: <strong>@Model.Matrix.StartDate.ToString("yyyy-MM-dd")</strong> a <strong>@Model.Matrix.EndDate.ToString("yyyy-MM-dd")</strong>. Se muestran cantidades acumuladas del periodo seleccionado (piezas y órdenes).</p>
     </div>
 
     <section class="error-kpis" aria-label="Resumen inventario real">
@@ -97,7 +62,25 @@
                 <span class="kpi-label">Total órdenes</span>
                 <strong class="kpi-value">@Model.Matrix.TotalOrders.ToString("N0")</strong>
             </div>
-            <small>Totales acumulados en el periodo seleccionado.</small>
+            <small>Subfamilias sin actividad ocultas automáticamente para reducir ruido visual.</small>
+        </article>
+
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Subfamilias ocultas</span>
+            @if (!Model.HiddenSubfamilies.Any())
+            {
+                <p class="subtitle">Todas las subfamilias tienen órdenes o productos en este periodo.</p>
+            }
+            else
+            {
+                <p class="subtitle">Estas subfamilias no cuentan con ninguna orden y/o producto generado en este tiempo seleccionado:</p>
+                <ul class="compact-list">
+                    @foreach (var name in Model.HiddenSubfamilies)
+                    {
+                        <li>@name</li>
+                    }
+                </ul>
+            }
         </article>
     </section>
 
@@ -133,18 +116,27 @@
                             <td>@row.Location</td>
                             @foreach (var cell in row.Cells)
                             {
-                                <td>
-                                    <a asp-controller="Gerencia"
-                                       asp-action="DiscreteMapDetail"
-                                       asp-route-location="@row.Location"
-                                       asp-route-subfamily="@cell.Subfamily"
-                                       asp-route-periodType="@Model.PeriodType"
-                                       asp-route-weekValue="@Model.WeekValue"
-                                       asp-route-monthValue="@Model.MonthValue"
-                                       asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
-                                       asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">
-                                        @cell.Pieces.ToString("N0")
-                                    </a>
+                                var zeroClass = cell.Pieces == 0 ? "cell-zero" : string.Empty;
+                                <td class="@zeroClass">
+                                    @if (cell.Pieces == 0)
+                                    {
+                                        <span class="zero-mask" aria-hidden="true"></span>
+                                    }
+                                    else
+                                    {
+                                        <a asp-controller="Gerencia"
+                                           asp-action="DiscreteMapDetail"
+                                           asp-route-location="@row.Location"
+                                           asp-route-subfamily="@cell.Subfamily"
+                                           asp-route-periodType="@Model.PeriodType"
+                                           asp-route-weekValue="@Model.WeekValue"
+                                           asp-route-monthValue="@Model.MonthValue"
+                                           asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                                           asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+                                           class="cell-link-strong">
+                                            @cell.Pieces.ToString("N0")
+                                        </a>
+                                    }
                                 </td>
                             }
                             <td><strong>@row.TotalPieces.ToString("N0")</strong></td>
@@ -155,82 +147,4 @@
             </table>
         </div>
     </div>
-
-    <div class="card gerencia-weekly-card apple-card error-causes-card discrete-map-card">
-        <div class="card-heading">
-            <h3>Mapa alternativo (ORDENES · work_orders)</h3>
-            <span class="chip chip-muted">Alternativo</span>
-        </div>
-        <div class="table-wrapper discrete-map-wrapper">
-            <table class="table gerencia-weekly-table discrete-map-table">
-                <thead>
-                    <tr>
-                        <th>Localidad</th>
-                        @foreach (var subfamily in Model.Matrix.Subfamilies)
-                        {
-                            <th title="@subfamily">@shortNames[subfamily]</th>
-                        }
-                        <th>Total órdenes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @if (!Model.Matrix.Rows.Any())
-                {
-                    <tr>
-                        <td colspan="@(Model.Matrix.Subfamilies.Count + 2)" class="empty">No hay localidades con rutas activas para el corte seleccionado.</td>
-                    </tr>
-                }
-                else
-                {
-                    @foreach (var row in Model.Matrix.Rows)
-                    {
-                        <tr>
-                            <td>@row.Location</td>
-                            @foreach (var cell in row.Cells)
-                            {
-                                <td>
-                                    <a asp-controller="Gerencia"
-                                       asp-action="DiscreteMapDetail"
-                                       asp-route-location="@row.Location"
-                                       asp-route-subfamily="@cell.Subfamily"
-                                       asp-route-periodType="@Model.PeriodType"
-                                       asp-route-weekValue="@Model.WeekValue"
-                                       asp-route-monthValue="@Model.MonthValue"
-                                       asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
-                                       asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">
-                                        @cell.Orders.ToString("N0")
-                                    </a>
-                                </td>
-                            }
-                            <td><strong>@row.TotalOrders.ToString("N0")</strong></td>
-                        </tr>
-                    }
-                }
-                </tbody>
-            </table>
-        </div>
-    </div>
 </div>
-
-@section Scripts {
-    <script>
-        (() => {
-            const periodType = document.getElementById('periodType');
-            const fields = document.querySelectorAll('.period-field');
-            if (!periodType || !fields.length) return;
-
-            const toggleFields = () => {
-                const selected = periodType.value;
-                fields.forEach((field) => {
-                    const visible = field.dataset.period === selected;
-                    field.classList.toggle('is-visible', visible);
-                    field.style.display = visible ? '' : 'none';
-                    field.querySelector('input')?.toggleAttribute('disabled', !visible);
-                });
-            };
-
-            periodType.addEventListener('change', toggleFields);
-            toggleFields();
-        })();
-    </script>
-}

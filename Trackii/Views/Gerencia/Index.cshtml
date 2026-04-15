@@ -5,86 +5,66 @@
 @{
     ViewData["Title"] = "Gerencia";
     var spanish = new CultureInfo("es-MX");
+    var weekRatioClass = Model.WeekRatioUp ? "ratio-up" : "ratio-down";
+    var dayRatioClass = Model.DayRatioUp ? "ratio-up" : "ratio-down";
 }
 
-<div class="dashboard">
+<div class="dashboard gerencia-dashboard-v2">
     <div class="page-header">
         <div>
-            <h2>Gerencia - Discretos</h2>
-            <p class="subtitle">Vista ejecutiva con foco en cronograma semanal, desempeño de órdenes y alertas críticas.</p>
+            <h2>Lobby de órdenes · Discretos</h2>
+            <p class="subtitle">Actualizado automáticamente al día y hora actual: <strong>@Model.SnapshotAtUtc.ToString("dddd dd MMM yyyy HH:mm", spanish)</strong>.</p>
         </div>
         <div class="header-actions">
             <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-primary">
                 <i class="fa-solid fa-map"></i>
-                Ver mapa completo
+                Mapa de discretos
             </a>
             <a asp-controller="Gerencia" asp-action="ActiveOrders" class="btn btn-secondary">
                 <i class="fa-solid fa-list-check"></i>
-                Órdenes activas (detalle)
+                Ver órdenes activas
             </a>
         </div>
     </div>
 
-    <div class="card gerencia-weekly-card">
-        <div class="page-header">
-            <div>
-                <h3>Cronograma semanal por subfamilia (solo piezas)</h3>
-                <p class="subtitle">Haz click en un día para abrir el detalle de órdenes.</p>
+    <section class="executive-grid">
+        <article class="card apple-card executive-card">
+            <span class="kpi-label">Órdenes nuevas del día</span>
+            <strong class="executive-value">@Model.NewOrdersToday.ToString("N0")</strong>
+            <div class="executive-ratios">
+                <span class="ratio-pill @weekRatioClass">
+                    <i class="fa-solid @(Model.WeekRatioUp ? "fa-arrow-trend-up" : "fa-arrow-trend-down")"></i>
+                    Week ratio @Model.WeekRatioPercent.ToString("+#0.0;-#0.0;0.0")%
+                </span>
+                <span class="ratio-pill @dayRatioClass">
+                    <i class="fa-solid @(Model.DayRatioUp ? "fa-arrow-trend-up" : "fa-arrow-trend-down")"></i>
+                    Day ratio @Model.DayRatioPercent.ToString("+#0.0;-#0.0;0.0")%
+                </span>
             </div>
-            <div class="header-actions">
-                <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-secondary">Ver más</a>
+            <small>Comparativo contra el mismo día de la semana pasada (@Model.PreviousWeekSameDayNewOrders.ToString("N0") órdenes).</small>
+        </article>
+
+        <article class="card apple-card executive-card">
+            <span class="kpi-label">Órdenes actualmente en piso</span>
+            <strong class="executive-value">@Model.OnFloorTotal.ToString("N0")</strong>
+            <div class="status-tags-grid">
+                <span class="status-tag open">Abiertas: <strong>@Model.OpenOrdersCount</strong></span>
+                <span class="status-tag finished">Terminadas: <strong>@Model.FinishedOrdersCount</strong></span>
+                <span class="status-tag cancelled">Canceladas: <strong>@Model.CancelledOrdersCount</strong></span>
+                <span class="status-tag hold">Hold: <strong>@Model.HoldOrdersCount</strong></span>
             </div>
-        </div>
-        <div class="table-wrapper">
-            <table class="table gerencia-weekly-table">
-                <thead>
-                    <tr>
-                        <th>Día</th>
-                        @foreach (var subfamily in Model.WeeklyOutput.Subfamilies)
-                        {
-                            <th>@subfamily</th>
-                        }
-                        <th class="text-right">Total piezas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (!Model.WeeklyOutput.Rows.Any())
-                    {
-                        <tr>
-                            <td colspan="@(Model.WeeklyOutput.Subfamilies.Count + 2)" class="empty">Sin datos para la semana actual.</td>
-                        </tr>
-                    }
-                    else
-                    {
-                        foreach (var row in Model.WeeklyOutput.Rows)
-                        {
-                            <tr>
-                                <td>
-                                    <a asp-controller="Gerencia" asp-action="DiscreteDay" asp-route-day="@row.Day.ToString("yyyy-MM-dd")" class="day-link">
-                                        @row.Day.ToString("dddd dd MMM", spanish)
-                                    </a>
-                                </td>
-                                @foreach (var cell in row.Cells)
-                                {
-                                    <td><span class="weekly-pill qty">@cell.Qty</span></td>
-                                }
-                                <td class="text-right">@row.TotalQty</td>
-                            </tr>
-                        }
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
+            <small>Incluye OPEN, IN_PROGRESS, FINISHED, CANCELLED y HOLD.</small>
+        </article>
+    </section>
 
     <div class="chart-grid">
         <div class="card chart-card apple-card">
-            <h3>Órdenes por estado (normalizado)</h3>
+            <h3>Estado de órdenes en piso</h3>
             <div id="ordersPieChart" class="chart-host"></div>
         </div>
         <div class="card chart-card apple-card">
-            <h3>Piezas por localidad</h3>
-            <div id="productionChart" class="chart-host"></div>
+            <h3>Localidades con más atasco (+4 días sin escaneo)</h3>
+            <div id="backlogByLocationChart" class="chart-host"></div>
         </div>
     </div>
 
@@ -114,7 +94,6 @@
                     }
                 </ul>
             }
-            <a asp-controller="Gerencia" asp-action="WorkOrders" class="btn btn-secondary">Ver más</a>
         </div>
 
         <div class="card kpi-highlight incoming apple-card">
@@ -142,7 +121,6 @@
                     }
                 </ul>
             }
-            <a asp-controller="Gerencia" asp-action="ActiveOrders" class="btn btn-secondary">Ver más</a>
         </div>
     </div>
 </div>
@@ -152,12 +130,12 @@
     <script>
         const normalizeStatusLabel = (value) => {
             const map = {
-                OPEN: 'Activa',
+                OPEN: 'Abiertas',
                 IN_PROGRESS: 'En progreso',
-                CANCELLED: 'Cancelada',
-                FINISHED: 'Finalizada',
+                CANCELLED: 'Canceladas',
+                FINISHED: 'Terminadas',
                 ACTIVE: 'Activa',
-                HOLD: 'En espera',
+                HOLD: 'Hold',
                 SCRAPPED: 'Desechada',
                 INACTIVE: 'Inactiva'
             };
@@ -169,96 +147,35 @@
         const orderLabelsRaw = @Html.Raw(JsonSerializer.Serialize(Model.OrderStatusChart.Labels));
         const orderLabels = orderLabelsRaw.map(normalizeStatusLabel);
         const orderValues = @Html.Raw(JsonSerializer.Serialize(Model.OrderStatusChart.Values));
-        const productionLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Labels));
-        const productionValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductionByLocationChart.Values));
-        const topProduction = productionLabels
-            .map((label, index) => ({ label, value: productionValues[index] ?? 0 }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 10);
-        const productionTopLabels = topProduction.map((item) => item.label);
-        const productionTopValues = topProduction.map((item) => item.value);
+        const backlogLabels = @Html.Raw(JsonSerializer.Serialize(Model.BacklogByLocationChart.Labels));
+        const backlogValues = @Html.Raw(JsonSerializer.Serialize(Model.BacklogByLocationChart.Values));
+
         const pieContainer = document.getElementById('ordersPieChart');
-        const barContainer = document.getElementById('productionChart');
+        const backlogContainer = document.getElementById('backlogByLocationChart');
 
         if (pieContainer) {
             pieContainer.innerHTML = '';
             new ApexCharts(pieContainer, {
-                chart: {
-                    type: 'donut',
-                    height: 280,
-                    fontFamily: 'Inter, sans-serif',
-                    toolbar: { show: false },
-                    animations: { easing: 'easeinout', speed: 420 }
-                },
+                chart: { type: 'donut', height: 300, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
                 labels: orderLabels,
                 series: orderValues,
                 stroke: { width: 2, colors: ['#ffffff'] },
-                legend: {
-                    position: 'bottom',
-                    fontSize: '13px',
-                    labels: { colors: '#30435f' }
-                },
-                dataLabels: { enabled: true, style: { fontSize: '12px', fontWeight: 600 } },
-                plotOptions: {
-                    pie: {
-                        donut: {
-                            size: '55%',
-                            labels: {
-                                show: true,
-                                total: {
-                                    show: true,
-                                    label: 'Órdenes',
-                                    formatter: () => orderValues.reduce((sum, value) => sum + value, 0)
-                                }
-                            }
-                        }
-                    }
-                },
-                colors: ['#2f80ed', '#4f63ff', '#1ec7a5', '#ff8d7d', '#b392ff', '#37a6ff']
+                legend: { position: 'bottom' },
+                colors: ['#1d9bf0', '#3559e0', '#20bf6b', '#ff6b6b', '#f4a261'],
+                plotOptions: { pie: { donut: { size: '55%', labels: { show: true, total: { show: true, label: 'Total' } } } } }
             }).render();
         }
 
-        if (barContainer) {
-            barContainer.innerHTML = '';
-            new ApexCharts(barContainer, {
-                chart: {
-                    type: 'bar',
-                    height: 280,
-                    fontFamily: 'Inter, sans-serif',
-                    toolbar: { show: false },
-                    animations: { easing: 'easeinout', speed: 420 }
-                },
-                series: [{
-                    name: 'Piezas producidas',
-                    data: productionTopValues
-                }],
-                colors: ['#2f80ed'],
-                plotOptions: {
-                    bar: {
-                        borderRadius: 7,
-                        columnWidth: '60%',
-                        distributed: false
-                    }
-                },
-                dataLabels: { enabled: false },
-                legend: { show: false },
-                xaxis: {
-                    categories: productionTopLabels,
-                    labels: {
-                        rotate: 0,
-                        trim: true,
-                        style: { colors: '#4d6283', fontSize: '12px', fontWeight: 600 }
-                    },
-                    axisBorder: { color: 'rgba(80, 110, 150, 0.2)' }
-                },
-                yaxis: {
-                    labels: { style: { colors: '#5f7392' } }
-                },
-                grid: {
-                    borderColor: 'rgba(80, 110, 150, 0.12)',
-                    strokeDashArray: 4
-                },
-                tooltip: { theme: 'light' }
+        if (backlogContainer) {
+            backlogContainer.innerHTML = '';
+            new ApexCharts(backlogContainer, {
+                chart: { type: 'bar', height: 300, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+                series: [{ name: 'Órdenes con resago', data: backlogValues }],
+                xaxis: { categories: backlogLabels, labels: { style: { fontSize: '12px' } } },
+                plotOptions: { bar: { borderRadius: 8, columnWidth: '48%' } },
+                colors: ['#ff6b6b'],
+                dataLabels: { enabled: true },
+                grid: { borderColor: 'rgba(80, 110, 150, 0.12)', strokeDashArray: 4 }
             }).render();
         }
     </script>
