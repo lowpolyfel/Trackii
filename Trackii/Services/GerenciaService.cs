@@ -96,6 +96,7 @@ public class GerenciaService
         using var cn = new MySqlConnection(_conn);
         cn.Open();
         vm.Matrix = GetDiscreteInventoryMatrix(cn, start, end, vm);
+        vm.SelectedSubfamily = ResolveSelectedSubfamily(vm.Matrix.Subfamilies, vm.SelectedSubfamily);
         LoadDiscreteOrdersSummary(cn, vm);
         LoadDiscreteProductionVsScrap(cn, vm, start, end);
 
@@ -136,18 +137,23 @@ public class GerenciaService
         using var rd = cmd.ExecuteReader();
         while (rd.Read())
         {
+            var woOrdinal = rd.GetOrdinal("wo_number");
+            var productOrdinal = rd.GetOrdinal("part_number");
+            var subfamilyOrdinal = rd.GetOrdinal("subfamily_name");
             var locationOrdinal = rd.GetOrdinal("location_name");
             var startOrdinal = rd.GetOrdinal("wip_start_at");
+            var qtyOrdinal = rd.GetOrdinal("qty_produced");
+            var scrapOrdinal = rd.GetOrdinal("qty_scrap");
 
             vm.Orders.Add(new DailyOrderDetailVm
             {
-                WoNumber = rd.GetString("wo_number"),
-                Product = rd.GetString("part_number"),
-                Subfamily = rd.GetString("subfamily_name"),
+                WoNumber = rd.IsDBNull(woOrdinal) ? "Sin orden" : rd.GetString(woOrdinal),
+                Product = rd.IsDBNull(productOrdinal) ? "Sin producto" : rd.GetString(productOrdinal),
+                Subfamily = rd.IsDBNull(subfamilyOrdinal) ? "Sin subfamilia" : rd.GetString(subfamilyOrdinal),
                 Location = rd.IsDBNull(locationOrdinal) ? null : rd.GetString(locationOrdinal),
                 WipStartAt = rd.IsDBNull(startOrdinal) ? null : rd.GetDateTime(startOrdinal),
-                Qty = Convert.ToInt32(rd.GetInt64("qty_produced")),
-                Scrap = Convert.ToInt32(rd.GetInt64("qty_scrap"))
+                Qty = rd.IsDBNull(qtyOrdinal) ? 0 : Convert.ToInt32(rd.GetValue(qtyOrdinal)),
+                Scrap = rd.IsDBNull(scrapOrdinal) ? 0 : Convert.ToInt32(rd.GetValue(scrapOrdinal))
             });
         }
 
@@ -540,7 +546,7 @@ public class GerenciaService
                 FROM wip_step_execution wse
             )
             SELECT DATE(create_at) AS day,
-                   COALESCE(SUM(qty_in - calc_scrap), 0) AS qty
+                   COALESCE(SUM(GREATEST(CAST(qty_in AS SIGNED) - CAST(calc_scrap AS SIGNED), 0)), 0) AS qty
             FROM step_metrics
             GROUP BY DATE(create_at)
             ORDER BY day DESC
@@ -640,7 +646,7 @@ public class GerenciaService
                 FROM wip_step_execution wse
             )
             SELECT DATE(create_at) AS day,
-                   SUM(qty_in - calc_scrap) AS qty
+                   SUM(GREATEST(CAST(qty_in AS SIGNED) - CAST(calc_scrap AS SIGNED), 0)) AS qty
             FROM step_metrics
             GROUP BY DATE(create_at)
             ORDER BY day DESC
@@ -748,7 +754,7 @@ public class GerenciaService
                 FROM wip_step_execution wse
             )
             SELECT l.name,
-                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty
+                   COALESCE(SUM(GREATEST(CAST(sm.qty_in AS SIGNED) - CAST(sm.calc_scrap AS SIGNED), 0)), 0) AS qty
             FROM location l
             LEFT JOIN step_metrics sm ON sm.location_id = l.id
             GROUP BY l.id, l.name
@@ -810,7 +816,7 @@ public class GerenciaService
             )
             SELECT DATE(sm.create_at) AS day,
                    COALESCE(s.name, 'Sin subfamilia') AS subfamily_name,
-                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(GREATEST(CAST(sm.qty_in AS SIGNED) - CAST(sm.calc_scrap AS SIGNED), 0)), 0) AS qty_produced,
                    COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap
             FROM step_metrics sm
             JOIN wip_item wip ON wip.id = sm.wip_item_id
@@ -849,7 +855,7 @@ public class GerenciaService
                    p.part_number,
                    MIN(wip.created_at) AS wip_start_at,
                    l.name AS location_name,
-                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(GREATEST(CAST(sm.qty_in AS SIGNED) - CAST(sm.calc_scrap AS SIGNED), 0)), 0) AS qty_produced,
                    COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap
             FROM step_metrics sm
             JOIN wip_item wip ON wip.id = sm.wip_item_id
@@ -1026,16 +1032,10 @@ public class GerenciaService
             }
         }
 
-        var visibleSubfamilies = allSubfamilyNames
-            .Where(subfamily => locationNames.Any(location =>
-            {
-                var key = $"{location}|{subfamily}";
-                return periodMap.TryGetValue(key, out var values) && (values.Pieces > 0 || values.Orders > 0);
-            }))
-            .ToList();
+        var visibleSubfamilies = allSubfamilyNames;
 
         matrix.Subfamilies.AddRange(visibleSubfamilies);
-        vm.HiddenSubfamilies.AddRange(allSubfamilyNames.Except(visibleSubfamilies));
+        vm.HiddenSubfamilies.Clear();
 
         foreach (var location in locationNames)
         {
@@ -1116,7 +1116,7 @@ public class GerenciaService
                 FROM wip_step_execution wse
             )
             SELECT p.part_number,
-                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(GREATEST(CAST(sm.qty_in AS SIGNED) - CAST(sm.calc_scrap AS SIGNED), 0)), 0) AS qty_produced,
                    COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap,
                    COUNT(DISTINCT wo.id) AS orders_count
             FROM step_metrics sm
@@ -1184,12 +1184,18 @@ public class GerenciaService
                        GREATEST(
                            CAST(COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) AS SIGNED) - CAST(wse.qty_in AS SIGNED),
                            0
-                       ) AS calc_scrap
+                       ) AS calc_scrap,
+                       COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name
                 FROM wip_step_execution wse
+                JOIN wip_item wip ON wip.id = wse.wip_item_id
+                JOIN work_order wo ON wo.id = wip.wo_order_id
+                JOIN product p ON p.id = wo.product_id
+                LEFT JOIN subfamily sf ON sf.id = p.id_subfamily
                 WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
+                  AND (@subfamily IS NULL OR COALESCE(sf.name, 'Sin subfamilia') = @subfamily)
             )
             SELECT metric_day,
-                   COALESCE(SUM(qty_in - calc_scrap), 0) AS produced_total,
+                   COALESCE(SUM(GREATEST(CAST(qty_in AS SIGNED) - CAST(calc_scrap AS SIGNED), 0)), 0) AS produced_total,
                    COALESCE(SUM(calc_scrap), 0) AS scrap_total
             FROM step_metrics
             GROUP BY metric_day
@@ -1197,6 +1203,7 @@ public class GerenciaService
 
         cmd.Parameters.AddWithValue("@startDate", startDate.Date);
         cmd.Parameters.AddWithValue("@endDate", endDate.Date);
+        cmd.Parameters.AddWithValue("@subfamily", string.IsNullOrWhiteSpace(vm.SelectedSubfamily) ? DBNull.Value : vm.SelectedSubfamily);
 
         using var rd = cmd.ExecuteReader();
         while (rd.Read())
