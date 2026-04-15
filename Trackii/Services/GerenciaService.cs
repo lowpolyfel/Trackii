@@ -545,7 +545,7 @@ public class GerenciaService
                 FROM wip_step_execution wse
             )
             SELECT DATE(create_at) AS day,
-                   COALESCE(SUM(qty_in - calc_scrap), 0) AS qty
+                   COALESCE(SUM(GREATEST(CAST(qty_in AS SIGNED) - CAST(calc_scrap AS SIGNED), 0)), 0) AS qty
             FROM step_metrics
             GROUP BY DATE(create_at)
             ORDER BY day DESC
@@ -645,7 +645,7 @@ public class GerenciaService
                 FROM wip_step_execution wse
             )
             SELECT DATE(create_at) AS day,
-                   SUM(qty_in - calc_scrap) AS qty
+                   SUM(GREATEST(CAST(qty_in AS SIGNED) - CAST(calc_scrap AS SIGNED), 0)) AS qty
             FROM step_metrics
             GROUP BY DATE(create_at)
             ORDER BY day DESC
@@ -753,7 +753,7 @@ public class GerenciaService
                 FROM wip_step_execution wse
             )
             SELECT l.name,
-                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty
+                   COALESCE(SUM(GREATEST(CAST(sm.qty_in AS SIGNED) - CAST(sm.calc_scrap AS SIGNED), 0)), 0) AS qty
             FROM location l
             LEFT JOIN step_metrics sm ON sm.location_id = l.id
             GROUP BY l.id, l.name
@@ -815,7 +815,7 @@ public class GerenciaService
             )
             SELECT DATE(sm.create_at) AS day,
                    COALESCE(s.name, 'Sin subfamilia') AS subfamily_name,
-                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(GREATEST(CAST(sm.qty_in AS SIGNED) - CAST(sm.calc_scrap AS SIGNED), 0)), 0) AS qty_produced,
                    COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap
             FROM step_metrics sm
             JOIN wip_item wip ON wip.id = sm.wip_item_id
@@ -854,7 +854,7 @@ public class GerenciaService
                    p.part_number,
                    MIN(wip.created_at) AS wip_start_at,
                    l.name AS location_name,
-                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(GREATEST(CAST(sm.qty_in AS SIGNED) - CAST(sm.calc_scrap AS SIGNED), 0)), 0) AS qty_produced,
                    COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap
             FROM step_metrics sm
             JOIN wip_item wip ON wip.id = sm.wip_item_id
@@ -1121,7 +1121,7 @@ public class GerenciaService
                 FROM wip_step_execution wse
             )
             SELECT p.part_number,
-                   COALESCE(SUM(sm.qty_in - sm.calc_scrap), 0) AS qty_produced,
+                   COALESCE(SUM(GREATEST(CAST(sm.qty_in AS SIGNED) - CAST(sm.calc_scrap AS SIGNED), 0)), 0) AS qty_produced,
                    COALESCE(SUM(sm.calc_scrap), 0) AS qty_scrap,
                    COUNT(DISTINCT wo.id) AS orders_count
             FROM step_metrics sm
@@ -1194,7 +1194,7 @@ public class GerenciaService
                 WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
             )
             SELECT metric_day,
-                   COALESCE(SUM(qty_in - calc_scrap), 0) AS produced_total,
+                   COALESCE(SUM(GREATEST(CAST(qty_in AS SIGNED) - CAST(calc_scrap AS SIGNED), 0)), 0) AS produced_total,
                    COALESCE(SUM(calc_scrap), 0) AS scrap_total
             FROM step_metrics
             GROUP BY metric_day
