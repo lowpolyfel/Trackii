@@ -96,6 +96,7 @@ public class GerenciaService
         using var cn = new MySqlConnection(_conn);
         cn.Open();
         vm.Matrix = GetDiscreteInventoryMatrix(cn, start, end, vm);
+        vm.SelectedSubfamily = ResolveSelectedSubfamily(vm.Matrix.Subfamilies, vm.SelectedSubfamily);
         LoadDiscreteOrdersSummary(cn, vm);
         LoadDiscreteProductionVsScrap(cn, vm, start, end);
 
@@ -1031,16 +1032,10 @@ public class GerenciaService
             }
         }
 
-        var visibleSubfamilies = allSubfamilyNames
-            .Where(subfamily => locationNames.Any(location =>
-            {
-                var key = $"{location}|{subfamily}";
-                return periodMap.TryGetValue(key, out var values) && (values.Pieces > 0 || values.Orders > 0);
-            }))
-            .ToList();
+        var visibleSubfamilies = allSubfamilyNames;
 
         matrix.Subfamilies.AddRange(visibleSubfamilies);
-        vm.HiddenSubfamilies.AddRange(allSubfamilyNames.Except(visibleSubfamilies));
+        vm.HiddenSubfamilies.Clear();
 
         foreach (var location in locationNames)
         {
@@ -1189,9 +1184,15 @@ public class GerenciaService
                        GREATEST(
                            CAST(COALESCE(LAG(wse.qty_in) OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at, wse.id), wse.qty_in) AS SIGNED) - CAST(wse.qty_in AS SIGNED),
                            0
-                       ) AS calc_scrap
+                       ) AS calc_scrap,
+                       COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name
                 FROM wip_step_execution wse
+                JOIN wip_item wip ON wip.id = wse.wip_item_id
+                JOIN work_order wo ON wo.id = wip.wo_order_id
+                JOIN product p ON p.id = wo.product_id
+                LEFT JOIN subfamily sf ON sf.id = p.id_subfamily
                 WHERE DATE(wse.create_at) BETWEEN @startDate AND @endDate
+                  AND (@subfamily IS NULL OR COALESCE(sf.name, 'Sin subfamilia') = @subfamily)
             )
             SELECT metric_day,
                    COALESCE(SUM(GREATEST(CAST(qty_in AS SIGNED) - CAST(calc_scrap AS SIGNED), 0)), 0) AS produced_total,
@@ -1202,6 +1203,7 @@ public class GerenciaService
 
         cmd.Parameters.AddWithValue("@startDate", startDate.Date);
         cmd.Parameters.AddWithValue("@endDate", endDate.Date);
+        cmd.Parameters.AddWithValue("@subfamily", string.IsNullOrWhiteSpace(vm.SelectedSubfamily) ? DBNull.Value : vm.SelectedSubfamily);
 
         using var rd = cmd.ExecuteReader();
         while (rd.Read())

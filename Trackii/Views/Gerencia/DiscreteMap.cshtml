@@ -38,10 +38,12 @@
     </div>
 
     <section class="discrete-overview-grid" aria-label="Resumen ejecutivo discretos">
-        <article class="kpi-highlight apple-card error-kpi-card compact-executive-card">
+        <article id="summaryPanel" class="kpi-highlight apple-card error-kpi-card compact-executive-card"
+                 data-order-labels="@JsonSerializer.Serialize(Model.OrdersSummaryChart.Labels)"
+                 data-order-values="@JsonSerializer.Serialize(Model.OrdersSummaryChart.Values)">
             <div class="compact-executive-header">
                 <span class="kpi-label">Resumen general (piezas + órdenes)</span>
-                <form method="get" class="quick-range-form">
+                <form method="get" class="quick-range-form js-async-discrete-form" data-target="#summaryPanel">
                     <div class="quick-range-buttons quick-range-buttons-compact" role="group" aria-label="Rango rápido">
                         <button class="btn @(Model.QuickRange == "day" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="day">All day</button>
                         <button class="btn @(Model.QuickRange == "week" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="week">All week</button>
@@ -80,29 +82,63 @@
             <small>Incluye abiertas, terminadas, canceladas y en retrabajo.</small>
         </article>
 
-        <article class="kpi-highlight apple-card error-kpi-card compact-scrap-card">
-            <span class="kpi-label">Scrap vs producción (líneas superpuestas)</span>
+        <article id="scrapPanel" class="kpi-highlight apple-card error-kpi-card compact-scrap-card"
+                 data-chart-labels="@JsonSerializer.Serialize(Model.ProductionTrendChart.Labels)"
+                 data-chart-production="@JsonSerializer.Serialize(Model.ProductionTrendChart.Values)"
+                 data-chart-scrap="@JsonSerializer.Serialize(Model.ScrapTrendChart.Values)">
+            <div class="compact-executive-header">
+                <span class="kpi-label">Scrap vs producción (líneas superpuestas)</span>
+                <form method="get" class="quick-range-form js-async-discrete-form" data-target="#scrapPanel">
+                    <div class="quick-range-buttons quick-range-buttons-compact" role="group" aria-label="Rango rápido de scrap">
+                        <button class="btn @(Model.QuickRange == "day" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="day">All day</button>
+                        <button class="btn @(Model.QuickRange == "week" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="week">All week</button>
+                        <button class="btn @(Model.QuickRange == "month" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="month">All month</button>
+                        <button class="btn @(Model.QuickRange == "historic" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="historic">All year</button>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <label for="selectedSubfamily" class="visually-hidden">Subfamilia</label>
+                        <select id="selectedSubfamily" name="selectedSubfamily" class="form-control form-control-sm" onchange="this.form.requestSubmit();">
+                            @foreach (var subfamily in Model.Matrix.Subfamilies)
+                            {
+                                if (Model.SelectedSubfamily == subfamily)
+                                {
+                                    <option value="@subfamily" selected="selected">@subfamily</option>
+                                }
+                                else
+                                {
+                                    <option value="@subfamily">@subfamily</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                    <input type="hidden" name="metricView" value="@Model.MetricView" />
+                    <input type="hidden" name="weekValue" value="@Model.WeekValue" />
+                    <input type="hidden" name="monthValue" value="@Model.MonthValue" />
+                    <input type="hidden" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+                    <input type="hidden" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+                </form>
+            </div>
             <div id="scrapVsProductionChart" class="chart-host compact-line-chart"></div>
-            <small>Evolución en el periodo seleccionado: tiempo vs piezas producidas y scrap.</small>
-        </article>
-
-        <article class="kpi-highlight apple-card error-kpi-card hidden-subfamilies-card">
-            <span class="kpi-label">Scrap vs producción</span>
-            <div id="scrapVsProductionChart" class="chart-host"></div>
-            <small>Comparativo del periodo seleccionado entre piezas producidas y scrap acumulado.</small>
+            <small>Evolución de la subfamilia seleccionada: tiempo vs piezas producidas y scrap.</small>
         </article>
     </section>    
 
-    <div class="card gerencia-weekly-card apple-card error-causes-card discrete-map-card">
+    <div id="mapPanel" class="card gerencia-weekly-card apple-card error-causes-card discrete-map-card">
         <div class="card-heading">
             <h3>Mapa principal (@metricLabel)</h3>
             <div class="map-toolbar">
-                <form method="get" class="metric-switch-form">
+                <form method="get" class="metric-switch-form js-async-discrete-form" data-target="#mapPanel">
+                    <div class="quick-range-buttons quick-range-buttons-compact" role="group" aria-label="Rango rápido del mapa">
+                        <button class="btn @(Model.QuickRange == "day" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="day">All day</button>
+                        <button class="btn @(Model.QuickRange == "week" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="week">All week</button>
+                        <button class="btn @(Model.QuickRange == "month" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="month">All month</button>
+                        <button class="btn @(Model.QuickRange == "historic" ? "btn-primary" : "btn-secondary")" type="submit" name="periodType" value="historic">All year</button>
+                    </div>
                     <div class="metric-switch" role="group" aria-label="Cambiar métrica del mapa">
                         <button type="submit" name="metricView" value="pieces" class="btn btn-sm-inline @(Model.MetricView == "pieces" ? "btn-primary" : "btn-secondary")">Piezas</button>
                         <button type="submit" name="metricView" value="orders" class="btn btn-sm-inline @(Model.MetricView == "orders" ? "btn-primary" : "btn-secondary")">Órdenes</button>
                     </div>
-                    <input type="hidden" name="periodType" value="@Model.PeriodType" />
                     <input type="hidden" name="sortBy" value="@Model.SortBy" />
                     <input type="hidden" name="weekValue" value="@Model.WeekValue" />
                     <input type="hidden" name="monthValue" value="@Model.MonthValue" />
@@ -172,41 +208,23 @@
         </div>
     </div>
 
-    <section class="hidden-subfamilies-grid" aria-label="Detalle de subfamilias ocultas">
-        <article class="kpi-highlight apple-card error-kpi-card hidden-subfamilies-card">
-            <span class="kpi-label">Subfamilias ocultas</span>
-            @if (!Model.HiddenSubfamilies.Any())
-            {
-                <p class="subtitle">Todas las subfamilias tienen actividad en el rango seleccionado.</p>
-            }
-            else
-            {
-                <ul class="compact-list minimal-list">
-                    @foreach (var name in Model.HiddenSubfamilies)
-                    {
-                        <li>@name</li>
-                    }
-                </ul>
-            }
-        </article>
-    </section>
 </div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
-        const orderStatusLabels = @Html.Raw(JsonSerializer.Serialize(Model.OrdersSummaryChart.Labels));
-        const orderStatusValues = @Html.Raw(JsonSerializer.Serialize(Model.OrdersSummaryChart.Values));
-        const productionTrendLabels = @Html.Raw(JsonSerializer.Serialize(Model.ProductionTrendChart.Labels));
-        const productionTrendValues = @Html.Raw(JsonSerializer.Serialize(Model.ProductionTrendChart.Values));
-        const scrapTrendValues = @Html.Raw(JsonSerializer.Serialize(Model.ScrapTrendChart.Values));
+        let ordersChart = null;
+        let scrapChart = null;
 
-        const ordersSummaryContainer = document.getElementById('ordersSummaryChart');
-        const scrapVsProductionContainer = document.getElementById('scrapVsProductionChart');
-
-        if (ordersSummaryContainer) {
+        function initOrdersChart() {
+            const summaryPanel = document.getElementById('summaryPanel');
+            const ordersSummaryContainer = document.getElementById('ordersSummaryChart');
+            if (!ordersSummaryContainer || !summaryPanel) return;
+            const orderStatusLabels = JSON.parse(summaryPanel.dataset.orderLabels ?? '[]');
+            const orderStatusValues = JSON.parse(summaryPanel.dataset.orderValues ?? '[]');
+            if (ordersChart) ordersChart.destroy();
             ordersSummaryContainer.innerHTML = '';
-            new ApexCharts(ordersSummaryContainer, {
+            ordersChart = new ApexCharts(ordersSummaryContainer, {
                 chart: { type: 'donut', height: 240, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
                 labels: orderStatusLabels,
                 series: orderStatusValues,
@@ -215,12 +233,22 @@
                 stroke: { width: 2, colors: ['#fff'] },
                 dataLabels: { enabled: false },
                 plotOptions: { pie: { donut: { size: '62%' } } }
-            }).render();
+            });
+            ordersChart.render();
         }
 
-        if (scrapVsProductionContainer) {
+        function initScrapChart() {
+            const scrapPanel = document.getElementById('scrapPanel');
+            const scrapVsProductionContainer = document.getElementById('scrapVsProductionChart');
+            if (!scrapPanel || !scrapVsProductionContainer) return;
+
+            const productionTrendLabels = JSON.parse(scrapPanel.dataset.chartLabels ?? '[]');
+            const productionTrendValues = JSON.parse(scrapPanel.dataset.chartProduction ?? '[]');
+            const scrapTrendValues = JSON.parse(scrapPanel.dataset.chartScrap ?? '[]');
+
+            if (scrapChart) scrapChart.destroy();
             scrapVsProductionContainer.innerHTML = '';
-            new ApexCharts(scrapVsProductionContainer, {
+            scrapChart = new ApexCharts(scrapVsProductionContainer, {
                 chart: { type: 'line', height: 300, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
                 series: [
                     { name: 'Producción', type: 'line', data: productionTrendValues },
@@ -242,7 +270,43 @@
                     }
                 },
                 legend: { position: 'top' }
-            }).render();
+            });
+            scrapChart.render();
         }
+
+        async function handleAsyncFormSubmit(event) {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const targetSelector = form.dataset.target;
+            if (!targetSelector) return;
+
+            const params = new URLSearchParams(new FormData(form));
+            const url = `${form.action || window.location.pathname}?${params.toString()}`;
+            const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!response.ok) return;
+
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newTarget = doc.querySelector(targetSelector);
+            const currentTarget = document.querySelector(targetSelector);
+            if (!newTarget || !currentTarget) return;
+
+            currentTarget.outerHTML = newTarget.outerHTML;
+            bindAsyncForms();
+            initOrdersChart();
+            initScrapChart();
+        }
+
+        function bindAsyncForms() {
+            document.querySelectorAll('.js-async-discrete-form').forEach(form => {
+                form.removeEventListener('submit', handleAsyncFormSubmit);
+                form.addEventListener('submit', handleAsyncFormSubmit);
+            });
+        }
+
+        bindAsyncForms();
+        initOrdersChart();
+        initScrapChart();
     </script>
 }
