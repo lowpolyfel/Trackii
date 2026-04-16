@@ -526,6 +526,152 @@ public class GerenciaService
             vm.LocationScrapChart.Values.Add(row.Qty);
         }
 
+        using var frequencyCmd = new MySqlCommand(@"
+            SELECT CONCAT(ec.code, ' · ', ec.description) AS error_name,
+                   COUNT(*) AS events
+            FROM scrap_log sl
+            JOIN error_code ec ON ec.id = sl.error_code_id
+            GROUP BY ec.id, ec.code, ec.description
+            ORDER BY events DESC
+            LIMIT 8", cn);
+
+        using (var frequencyReader = frequencyCmd.ExecuteReader())
+        {
+            while (frequencyReader.Read())
+            {
+                vm.ErrorFrequencyChart.Labels.Add(frequencyReader.GetString("error_name"));
+                vm.ErrorFrequencyChart.Values.Add(Convert.ToInt32(frequencyReader.GetInt64("events")));
+            }
+        }
+
+        using var matrixCmd = new MySqlCommand(@"
+            SELECT l.name AS location_name,
+                   ec.code AS error_code,
+                   COALESCE(SUM(sl.qty), 0) AS qty,
+                   COUNT(*) AS events
+            FROM scrap_log sl
+            JOIN route_step rs ON rs.id = sl.route_step_id
+            JOIN location l ON l.id = rs.location_id
+            JOIN error_code ec ON ec.id = sl.error_code_id
+            GROUP BY l.id, l.name, ec.id, ec.code
+            ORDER BY qty DESC, events DESC
+            LIMIT 40", cn);
+
+        using (var matrixReader = matrixCmd.ExecuteReader())
+        {
+            while (matrixReader.Read())
+            {
+                vm.LocationErrorMatrix.Add(new LocationErrorMatrixRowVm
+                {
+                    Location = matrixReader.GetString("location_name"),
+                    ErrorCode = matrixReader.GetString("error_code"),
+                    Qty = Convert.ToInt32(matrixReader.GetInt64("qty")),
+                    Events = Convert.ToInt32(matrixReader.GetInt64("events"))
+                });
+            }
+        }
+
+        using var productCauseCmd = new MySqlCommand(@"
+            SELECT p.part_number,
+                   CONCAT(ec.code, ' · ', ec.description) AS cause,
+                   COALESCE(SUM(sl.qty), 0) AS qty,
+                   COUNT(*) AS events
+            FROM scrap_log sl
+            JOIN wip_item wip ON wip.id = sl.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            JOIN error_code ec ON ec.id = sl.error_code_id
+            GROUP BY p.id, p.part_number, ec.id, ec.code, ec.description
+            ORDER BY qty DESC, events DESC
+            LIMIT 12", cn);
+
+        using (var productCauseReader = productCauseCmd.ExecuteReader())
+        {
+            while (productCauseReader.Read())
+            {
+                vm.ProductCauseRows.Add(new ProductErrorCauseVm
+                {
+                    Product = productCauseReader.GetString("part_number"),
+                    Cause = productCauseReader.GetString("cause"),
+                    Qty = Convert.ToInt32(productCauseReader.GetInt64("qty")),
+                    Events = Convert.ToInt32(productCauseReader.GetInt64("events"))
+                });
+            }
+        }
+
+        using var lossCmd = new MySqlCommand(@"
+            SELECT wo.wo_number,
+                   p.part_number,
+                   COALESCE(MIN(l.name), 'Sin localidad') AS location_name,
+                   COALESCE(SUM(sl.qty), 0) AS qty,
+                   COUNT(*) AS events
+            FROM scrap_log sl
+            JOIN wip_item wip ON wip.id = sl.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN route_step rs ON rs.id = sl.route_step_id
+            LEFT JOIN location l ON l.id = rs.location_id
+            GROUP BY wo.id, wo.wo_number, p.part_number
+            ORDER BY qty DESC, events DESC
+            LIMIT 10", cn);
+
+        using (var lossReader = lossCmd.ExecuteReader())
+        {
+            while (lossReader.Read())
+            {
+                vm.TopOrderLosses.Add(new OrderLossVm
+                {
+                    WoNumber = lossReader.GetString("wo_number"),
+                    Product = lossReader.GetString("part_number"),
+                    MainLocation = lossReader.GetString("location_name"),
+                    Qty = Convert.ToInt32(lossReader.GetInt64("qty")),
+                    Events = Convert.ToInt32(lossReader.GetInt64("events"))
+                });
+            }
+        }
+
+        using var reporterCmd = new MySqlCommand(@"
+            SELECT u.username,
+                   COALESCE(SUM(sl.qty), 0) AS qty,
+                   COUNT(*) AS events,
+                   MAX(sl.created_at) AS last_record
+            FROM scrap_log sl
+            JOIN `user` u ON u.id = sl.user_id
+            GROUP BY u.id, u.username
+            ORDER BY qty DESC, events DESC
+            LIMIT 10", cn);
+
+        using (var reporterReader = reporterCmd.ExecuteReader())
+        {
+            while (reporterReader.Read())
+            {
+                vm.TopReporters.Add(new UserScrapActivityVm
+                {
+                    UserName = reporterReader.GetString("username"),
+                    Qty = Convert.ToInt32(reporterReader.GetInt64("qty")),
+                    Events = Convert.ToInt32(reporterReader.GetInt64("events")),
+                    LastRecord = reporterReader.GetDateTime("last_record")
+                });
+            }
+        }
+
+        using var hourlyCmd = new MySqlCommand(@"
+            SELECT HOUR(sl.created_at) AS hour_mark,
+                   COALESCE(SUM(sl.qty), 0) AS qty
+            FROM scrap_log sl
+            GROUP BY HOUR(sl.created_at)
+            ORDER BY hour_mark", cn);
+
+        using (var hourlyReader = hourlyCmd.ExecuteReader())
+        {
+            while (hourlyReader.Read())
+            {
+                var hour = hourlyReader.GetInt32("hour_mark");
+                vm.HourlyScrapChart.Labels.Add($"{hour:00}:00");
+                vm.HourlyScrapChart.Values.Add(Convert.ToInt32(hourlyReader.GetInt64("qty")));
+            }
+        }
+
         return vm;
     }
 
