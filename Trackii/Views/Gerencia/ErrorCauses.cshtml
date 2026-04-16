@@ -2,63 +2,105 @@
 @model Trackii.Models.Gerencia.GerenciaErrorCausesVm
 @{
     ViewData["Title"] = "Causas de errores";
+    var topCause = Model.Causes.FirstOrDefault();
+    var topOrder = Model.TopOrderLosses.FirstOrDefault();
+    var topReporter = Model.TopReporters.FirstOrDefault();
 }
 <div class="dashboard">
     <div class="page-header error-causes-header">
         <div>
-            <h2>Causas de errores más grandes</h2>
-            <p class="subtitle">Vista ejecutiva de scrap acumulado por código/categoría y por localidad, basada en <strong>scrap_log</strong>.</p>
+            <h2>Centro de inteligencia de causas de error</h2>
+            <p class="subtitle">Panel ejecutivo enriquecido con patrones por producto, localidad, órdenes con mayor pérdida y comportamiento horario a partir de <strong>scrap_log</strong>.</p>
         </div>
         <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
     </div>
 
     <section class="error-kpis" aria-label="KPIs de scrap">
         <article class="kpi-highlight apple-card error-kpi-card">
-            <span class="kpi-label">Scrap total (Top causas)</span>
+            <span class="kpi-label">Scrap total analizado</span>
             <strong class="kpi-value">@Model.Causes.Sum(x => x.Qty).ToString("N0")</strong>
-            <small>Acumulado del top @Model.Causes.Count causas.</small>
+            <small>@Model.Causes.Sum(x => x.Events).ToString("N0") eventos en top causas.</small>
         </article>
         <article class="kpi-highlight apple-card error-kpi-card">
-            <span class="kpi-label">Eventos (Top causas)</span>
-            <strong class="kpi-value">@Model.Causes.Sum(x => x.Events).ToString("N0")</strong>
-            <small>Registros de scrap agrupados por causa.</small>
+            <span class="kpi-label">Error dominante</span>
+            <strong class="kpi-value">@(topCause?.Cause ?? "Sin datos")</strong>
+            <small>@(topCause?.Qty.ToString("N0") ?? "0") piezas afectadas.</small>
         </article>
         <article class="kpi-highlight apple-card error-kpi-card">
-            <span class="kpi-label">Localidad líder</span>
-            <strong class="kpi-value">@(Model.Locations.FirstOrDefault()?.Location ?? "Sin datos")</strong>
-            <small>@(Model.Locations.FirstOrDefault()?.Qty.ToString("N0") ?? "0") piezas con scrap.</small>
+            <span class="kpi-label">Orden con mayor pérdida</span>
+            <strong class="kpi-value">@(topOrder?.WoNumber ?? "Sin datos")</strong>
+            <small>@(topOrder?.Qty.ToString("N0") ?? "0") piezas en scrap.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Usuario más activo</span>
+            <strong class="kpi-value">@(topReporter?.UserName ?? "Sin datos")</strong>
+            <small>@(topReporter?.Events.ToString("N0") ?? "0") capturas registradas.</small>
         </article>
     </section>
 
     <div class="chart-grid error-causes-grid">
         <div class="card chart-card apple-card error-causes-card">
             <div class="card-heading">
-                <h3>Scrap por causa</h3>
+                <h3>Errores más comunes (scrap)</h3>
                 <span class="chip">Ranking principal</span>
             </div>
             <div id="errorsChart" class="chart-host chart-host-lg"></div>
         </div>
+        <div class="card chart-card apple-card error-causes-card">
+            <div class="card-heading">
+                <h3>Frecuencia de eventos por error</h3>
+                <span class="chip chip-muted">Top 8</span>
+            </div>
+            <div id="errorFrequencyChart" class="chart-host chart-host-lg"></div>
+        </div>
+    </div>
+
+    <div class="chart-grid error-causes-grid">
+        <div class="card chart-card apple-card error-causes-card">
+            <div class="card-heading">
+                <h3>Localidades vs scrap</h3>
+                <span class="chip">Comparativa</span>
+            </div>
+            <div id="scrapLocationChart" class="chart-host chart-host-lg"></div>
+        </div>
+        <div class="card chart-card apple-card error-causes-card">
+            <div class="card-heading">
+                <h3>Localidades vs errores (intensidad)</h3>
+                <span class="chip chip-muted">Mapa de calor</span>
+            </div>
+            <div id="locationErrorHeatChart" class="chart-host chart-host-lg"></div>
+        </div>
+    </div>
+
+    <div class="chart-grid error-causes-grid">
+        <div class="card chart-card apple-card error-causes-card">
+            <div class="card-heading">
+                <h3>Distribución horaria de scrap</h3>
+                <span class="chip chip-muted">Turnos</span>
+            </div>
+            <div id="hourlyScrapChart" class="chart-host chart-host-lg"></div>
+        </div>
         <div class="card apple-card error-causes-card">
             <div class="card-heading">
-                <h3>Detalle por causa</h3>
-                <span class="chip chip-muted">Tabla</span>
+                <h3>Top localidades</h3>
+                <span class="chip">Detalle</span>
             </div>
             <div class="table-wrapper table-wrapper-tall">
                 <table class="table">
-                    <thead><tr><th>Causa</th><th>Scrap</th><th>Eventos</th></tr></thead>
+                    <thead><tr><th>Localidad</th><th>Scrap</th><th>Eventos</th></tr></thead>
                     <tbody>
-                        @if (!Model.Causes.Any())
+                        @if (!Model.Locations.Any())
                         {
-                            <tr><td colspan="3" class="empty">Sin datos en scrap_log para mostrar causas.</td></tr>
+                            <tr><td colspan="3" class="empty">Sin localidades con scrap registradas.</td></tr>
                         }
                         else
                         {
-                            @foreach (var item in Model.Causes)
+                            @foreach (var loc in Model.Locations)
                             {
                                 <tr>
-                                    <td>@item.Cause</td>
-                                    <td><span class="badge-metric">@item.Qty</span></td>
-                                    <td>@item.Events</td>
+                                    <td><span class="table-title">@loc.Location</span></td>
+                                    <td><span class="badge-metric badge-metric-alt">@loc.Qty.ToString("N0")</span></td>
+                                    <td>@loc.Events.ToString("N0")</td>
                                 </tr>
                             }
                         }
@@ -69,43 +111,89 @@
     </div>
 
     <div class="chart-grid error-causes-grid">
-        <div class="card chart-card apple-card error-causes-card">
+        <div class="card apple-card error-causes-card">
             <div class="card-heading">
-                <h3>Cantidad de scrap x localidad</h3>
-                <span class="chip">Nueva gráfica</span>
+                <h3>Productos con causas de error típicas</h3>
+                <span class="chip chip-muted">Producto x causa</span>
             </div>
-            <div id="scrapLocationChart" class="chart-host chart-host-lg"></div>
+            <div class="table-wrapper table-wrapper-tall">
+                <table class="table">
+                    <thead><tr><th>Producto</th><th>Causa típica</th><th>Scrap</th><th>Eventos</th></tr></thead>
+                    <tbody>
+                        @if (!Model.ProductCauseRows.Any())
+                        {
+                            <tr><td colspan="4" class="empty">Sin información de productos y causas.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var row in Model.ProductCauseRows)
+                            {
+                                <tr>
+                                    <td><span class="table-title">@row.Product</span></td>
+                                    <td>@row.Cause</td>
+                                    <td><span class="badge-metric">@row.Qty.ToString("N0")</span></td>
+                                    <td>@row.Events.ToString("N0")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <div class="card chart-card apple-card error-causes-card">
+        <div class="card apple-card error-causes-card">
             <div class="card-heading">
-                <h3>Eventos vs scrap por localidad</h3>
-                <span class="chip chip-muted">Comparativo</span>
+                <h3>Órdenes con más pérdidas</h3>
+                <span class="chip">Top 10</span>
             </div>
-            <div id="locationComparisonChart" class="chart-host chart-host-lg"></div>
+            <div class="table-wrapper table-wrapper-tall">
+                <table class="table">
+                    <thead><tr><th>Orden</th><th>Producto</th><th>Localidad</th><th>Pérdida</th><th>Eventos</th></tr></thead>
+                    <tbody>
+                        @if (!Model.TopOrderLosses.Any())
+                        {
+                            <tr><td colspan="5" class="empty">Sin órdenes con pérdidas registradas.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var order in Model.TopOrderLosses)
+                            {
+                                <tr>
+                                    <td><span class="table-title">@order.WoNumber</span></td>
+                                    <td>@order.Product</td>
+                                    <td>@order.MainLocation</td>
+                                    <td><span class="badge-metric">@order.Qty.ToString("N0")</span></td>
+                                    <td>@order.Events.ToString("N0")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <div class="card apple-card error-causes-card">
         <div class="card-heading">
-            <h3>Top localidades</h3>
-            <span class="chip chip-muted">Detalle</span>
+            <h3>Analistas con más registros de scrap</h3>
+            <span class="chip chip-muted">Auditoría operativa</span>
         </div>
         <div class="table-wrapper">
             <table class="table">
-                <thead><tr><th>Localidad</th><th>Scrap</th><th>Eventos</th></tr></thead>
+                <thead><tr><th>Usuario</th><th>Scrap</th><th>Eventos</th><th>Último registro</th></tr></thead>
                 <tbody>
-                    @if (!Model.Locations.Any())
+                    @if (!Model.TopReporters.Any())
                     {
-                        <tr><td colspan="3" class="empty">Sin localidades con scrap registradas.</td></tr>
+                        <tr><td colspan="4" class="empty">Sin actividad registrada por usuario.</td></tr>
                     }
                     else
                     {
-                        @foreach (var loc in Model.Locations)
+                        @foreach (var user in Model.TopReporters)
                         {
                             <tr>
-                                <td>@loc.Location</td>
-                                <td><span class="badge-metric badge-metric-alt">@loc.Qty</span></td>
-                                <td>@loc.Events</td>
+                                <td><span class="table-title">@user.UserName</span></td>
+                                <td><span class="badge-metric badge-metric-alt">@user.Qty.ToString("N0")</span></td>
+                                <td>@user.Events.ToString("N0")</td>
+                                <td>@user.LastRecord.ToString("yyyy-MM-dd HH:mm")</td>
                             </tr>
                         }
                     }
@@ -121,7 +209,11 @@ const causeLabels = @Html.Raw(JsonSerializer.Serialize(Model.CausesChart.Labels)
 const causeValues = @Html.Raw(JsonSerializer.Serialize(Model.CausesChart.Values));
 const locationLabels = @Html.Raw(JsonSerializer.Serialize(Model.LocationScrapChart.Labels));
 const locationValues = @Html.Raw(JsonSerializer.Serialize(Model.LocationScrapChart.Values));
-const locationEvents = @Html.Raw(JsonSerializer.Serialize(Model.Locations.Select(x => x.Events)));
+const frequencyLabels = @Html.Raw(JsonSerializer.Serialize(Model.ErrorFrequencyChart.Labels));
+const frequencyValues = @Html.Raw(JsonSerializer.Serialize(Model.ErrorFrequencyChart.Values));
+const hourlyLabels = @Html.Raw(JsonSerializer.Serialize(Model.HourlyScrapChart.Labels));
+const hourlyValues = @Html.Raw(JsonSerializer.Serialize(Model.HourlyScrapChart.Values));
+const locationErrorRows = @Html.Raw(JsonSerializer.Serialize(Model.LocationErrorMatrix.Select(x => new { x.Location, x.ErrorCode, x.Qty })));
 
 const sharedChartConfig = {
     chart: {
@@ -158,7 +250,6 @@ new ApexCharts(document.getElementById('errorsChart'), {
     legend: { show: false },
     xaxis: {
         categories: causeLabels,
-        tickPlacement: 'on',
         labels: {
             rotate: -38,
             hideOverlappingLabels: false,
@@ -171,6 +262,30 @@ new ApexCharts(document.getElementById('errorsChart'), {
         labels: {
             formatter: value => Math.round(value).toLocaleString('es-MX'),
             style: { colors: '#5f7392' }
+        }
+    }
+}).render();
+
+new ApexCharts(document.getElementById('errorFrequencyChart'), {
+    ...sharedChartConfig,
+    chart: { ...sharedChartConfig.chart, type: 'donut' },
+    series: frequencyValues,
+    labels: frequencyLabels,
+    colors: ['#2d8bff', '#7c4dff', '#33c6ab', '#f9a03f', '#ef5d78', '#6b8afd', '#00a8e8', '#a66bff'],
+    legend: { position: 'bottom' },
+    plotOptions: {
+        pie: {
+            donut: {
+                size: '63%',
+                labels: {
+                    show: true,
+                    total: {
+                        show: true,
+                        label: 'Eventos',
+                        formatter: () => frequencyValues.reduce((acc, item) => acc + item, 0).toLocaleString('es-MX')
+                    }
+                }
+            }
         }
     }
 }).render();
@@ -192,43 +307,59 @@ new ApexCharts(document.getElementById('scrapLocationChart'), {
     yaxis: { labels: { style: { colors: '#4d6283', fontSize: '12px', fontWeight: 600 } } }
 }).render();
 
-new ApexCharts(document.getElementById('locationComparisonChart'), {
+new ApexCharts(document.getElementById('hourlyScrapChart'), {
     ...sharedChartConfig,
-    chart: { ...sharedChartConfig.chart, type: 'line' },
-    series: [
-        { name: 'Scrap', type: 'column', data: locationValues },
-        { name: 'Eventos', type: 'line', data: locationEvents }
-    ],
-    stroke: { width: [0, 3], curve: 'smooth' },
-    colors: ['#2d8bff', '#7c4dff'],
-    plotOptions: { bar: { borderRadius: 7, columnWidth: '48%' } },
-    markers: { size: 4 },
+    chart: { ...sharedChartConfig.chart, type: 'area' },
+    series: [{ name: 'Scrap', data: hourlyValues }],
+    colors: ['#257cff'],
+    stroke: { curve: 'smooth', width: 3 },
+    fill: {
+        type: 'gradient',
+        gradient: { shadeIntensity: 1, opacityFrom: 0.42, opacityTo: 0.08, stops: [0, 90, 100] }
+    },
+    markers: { size: 3 },
     xaxis: {
-        categories: locationLabels,
+        categories: hourlyLabels,
+        labels: { style: { colors: '#4d6283', fontSize: '11px', fontWeight: 600 } }
+    },
+    yaxis: {
         labels: {
-            rotate: -22,
-            trim: true,
-            style: { fontSize: '11px', fontWeight: 600, colors: '#4d6283' }
+            formatter: value => Math.round(value).toLocaleString('es-MX'),
+            style: { colors: '#5f7392' }
+        }
+    }
+}).render();
+
+const uniqueLocations = [...new Set(locationErrorRows.map(item => item.Location))].slice(0, 10);
+const uniqueCodes = [...new Set(locationErrorRows.map(item => item.ErrorCode))].slice(0, 8);
+const heatSeries = uniqueLocations.map(location => ({
+    name: location,
+    data: uniqueCodes.map(code => {
+        const row = locationErrorRows.find(item => item.Location === location && item.ErrorCode === code);
+        return { x: code, y: row ? row.Qty : 0 };
+    })
+}));
+
+new ApexCharts(document.getElementById('locationErrorHeatChart'), {
+    ...sharedChartConfig,
+    chart: { ...sharedChartConfig.chart, type: 'heatmap' },
+    series: heatSeries,
+    colors: ['#3f93ff'],
+    plotOptions: {
+        heatmap: {
+            radius: 6,
+            shadeIntensity: 0.65,
+            colorScale: {
+                ranges: [
+                    { from: 0, to: 10, color: '#d9ecff', name: 'Bajo' },
+                    { from: 11, to: 80, color: '#7eb8ff', name: 'Medio' },
+                    { from: 81, to: 999999, color: '#1f6fe5', name: 'Alto' }
+                ]
+            }
         }
     },
-    yaxis: [
-        {
-            title: { text: 'Scrap' },
-            labels: {
-                formatter: value => Math.round(value).toLocaleString('es-MX'),
-                style: { colors: '#5f7392' }
-            }
-        },
-        {
-            opposite: true,
-            title: { text: 'Eventos' },
-            labels: {
-                formatter: value => Math.round(value).toLocaleString('es-MX'),
-                style: { colors: '#5f7392' }
-            }
-        }
-    ],
-    legend: { position: 'top', horizontalAlign: 'left', offsetY: -6 }
+    xaxis: { labels: { style: { colors: '#4d6283', fontWeight: 600 } } },
+    yaxis: { labels: { style: { colors: '#4d6283', fontWeight: 600 } } }
 }).render();
 </script>
 }
