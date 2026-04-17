@@ -245,6 +245,15 @@ public class GerenciaService
         }
 
         vm.Rows.AddRange(rowByLocation.Values.OrderBy(row => row.LocationName));
+        vm.Groups.AddRange(
+            vm.Rows.SelectMany(row => row.PiecesByColumn.Select(cell => new BackendLobbyGroupRowVm
+            {
+                LugarNombre = row.LocationName,
+                LocationName = row.LocationName,
+                FamilyGroupName = cell.Key,
+                Piezas = cell.Value,
+                Ordenes = 0
+            })));
         return vm;
     }
 
