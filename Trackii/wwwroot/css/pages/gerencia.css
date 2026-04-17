@@ -424,6 +424,15 @@
     color: #8a4b00;
 }
 
+.table-title {
+    font-weight: 700;
+    color: #19395e;
+}
+
+#locationErrorHeatChart .apexcharts-heatmap-rect:hover {
+    filter: brightness(1.08);
+}
+
 @media (max-width: 1150px) {
     .error-causes-grid {
         grid-template-columns: 1fr;

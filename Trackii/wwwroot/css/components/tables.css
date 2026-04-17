@@ -46,3 +46,26 @@
     text-align: center;
     color: var(--text-muted);
 }
+
+@media (min-width: 768px) and (max-width: 1199px) {
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table,
+    .route-flow-table {
+        min-width: 760px;
+    }
+
+    .table th,
+    .route-flow-table thead th {
+        font-size: .7rem;
+        padding: 12px 13px;
+    }
+
+    .table td,
+    .route-flow-table tbody td {
+        padding: 12px 13px;
+    }
+}

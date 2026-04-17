@@ -500,30 +500,178 @@ public class GerenciaService
             }
         }
 
-        using var locationCmd = new MySqlCommand(@"
-            SELECT l.name AS location_name,
-                   COALESCE(SUM(sl.qty), 0) AS qty,
-                   COUNT(*) AS events
-            FROM scrap_log sl
-            JOIN route_step rs ON rs.id = sl.route_step_id
-            JOIN location l ON l.id = rs.location_id
-            GROUP BY l.id, l.name
-            ORDER BY qty DESC, events DESC
-            LIMIT 10", cn);
-
-        using var locationRd = locationCmd.ExecuteReader();
-        while (locationRd.Read())
         {
-            var row = new ScrapLocationVm
-            {
-                Location = locationRd.GetString("location_name"),
-                Qty = Convert.ToInt32(locationRd.GetInt64("qty")),
-                Events = Convert.ToInt32(locationRd.GetInt64("events"))
-            };
+            using var cmdByLocation = new MySqlCommand(@"
+                SELECT l.name AS location_name,
+                       COALESCE(SUM(sl.qty), 0) AS qty,
+                       COUNT(*) AS events
+                FROM scrap_log sl
+                JOIN route_step rs ON rs.id = sl.route_step_id
+                JOIN location l ON l.id = rs.location_id
+                GROUP BY l.id, l.name
+                ORDER BY qty DESC, events DESC
+                LIMIT 10", cn);
 
-            vm.Locations.Add(row);
-            vm.LocationScrapChart.Labels.Add(row.Location);
-            vm.LocationScrapChart.Values.Add(row.Qty);
+            using var rdByLocation = cmdByLocation.ExecuteReader();
+            while (rdByLocation.Read())
+            {
+                var row = new ScrapLocationVm
+                {
+                    Location = rdByLocation.GetString("location_name"),
+                    Qty = Convert.ToInt32(rdByLocation.GetInt64("qty")),
+                    Events = Convert.ToInt32(rdByLocation.GetInt64("events"))
+                };
+
+                vm.Locations.Add(row);
+                vm.LocationScrapChart.Labels.Add(row.Location);
+                vm.LocationScrapChart.Values.Add(row.Qty);
+            }
+        }
+
+        {
+            using var cmdErrorFrequency = new MySqlCommand(@"
+                SELECT CONCAT(ec.code, ' · ', ec.description) AS error_name,
+                       COUNT(*) AS events
+                FROM scrap_log sl
+                JOIN error_code ec ON ec.id = sl.error_code_id
+                GROUP BY ec.id, ec.code, ec.description
+                ORDER BY events DESC
+                LIMIT 8", cn);
+
+            using var rdErrorFrequency = cmdErrorFrequency.ExecuteReader();
+            while (rdErrorFrequency.Read())
+            {
+                vm.ErrorFrequencyChart.Labels.Add(rdErrorFrequency.GetString("error_name"));
+                vm.ErrorFrequencyChart.Values.Add(Convert.ToInt32(rdErrorFrequency.GetInt64("events")));
+            }
+        }
+
+        {
+            using var cmdLocationErrorMatrix = new MySqlCommand(@"
+                SELECT l.name AS location_name,
+                       ec.code AS error_code,
+                       COALESCE(SUM(sl.qty), 0) AS qty,
+                       COUNT(*) AS events
+                FROM scrap_log sl
+                JOIN route_step rs ON rs.id = sl.route_step_id
+                JOIN location l ON l.id = rs.location_id
+                JOIN error_code ec ON ec.id = sl.error_code_id
+                GROUP BY l.id, l.name, ec.id, ec.code
+                ORDER BY qty DESC, events DESC
+                LIMIT 40", cn);
+
+            using var rdLocationErrorMatrix = cmdLocationErrorMatrix.ExecuteReader();
+            while (rdLocationErrorMatrix.Read())
+            {
+                vm.LocationErrorMatrix.Add(new LocationErrorMatrixRowVm
+                {
+                    Location = rdLocationErrorMatrix.GetString("location_name"),
+                    ErrorCode = rdLocationErrorMatrix.GetString("error_code"),
+                    Qty = Convert.ToInt32(rdLocationErrorMatrix.GetInt64("qty")),
+                    Events = Convert.ToInt32(rdLocationErrorMatrix.GetInt64("events"))
+                });
+            }
+        }
+
+        {
+            using var cmdProductCause = new MySqlCommand(@"
+                SELECT p.part_number,
+                       CONCAT(ec.code, ' · ', ec.description) AS cause,
+                       COALESCE(SUM(sl.qty), 0) AS qty,
+                       COUNT(*) AS events
+                FROM scrap_log sl
+                JOIN wip_item wip ON wip.id = sl.wip_item_id
+                JOIN work_order wo ON wo.id = wip.wo_order_id
+                JOIN product p ON p.id = wo.product_id
+                JOIN error_code ec ON ec.id = sl.error_code_id
+                GROUP BY p.id, p.part_number, ec.id, ec.code, ec.description
+                ORDER BY qty DESC, events DESC
+                LIMIT 12", cn);
+
+            using var rdProductCause = cmdProductCause.ExecuteReader();
+            while (rdProductCause.Read())
+            {
+                vm.ProductCauseRows.Add(new ProductErrorCauseVm
+                {
+                    Product = rdProductCause.GetString("part_number"),
+                    Cause = rdProductCause.GetString("cause"),
+                    Qty = Convert.ToInt32(rdProductCause.GetInt64("qty")),
+                    Events = Convert.ToInt32(rdProductCause.GetInt64("events"))
+                });
+            }
+        }
+
+        {
+            using var cmdTopLosses = new MySqlCommand(@"
+                SELECT wo.wo_number,
+                       p.part_number,
+                       COALESCE(MIN(l.name), 'Sin localidad') AS location_name,
+                       COALESCE(SUM(sl.qty), 0) AS qty,
+                       COUNT(*) AS events
+                FROM scrap_log sl
+                JOIN wip_item wip ON wip.id = sl.wip_item_id
+                JOIN work_order wo ON wo.id = wip.wo_order_id
+                JOIN product p ON p.id = wo.product_id
+                LEFT JOIN route_step rs ON rs.id = sl.route_step_id
+                LEFT JOIN location l ON l.id = rs.location_id
+                GROUP BY wo.id, wo.wo_number, p.part_number
+                ORDER BY qty DESC, events DESC
+                LIMIT 10", cn);
+
+            using var rdTopLosses = cmdTopLosses.ExecuteReader();
+            while (rdTopLosses.Read())
+            {
+                vm.TopOrderLosses.Add(new OrderLossVm
+                {
+                    WoNumber = rdTopLosses.GetString("wo_number"),
+                    Product = rdTopLosses.GetString("part_number"),
+                    MainLocation = rdTopLosses.GetString("location_name"),
+                    Qty = Convert.ToInt32(rdTopLosses.GetInt64("qty")),
+                    Events = Convert.ToInt32(rdTopLosses.GetInt64("events"))
+                });
+            }
+        }
+
+        {
+            using var cmdTopReporters = new MySqlCommand(@"
+                SELECT u.username,
+                       COALESCE(SUM(sl.qty), 0) AS qty,
+                       COUNT(*) AS events,
+                       MAX(sl.created_at) AS last_record
+                FROM scrap_log sl
+                JOIN `user` u ON u.id = sl.user_id
+                GROUP BY u.id, u.username
+                ORDER BY qty DESC, events DESC
+                LIMIT 10", cn);
+
+            using var rdTopReporters = cmdTopReporters.ExecuteReader();
+            while (rdTopReporters.Read())
+            {
+                vm.TopReporters.Add(new UserScrapActivityVm
+                {
+                    UserName = rdTopReporters.GetString("username"),
+                    Qty = Convert.ToInt32(rdTopReporters.GetInt64("qty")),
+                    Events = Convert.ToInt32(rdTopReporters.GetInt64("events")),
+                    LastRecord = rdTopReporters.GetDateTime("last_record")
+                });
+            }
+        }
+
+        {
+            using var cmdByHour = new MySqlCommand(@"
+                SELECT HOUR(sl.created_at) AS hour_mark,
+                       COALESCE(SUM(sl.qty), 0) AS qty
+                FROM scrap_log sl
+                GROUP BY HOUR(sl.created_at)
+                ORDER BY hour_mark", cn);
+
+            using var rdByHour = cmdByHour.ExecuteReader();
+            while (rdByHour.Read())
+            {
+                var hour = rdByHour.GetInt32("hour_mark");
+                vm.HourlyScrapChart.Labels.Add($"{hour:00}:00");
+                vm.HourlyScrapChart.Values.Add(Convert.ToInt32(rdByHour.GetInt64("qty")));
+            }
         }
 
         return vm;

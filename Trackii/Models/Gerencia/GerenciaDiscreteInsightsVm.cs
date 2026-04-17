@@ -178,6 +178,12 @@ public class GerenciaErrorCausesVm
     public List<ScrapCauseVm> Causes { get; } = new();
     public ChartVm LocationScrapChart { get; } = new();
     public List<ScrapLocationVm> Locations { get; } = new();
+    public ChartVm ErrorFrequencyChart { get; } = new();
+    public ChartVm HourlyScrapChart { get; } = new();
+    public List<LocationErrorMatrixRowVm> LocationErrorMatrix { get; } = new();
+    public List<ProductErrorCauseVm> ProductCauseRows { get; } = new();
+    public List<OrderLossVm> TopOrderLosses { get; } = new();
+    public List<UserScrapActivityVm> TopReporters { get; } = new();
 }
 
 public class ScrapLocationVm
@@ -185,4 +191,37 @@ public class ScrapLocationVm
     public string Location { get; set; } = string.Empty;
     public int Qty { get; set; }
     public int Events { get; set; }
+}
+
+public class LocationErrorMatrixRowVm
+{
+    public string Location { get; set; } = string.Empty;
+    public string ErrorCode { get; set; } = string.Empty;
+    public int Qty { get; set; }
+    public int Events { get; set; }
+}
+
+public class ProductErrorCauseVm
+{
+    public string Product { get; set; } = string.Empty;
+    public string Cause { get; set; } = string.Empty;
+    public int Qty { get; set; }
+    public int Events { get; set; }
+}
+
+public class OrderLossVm
+{
+    public string WoNumber { get; set; } = string.Empty;
+    public string Product { get; set; } = string.Empty;
+    public string MainLocation { get; set; } = string.Empty;
+    public int Qty { get; set; }
+    public int Events { get; set; }
+}
+
+public class UserScrapActivityVm
+{
+    public string UserName { get; set; } = string.Empty;
+    public int Qty { get; set; }
+    public int Events { get; set; }
+    public DateTime LastRecord { get; set; }
 }
