@@ -41,7 +41,7 @@ public class AccountController : Controller
         );
 
         if (principal.IsInRole("Gerencia"))
-            return RedirectToAction("DiscreteMap", "Gerencia");
+            return RedirectToAction("BackendLobby", "Gerencia");
 
         return RedirectToAction("Index", "Lobby");
     }

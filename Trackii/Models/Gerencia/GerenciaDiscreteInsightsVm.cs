@@ -27,8 +27,7 @@ public class GerenciaDiscreteMapVm
 public class GerenciaBackendLobbyVm
 {
     public DateTime SnapshotAtUtc { get; set; }
-    public DateTime PeriodStart { get; set; }
-    public DateTime PeriodEndExclusive { get; set; }
+    public DateTime DataCutoffUtc { get; set; }
     public List<BackendLobbyGroupRowVm> Groups { get; } = new();
     public int TotalPieces => Groups.Sum(x => x.Piezas);
     public int TotalOrders => Groups.Sum(x => x.Ordenes);
@@ -36,7 +35,8 @@ public class GerenciaBackendLobbyVm
 
 public class BackendLobbyGroupRowVm
 {
-    public string LugarNombre { get; set; } = string.Empty;
+    public string LocationName { get; set; } = string.Empty;
+    public string FamilyGroupName { get; set; } = string.Empty;
     public int Piezas { get; set; }
     public int Ordenes { get; set; }
 }

@@ -10,25 +10,26 @@
     <div>
         <h2>Lobby de Gerencia · Discretos</h2>
         <p class="subtitle" style="margin:0;">Actualización en tiempo real al cargar la vista: <strong>@Model.SnapshotAtUtc.ToString("dddd dd MMM yyyy HH:mm:ss", spanish)</strong>.</p>
-        <p class="subtitle" style="margin:0;">Periodo fijo: <strong>@Model.PeriodStart.ToString("dd MMM yyyy", spanish)</strong> a <strong>@Model.PeriodEndExclusive.AddDays(-1).ToString("dd MMM yyyy", spanish)</strong>.</p>
+        <p class="subtitle" style="margin:0;">Corte de datos acumulado hasta: <strong>@Model.DataCutoffUtc.ToString("dddd dd MMM yyyy HH:mm:ss", spanish)</strong> (UTC).</p>
     </div>
-    <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+    <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Ir a mapa</a>
 </div>
 
 <div class="table-wrapper discrete-map-wrapper" style="margin-top: 20px;">
     <table class="table gerencia-weekly-table discrete-map-table">
         <thead>
             <tr>
-                <th>Grupo lógico</th>
-                <th class="text-right">Piezas (abril 2026)</th>
-                <th class="text-right">Órdenes (abril 2026)</th>
+                <th>Localidad</th>
+                <th>Familia</th>
+                <th class="text-right">Piezas totales</th>
+                <th class="text-right">Órdenes totales</th>
             </tr>
         </thead>
         <tbody>
             @if (!Model.Groups.Any())
             {
                 <tr>
-                    <td colspan="3" class="text-center">Sin grupos disponibles.</td>
+                    <td colspan="4" class="text-center">Sin producción disponible.</td>
                 </tr>
             }
             else
@@ -36,14 +37,15 @@
                 @foreach (var group in Model.Groups)
                 {
                     <tr>
-                        <td><strong>@group.LugarNombre</strong></td>
+                        <td><strong>@group.LocationName</strong></td>
+                        <td>@group.FamilyGroupName</td>
                         <td class="text-right">@group.Piezas.ToString("N0")</td>
                         <td class="text-right">@group.Ordenes.ToString("N0")</td>
                     </tr>
                 }
             }
             <tr>
-                <td><strong>Total</strong></td>
+                <td colspan="2"><strong>Total global</strong></td>
                 <td class="text-right"><strong>@Model.TotalPieces.ToString("N0")</strong></td>
                 <td class="text-right"><strong>@Model.TotalOrders.ToString("N0")</strong></td>
             </tr>
