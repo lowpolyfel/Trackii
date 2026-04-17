@@ -1,0 +1,54 @@
+@using System.Globalization
+@model Trackii.Models.Gerencia.GerenciaBackendLobbyVm
+
+@{
+    ViewData["Title"] = "Lobby de Gerencia";
+    var spanish = new CultureInfo("es-MX");
+}
+
+<div class="page-header error-causes-header">
+    <div>
+        <h2>Lobby de Gerencia · Discretos</h2>
+        <p class="subtitle" style="margin:0;">Actualización en tiempo real al cargar la vista: <strong>@Model.SnapshotAtUtc.ToString("dddd dd MMM yyyy HH:mm:ss", spanish)</strong>.</p>
+    </div>
+    <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+</div>
+
+<div class="table-wrapper discrete-map-wrapper" style="margin-top: 20px;">
+    <table class="table gerencia-weekly-table discrete-map-table">
+        <thead>
+            <tr>
+                <th>Grupo</th>
+                <th>Meta diaria</th>
+                @foreach (var location in Model.Locations)
+                {
+                    <th>@location</th>
+                }
+                <th>Total grupo</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var group in Model.Groups)
+            {
+                <tr>
+                    <td><strong>@group.GroupName</strong></td>
+                    <td><strong>@group.DailyGoal.ToString("N0")</strong></td>
+                    @foreach (var qty in group.LocationTotals)
+                    {
+                        <td class="@(qty == 0 ? "cell-zero" : string.Empty)">@(qty == 0 ? "-" : qty.ToString("N0"))</td>
+                    }
+                    <td><strong>@group.RowTotal.ToString("N0")</strong></td>
+                </tr>
+            }
+            <tr>
+                <td><strong>Total</strong></td>
+                <td><strong>@Model.Groups.Sum(item => item.DailyGoal).ToString("N0")</strong></td>
+                @foreach (var total in Model.ColumnTotals)
+                {
+                    <td><strong>@total.ToString("N0")</strong></td>
+                }
+                <td><strong>@Model.GrandTotal.ToString("N0")</strong></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
