@@ -24,6 +24,23 @@ public class GerenciaDiscreteMapVm
     public List<SubfamilyProductStatVm> SubfamilyTopProducts { get; } = new();
 }
 
+public class GerenciaBackendLobbyVm
+{
+    public DateTime SnapshotAtUtc { get; set; }
+    public List<string> Locations { get; } = new();
+    public List<BackendLobbyGroupRowVm> Groups { get; } = new();
+    public List<int> ColumnTotals { get; } = new();
+    public int GrandTotal { get; set; }
+}
+
+public class BackendLobbyGroupRowVm
+{
+    public string GroupName { get; set; } = string.Empty;
+    public int DailyGoal { get; set; }
+    public List<int> LocationTotals { get; } = new();
+    public int RowTotal => LocationTotals.Sum();
+}
+
 public class DiscreteInventoryMatrixVm
 {
     public DateTime StartDate { get; set; }

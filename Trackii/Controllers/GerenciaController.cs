@@ -30,6 +30,13 @@ public class GerenciaController : Controller
         return View($"{ViewBase}DiscreteMap.cshtml", vm);
     }
 
+    [HttpGet("LobbyGerencia")]
+    public IActionResult BackendLobby()
+    {
+        var vm = _svc.GetBackendLobby();
+        return View($"{ViewBase}BackendLobby.cshtml", vm);
+    }
+
     [HttpGet("DiaDiscretos")]
     public IActionResult DiscreteDay(DateTime day, string? sortBy)
     {
