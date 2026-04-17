@@ -19,8 +19,7 @@ public class GerenciaController : Controller
     [HttpGet("")]
     public IActionResult Index()
     {
-        var vm = _svc.GetDashboard();
-        return View($"{ViewBase}Index.cshtml", vm);
+        return RedirectToAction(nameof(BackendLobby));
     }
 
     [HttpGet("MapaDiscretos")]

@@ -27,16 +27,33 @@ public class GerenciaDiscreteMapVm
 public class GerenciaBackendLobbyVm
 {
     public DateTime SnapshotAtUtc { get; set; }
-    public DateTime PeriodStart { get; set; }
-    public DateTime PeriodEndExclusive { get; set; }
+    public DateTime DataCutoffUtc { get; set; }
+    // Compatibilidad temporal para builds con servicio legado.
     public List<BackendLobbyGroupRowVm> Groups { get; } = new();
-    public int TotalPieces => Groups.Sum(x => x.Piezas);
-    public int TotalOrders => Groups.Sum(x => x.Ordenes);
+    public List<string> Columns { get; } = new();
+    public Dictionary<string, int?> DailyGoalsByColumn { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<BackendLobbyLocationRowVm> Rows { get; } = new();
+    public int GrandTotalPieces => Rows.Sum(x => x.TotalPieces);
+    public IReadOnlyDictionary<string, int> TotalsByColumn =>
+        Columns.ToDictionary(
+            column => column,
+            column => Rows.Sum(row => row.PiecesByColumn.TryGetValue(column, out var qty) ? qty : 0),
+            StringComparer.OrdinalIgnoreCase);
 }
 
+public class BackendLobbyLocationRowVm
+{
+    public string LocationName { get; set; } = string.Empty;
+    public Dictionary<string, int> PiecesByColumn { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public int TotalPieces => PiecesByColumn.Values.Sum();
+}
+
+// Compatibilidad temporal para builds con servicio legado.
 public class BackendLobbyGroupRowVm
 {
     public string LugarNombre { get; set; } = string.Empty;
+    public string LocationName { get; set; } = string.Empty;
+    public string FamilyGroupName { get; set; } = string.Empty;
     public int Piezas { get; set; }
     public int Ordenes { get; set; }
 }

@@ -7,9 +7,11 @@ namespace Trackii.Services;
 public class GerenciaService
 {
     private readonly string _conn;
+    private readonly IConfiguration _cfg;
 
     public GerenciaService(IConfiguration cfg)
     {
+        _cfg = cfg;
         _conn = cfg.GetConnectionString("TrackiiDb")
             ?? throw new Exception("Connection string TrackiiDb no configurada");
     }
@@ -105,96 +107,196 @@ public class GerenciaService
 
     public GerenciaBackendLobbyVm GetBackendLobby()
     {
-        var startOfApril = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Unspecified);
-        var startOfMay = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Unspecified);
-
         var vm = new GerenciaBackendLobbyVm
         {
             SnapshotAtUtc = DateTime.UtcNow,
-            PeriodStart = startOfApril,
-            PeriodEndExclusive = startOfMay
+            DataCutoffUtc = DateTime.UtcNow
         };
 
         using var cn = new MySqlConnection(_conn);
         cn.Open();
 
-        var baseCatalog = new List<(int SubfamilyId, string LogicalGroupName)>();
+        var locations = new List<string>();
         using (var cmd = new MySqlCommand(@"
-            SELECT s.id AS subfamily_id,
-                   COALESCE(f.name, '') AS family_name,
-                   COALESCE(s.name, '') AS subfamily_name
-            FROM subfamily s
-            LEFT JOIN family f ON f.id = s.id_family
-            ORDER BY f.name, s.name", cn))
+            SELECT name
+            FROM location
+            WHERE active = 1
+            ORDER BY name", cn))
         {
             using var rd = cmd.ExecuteReader();
             while (rd.Read())
             {
-                var family = rd.GetString("family_name").Trim();
-                var subfamily = rd.GetString("subfamily_name").Trim();
-                var logicalName = string.Join(" ", new[] { family, subfamily }.Where(x => !string.IsNullOrWhiteSpace(x)));
-                baseCatalog.Add((rd.GetInt32("subfamily_id"), logicalName));
+                var locationName = rd.IsDBNull(0) ? "Sin localidad" : rd.GetString(0).Trim();
+                locations.Add(string.IsNullOrWhiteSpace(locationName) ? "Sin localidad" : locationName);
             }
         }
 
-        var aprilProduction = new List<(int SubfamilyId, int WorkOrderId, int Quantity)>();
+        var families = new List<(int FamilyId, string FamilyName, bool HasOpb)>();
         using (var cmd = new MySqlCommand(@"
-            SELECT p.id_subfamily AS subfamily_id,
-                   wse.wo_order_id AS work_order_id,
-                   COALESCE(wse.qty_in, 0) AS qty_in
-            FROM wip_step_execution wse
-            JOIN work_order wo ON wo.id = wse.wo_order_id
-            JOIN product p ON p.id = wo.product_id
-            WHERE wse.create_at >= @startOfApril
-              AND wse.create_at < @startOfMay", cn))
+            SELECT f.id AS family_id,
+                   COALESCE(f.name, 'Sin familia') AS family_name,
+                   MAX(CASE WHEN UPPER(COALESCE(s.name, '')) LIKE '%OPB%' THEN 1 ELSE 0 END) AS has_opb
+            FROM family f
+            LEFT JOIN subfamily s ON s.id_family = f.id AND s.active = 1
+            WHERE f.active = 1
+            GROUP BY f.id, f.name
+            ORDER BY f.id", cn))
         {
-            cmd.Parameters.AddWithValue("@startOfApril", startOfApril);
-            cmd.Parameters.AddWithValue("@startOfMay", startOfMay);
-
             using var rd = cmd.ExecuteReader();
             while (rd.Read())
             {
-                aprilProduction.Add((
-                    rd.GetInt32("subfamily_id"),
-                    rd.GetInt32("work_order_id"),
-                    Convert.ToInt32(rd.GetValue(rd.GetOrdinal("qty_in")))
+                var familyName = rd.GetString("family_name").Trim();
+                families.Add((
+                    rd.GetInt32("family_id"),
+                    string.IsNullOrWhiteSpace(familyName) ? "Sin familia" : familyName,
+                    Convert.ToInt32(rd.GetValue(rd.GetOrdinal("has_opb"))) == 1
                 ));
             }
         }
 
-        var lobbyData = baseCatalog
-            .GroupJoin(
-                aprilProduction,
-                cat => cat.SubfamilyId,
-                prod => prod.SubfamilyId,
-                (cat, prodGroup) => new
-                {
-                    GroupName = cat.LogicalGroupName,
-                    ProductionData = prodGroup.DefaultIfEmpty()
-                })
-            .SelectMany(
-                x => x.ProductionData,
-                (cat, prod) => new
-                {
-                    GroupName = cat.GroupName,
-                    Quantity = prod == default ? 0 : prod.Quantity,
-                    WorkOrderId = prod == default ? (int?)null : prod.WorkOrderId
-                })
-            .GroupBy(x => x.GroupName)
-            .Select(g => new BackendLobbyGroupRowVm
+        foreach (var family in families)
+        {
+            vm.Columns.Add(family.FamilyName);
+            if (family.HasOpb)
             {
-                LugarNombre = g.Key,
-                Piezas = g.Sum(x => x.Quantity),
-                Ordenes = g.Where(x => x.WorkOrderId.HasValue)
-                           .Select(x => x.WorkOrderId!.Value)
-                           .Distinct()
-                           .Count()
-            })
-            .OrderBy(x => x.LugarNombre)
-            .ToList();
+                vm.Columns.Add(GetOpbColumnName(family.FamilyName));
+            }
+        }
 
-        vm.Groups.AddRange(lobbyData);
+        foreach (var goal in GetLobbyDailyGoals())
+        {
+            vm.DailyGoalsByColumn[goal.Key] = goal.Value;
+        }
+
+        foreach (var column in vm.Columns)
+        {
+            if (!vm.DailyGoalsByColumn.ContainsKey(column))
+            {
+                vm.DailyGoalsByColumn[column] = null;
+            }
+        }
+
+        var rowByLocation = locations
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                name => name,
+                name =>
+                {
+                    var row = new BackendLobbyLocationRowVm { LocationName = name };
+                    foreach (var column in vm.Columns)
+                    {
+                        row.PiecesByColumn[column] = 0;
+                    }
+
+                    return row;
+                },
+                StringComparer.OrdinalIgnoreCase);
+
+        var familyById = families.ToDictionary(f => f.FamilyId, f => f.FamilyName);
+        var opbFamilyIds = families.Where(f => f.HasOpb).Select(f => f.FamilyId).ToHashSet();
+
+        using (var cmd = new MySqlCommand(@"
+            SELECT COALESCE(l.name, 'Sin localidad') AS location_name,
+                   f.id AS family_id,
+                   UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' AS is_opb,
+                   COALESCE(SUM(wse.qty_in), 0) AS qty
+            FROM wip_step_execution wse
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            JOIN subfamily sf ON sf.id = p.id_subfamily
+            JOIN family f ON f.id = sf.id_family
+            LEFT JOIN location l ON l.id = wse.location_id
+            WHERE wse.create_at <= @dataCutoffUtc
+            GROUP BY location_name, f.id, is_opb", cn))
+        {
+            cmd.Parameters.AddWithValue("@dataCutoffUtc", vm.DataCutoffUtc);
+
+            using var rd = cmd.ExecuteReader();
+            while (rd.Read())
+            {
+                var locationName = rd.GetString("location_name");
+                if (!rowByLocation.TryGetValue(locationName, out var row))
+                {
+                    row = new BackendLobbyLocationRowVm { LocationName = locationName };
+                    foreach (var column in vm.Columns)
+                    {
+                        row.PiecesByColumn[column] = 0;
+                    }
+                    rowByLocation[locationName] = row;
+                }
+
+                var familyId = rd.GetInt32("family_id");
+                if (!familyById.TryGetValue(familyId, out var familyName))
+                    continue;
+
+                var isOpb = rd.GetBoolean("is_opb");
+                var column = isOpb && opbFamilyIds.Contains(familyId)
+                    ? GetOpbColumnName(familyName)
+                    : familyName;
+
+                if (!row.PiecesByColumn.ContainsKey(column))
+                {
+                    row.PiecesByColumn[column] = 0;
+                }
+
+                row.PiecesByColumn[column] += Convert.ToInt32(rd.GetValue(rd.GetOrdinal("qty")));
+            }
+        }
+
+        vm.Rows.AddRange(rowByLocation.Values.OrderBy(row => row.LocationName));
+        vm.Groups.AddRange(
+            vm.Rows.SelectMany(row => row.PiecesByColumn.Select(cell => new BackendLobbyGroupRowVm
+            {
+                LugarNombre = row.LocationName,
+                LocationName = row.LocationName,
+                FamilyGroupName = cell.Key,
+                Piezas = cell.Value,
+                Ordenes = 0
+            })));
         return vm;
+    }
+
+    private Dictionary<string, int> GetLobbyDailyGoals()
+    {
+        var defaults = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["LATERAL LED"] = 93000,
+            ["LATERAL SENSOR"] = 36500,
+            ["OPB LATERAL"] = 11500,
+            ["MINI AXIALES"] = 16500,
+            ["OPB MINI AXIAL"] = 3600,
+            ["MAXI AXIALES"] = 8500,
+            ["FOTOLOGICOS"] = 38000,
+            ["OPB FOTO"] = 3600
+        };
+
+        var fromConfig = _cfg.GetSection("Gerencia:LobbyDailyGoals").GetChildren();
+        foreach (var item in fromConfig)
+        {
+            if (!int.TryParse(item.Value, out var parsed))
+                continue;
+
+            var key = (item.Key ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(key))
+                continue;
+
+            defaults[key] = parsed;
+        }
+
+        return defaults;
+    }
+
+    private static string GetOpbColumnName(string familyName)
+    {
+        var normalized = familyName.ToUpperInvariant();
+        if (normalized.Contains("LATERAL"))
+            return "OPB LATERAL";
+        if (normalized.Contains("MINI"))
+            return "OPB MINI AXIAL";
+        if (normalized.Contains("FOTO"))
+            return "OPB FOTO";
+        return $"OPB {familyName}";
     }
 
     public GerenciaDayDetailVm GetDiscreteDayDetail(DateTime day, string? sortBy)
