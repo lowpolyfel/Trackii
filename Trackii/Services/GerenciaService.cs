@@ -105,56 +105,60 @@ public class GerenciaService
 
     public GerenciaBackendLobbyVm GetBackendLobby()
     {
-        var startOfApril = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Unspecified);
-        var startOfMay = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Unspecified);
-
         var vm = new GerenciaBackendLobbyVm
         {
             SnapshotAtUtc = DateTime.UtcNow,
-            PeriodStart = startOfApril,
-            PeriodEndExclusive = startOfMay
+            DataCutoffUtc = DateTime.UtcNow
         };
 
         using var cn = new MySqlConnection(_conn);
         cn.Open();
 
-        var baseCatalog = new List<(int SubfamilyId, string LogicalGroupName)>();
+        var catalogBySubfamily = new Dictionary<int, string>();
         using (var cmd = new MySqlCommand(@"
             SELECT s.id AS subfamily_id,
-                   COALESCE(f.name, '') AS family_name,
+                   COALESCE(f.name, 'Sin familia') AS family_name,
                    COALESCE(s.name, '') AS subfamily_name
             FROM subfamily s
             LEFT JOIN family f ON f.id = s.id_family
-            ORDER BY f.name, s.name", cn))
+            WHERE s.active = 1
+              AND f.active = 1", cn))
         {
             using var rd = cmd.ExecuteReader();
             while (rd.Read())
             {
-                var family = rd.GetString("family_name").Trim();
+                var subfamilyId = rd.GetInt32("subfamily_id");
                 var subfamily = rd.GetString("subfamily_name").Trim();
-                var logicalName = string.Join(" ", new[] { family, subfamily }.Where(x => !string.IsNullOrWhiteSpace(x)));
-                baseCatalog.Add((rd.GetInt32("subfamily_id"), logicalName));
+                var family = rd.GetString("family_name").Trim();
+
+                var groupName = subfamily.Contains("OPB", StringComparison.OrdinalIgnoreCase)
+                    ? $"{family} OPB"
+                    : family;
+
+                catalogBySubfamily[subfamilyId] = string.IsNullOrWhiteSpace(groupName) ? "Sin familia" : groupName;
             }
         }
 
-        var aprilProduction = new List<(int SubfamilyId, int WorkOrderId, int Quantity)>();
+        var productionRows = new List<(string LocationName, int SubfamilyId, int WorkOrderId, int Quantity)>();
         using (var cmd = new MySqlCommand(@"
-            SELECT p.id_subfamily AS subfamily_id,
-                   wse.wo_order_id AS work_order_id,
+            SELECT COALESCE(l.name, 'Sin localidad') AS location_name,
+                   p.id_subfamily AS subfamily_id,
+                   wip.wo_order_id AS work_order_id,
                    COALESCE(wse.qty_in, 0) AS qty_in
             FROM wip_step_execution wse
-            JOIN work_order wo ON wo.id = wse.wo_order_id
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
             JOIN product p ON p.id = wo.product_id
-            WHERE wse.create_at >= @startOfApril
-              AND wse.create_at < @startOfMay", cn))
+            LEFT JOIN location l ON l.id = wse.location_id
+            WHERE wse.create_at <= @dataCutoffUtc", cn))
         {
-            cmd.Parameters.AddWithValue("@startOfApril", startOfApril);
-            cmd.Parameters.AddWithValue("@startOfMay", startOfMay);
+            cmd.Parameters.AddWithValue("@dataCutoffUtc", vm.DataCutoffUtc);
 
             using var rd = cmd.ExecuteReader();
             while (rd.Read())
             {
-                aprilProduction.Add((
+                productionRows.Add((
+                    rd.GetString("location_name"),
                     rd.GetInt32("subfamily_id"),
                     rd.GetInt32("work_order_id"),
                     Convert.ToInt32(rd.GetValue(rd.GetOrdinal("qty_in")))
@@ -162,35 +166,28 @@ public class GerenciaService
             }
         }
 
-        var lobbyData = baseCatalog
-            .GroupJoin(
-                aprilProduction,
-                cat => cat.SubfamilyId,
-                prod => prod.SubfamilyId,
-                (cat, prodGroup) => new
-                {
-                    GroupName = cat.LogicalGroupName,
-                    ProductionData = prodGroup.DefaultIfEmpty()
-                })
-            .SelectMany(
-                x => x.ProductionData,
-                (cat, prod) => new
-                {
-                    GroupName = cat.GroupName,
-                    Quantity = prod == default ? 0 : prod.Quantity,
-                    WorkOrderId = prod == default ? (int?)null : prod.WorkOrderId
-                })
-            .GroupBy(x => x.GroupName)
+        var lobbyData = productionRows
+            .Select(row => new
+            {
+                row.LocationName,
+                FamilyGroupName = catalogBySubfamily.TryGetValue(row.SubfamilyId, out var familyGroupName)
+                    ? familyGroupName
+                    : "Sin familia",
+                row.WorkOrderId,
+                row.Quantity
+            })
+            .GroupBy(x => new { x.LocationName, x.FamilyGroupName })
             .Select(g => new BackendLobbyGroupRowVm
             {
-                LugarNombre = g.Key,
+                LocationName = g.Key.LocationName,
+                FamilyGroupName = g.Key.FamilyGroupName,
                 Piezas = g.Sum(x => x.Quantity),
-                Ordenes = g.Where(x => x.WorkOrderId.HasValue)
-                           .Select(x => x.WorkOrderId!.Value)
+                Ordenes = g.Select(x => x.WorkOrderId)
                            .Distinct()
                            .Count()
             })
-            .OrderBy(x => x.LugarNombre)
+            .OrderBy(x => x.LocationName)
+            .ThenBy(x => x.FamilyGroupName)
             .ToList();
 
         vm.Groups.AddRange(lobbyData);
