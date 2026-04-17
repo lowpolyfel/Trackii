@@ -116,20 +116,12 @@ public class GerenciaService
         using var cn = new MySqlConnection(_conn);
         cn.Open();
 
-        var locations = new List<string>();
-        using (var cmd = new MySqlCommand(@"
-            SELECT name
-            FROM location
-            WHERE active = 1
-            ORDER BY name", cn))
+        // Definimos exactamente las localidades que nos interesan en el orden requerido
+        var locations = new List<string>
         {
-            using var rd = cmd.ExecuteReader();
-            while (rd.Read())
-            {
-                var locationName = rd.IsDBNull(0) ? "Sin localidad" : rd.GetString(0).Trim();
-                locations.Add(string.IsNullOrWhiteSpace(locationName) ? "Sin localidad" : locationName);
-            }
-        }
+            "Alloy", "Backfill", "FAST CAST", "Moldeo", "Inspeccion Final",
+            "Tie Bar", "Tin Plate", "Prueba Electrica", "Empaque", "QC"
+        };
 
         var families = new List<(int FamilyId, string FamilyName, bool HasOpb)>();
         using (var cmd = new MySqlCommand(@"
@@ -168,29 +160,28 @@ public class GerenciaService
             vm.DailyGoalsByColumn[goal.Key] = goal.Value;
         }
 
-        foreach (var columnName in vm.Columns)
+        foreach (var col in vm.Columns)
         {
-            if (!vm.DailyGoalsByColumn.ContainsKey(columnName))
+            if (!vm.DailyGoalsByColumn.ContainsKey(col))
             {
-                vm.DailyGoalsByColumn[columnName] = null;
+                vm.DailyGoalsByColumn[col] = null;
             }
         }
-
         var rowByLocation = locations
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                name => name,
-                name =>
-                {
-                    var row = new BackendLobbyLocationRowVm { LocationName = name };
-                    foreach (var columnName in vm.Columns)
-                    {
-                        row.PiecesByColumn[columnName] = 0;
-                    }
+         .Distinct(StringComparer.OrdinalIgnoreCase)
+         .ToDictionary(
+             name => name,
+             name =>
+             {
+                 var row = new BackendLobbyLocationRowVm { LocationName = name };
+                 foreach (var columnName in vm.Columns)
+                 {
+                     row.PiecesByColumn[columnName] = 0;
+                 }
 
-                    return row;
-                },
-                StringComparer.OrdinalIgnoreCase);
+                 return row;
+             },
+             StringComparer.OrdinalIgnoreCase);
 
         var familyById = families.ToDictionary(f => f.FamilyId, f => f.FamilyName);
         var opbFamilyIds = families.Where(f => f.HasOpb).Select(f => f.FamilyId).ToHashSet();
@@ -207,7 +198,8 @@ public class GerenciaService
             JOIN subfamily sf ON sf.id = p.id_subfamily
             JOIN family f ON f.id = sf.id_family
             LEFT JOIN location l ON l.id = wse.location_id
-            WHERE wse.create_at <= @dataCutoffUtc
+          WHERE wse.create_at >= '2026-04-01 00:00:00' 
+              AND wse.create_at <= @dataCutoffUtc
             GROUP BY location_name, f.id, is_opb", cn))
         {
             cmd.Parameters.AddWithValue("@dataCutoffUtc", vm.DataCutoffUtc);
@@ -215,13 +207,15 @@ public class GerenciaService
             using var rd = cmd.ExecuteReader();
             while (rd.Read())
             {
-                var locationName = rd.GetString("location_name");
+                // Agregamos .Trim() para eliminar espacios en blanco accidentales que vienen de la base de datos
+                var locationName = rd.GetString("location_name").Trim();
+
                 if (!rowByLocation.TryGetValue(locationName, out var row))
                 {
                     row = new BackendLobbyLocationRowVm { LocationName = locationName };
-                    foreach (var columnName in vm.Columns)
+                    foreach (var colName in vm.Columns)
                     {
-                        row.PiecesByColumn[columnName] = 0;
+                        row.PiecesByColumn[colName] = 0;
                     }
                     rowByLocation[locationName] = row;
                 }
@@ -231,20 +225,29 @@ public class GerenciaService
                     continue;
 
                 var isOpb = rd.GetBoolean("is_opb");
-                var columnName = isOpb && opbFamilyIds.Contains(familyId)
+                var finalColumnName = isOpb && opbFamilyIds.Contains(familyId)
                     ? GetOpbColumnName(familyName)
                     : familyName;
 
-                if (!row.PiecesByColumn.ContainsKey(columnName))
+                if (!row.PiecesByColumn.ContainsKey(finalColumnName))
                 {
-                    row.PiecesByColumn[columnName] = 0;
+                    row.PiecesByColumn[finalColumnName] = 0;
                 }
 
-                row.PiecesByColumn[columnName] += Convert.ToInt32(rd.GetValue(rd.GetOrdinal("qty")));
+                row.PiecesByColumn[finalColumnName] += Convert.ToInt32(rd.GetValue(rd.GetOrdinal("qty")));
             }
         }
 
-        vm.Rows.AddRange(rowByLocation.Values.OrderBy(row => row.LocationName));
+        // Creamos un diccionario con el orden exacto para ordenar la salida
+        var locationOrder = locations
+            .Select((name, index) => new { name, index })
+            .ToDictionary(x => x.name, x => x.index, StringComparer.OrdinalIgnoreCase);
+
+        // Filtramos solo las localidades que nos interesan y las ordenamos
+        vm.Rows.AddRange(rowByLocation.Values
+            .Where(row => locationOrder.ContainsKey(row.LocationName))
+            .OrderBy(row => locationOrder[row.LocationName]));
+
         vm.Groups.AddRange(
             vm.Rows.SelectMany(row => row.PiecesByColumn.Select(cell => new BackendLobbyGroupRowVm
             {

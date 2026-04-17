@@ -15,9 +15,9 @@
     <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Ir a mapa</a>
 </div>
 
-<div class="table-wrapper discrete-map-wrapper" style="margin-top: 20px;">
-    <table class="table gerencia-weekly-table discrete-map-table">
-        <thead>
+<div class="table-wrapper discrete-map-wrapper shadow-sm rounded" style="margin-top: 20px; overflow-x: auto; max-height: 70vh;">
+    <table class="table table-sm table-bordered table-striped table-hover align-middle text-center" style="font-size: 0.80rem; white-space: nowrap;">
+        <thead class="table-dark" style="background-color: #2c3e50; color: white; position: sticky; top: 0; z-index: 1;">
             <tr>
                 <th>META DIARIA</th>
                 @foreach (var column in Model.Columns)
@@ -59,8 +59,8 @@
                     </tr>
                 }
             }
-            <tr>
-                <td><strong>Total</strong></td>
+            <tr class="table-secondary" style="font-weight: bold; border-top: 2px solid #2c3e50;">
+                <td class="text-start">TOTAL</td>
                 @foreach (var column in Model.Columns)
                 {
                     var total = Model.TotalsByColumn.TryGetValue(column, out var value) ? value : 0;
