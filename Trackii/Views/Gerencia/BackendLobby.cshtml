@@ -1,0 +1,61 @@
+@using System.Globalization
+@model Trackii.Models.Gerencia.GerenciaBackendLobbyVm
+
+@{
+    ViewData["Title"] = "Lobby de Gerencia";
+    var spanish = new CultureInfo("es-MX");
+}
+
+<div class="page-header error-causes-header">
+    <div>
+        <h2>Lobby de Gerencia · Discretos</h2>
+        <p class="subtitle" style="margin:0;">Actualización en tiempo real al cargar la vista: <strong>@Model.SnapshotAtUtc.ToString("dddd dd MMM yyyy HH:mm:ss", spanish)</strong>.</p>
+    </div>
+    <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+</div>
+
+<div class="table-wrapper discrete-map-wrapper" style="margin-top: 20px;">
+    <table class="table gerencia-weekly-table discrete-map-table">
+        <thead>
+            <tr>
+                <th>Meta diaria</th>
+                @foreach (var group in Model.Groups)
+                {
+                    <th>@group.DailyGoal.ToString("N0")</th>
+                }
+                <th>@Model.Groups.Sum(item => item.DailyGoal).ToString("N0")</th>
+            </tr>
+            <tr>
+                <th>Localidad</th>
+                @foreach (var group in Model.Groups)
+                {
+                    <th>@group.GroupName</th>
+                }
+                <th>Total localidad</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (var locationIndex = 0; locationIndex < Model.Locations.Count; locationIndex++)
+            {
+                var locationTotal = Model.Groups.Sum(group => group.LocationTotals[locationIndex]);
+                <tr>
+                    <td><strong>@Model.Locations[locationIndex]</strong></td>
+                    @foreach (var group in Model.Groups)
+                    {
+                        var qty = group.LocationTotals[locationIndex];
+                        <td class="@(qty == 0 ? "cell-zero" : string.Empty)">@(qty == 0 ? "-" : qty.ToString("N0"))</td>
+                    }
+                    <td><strong>@locationTotal.ToString("N0")</strong></td>
+                </tr>
+            }
+            <tr>
+                <td><strong>Total</strong></td>
+                @foreach (var group in Model.Groups)
+                {
+                    <td><strong>@group.RowTotal.ToString("N0")</strong></td>
+                }
+                <td><strong>@Model.GrandTotal.ToString("N0")</strong></td>
+            </tr>
+        </tbody>
+    </table>
+</div>

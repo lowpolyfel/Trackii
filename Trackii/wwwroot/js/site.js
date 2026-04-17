@@ -18,3 +18,38 @@
 
     targets.forEach((el) => observer.observe(el));
 })();
+
+(() => {
+    const shell = document.querySelector('.app-shell');
+    const toggle = document.getElementById('sidebarToggle');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    if (!shell || !toggle || !overlay) return;
+
+    const closeSidebar = () => {
+        shell.classList.remove('sidebar-open');
+        toggle.setAttribute('aria-expanded', 'false');
+    };
+
+    const openSidebar = () => {
+        shell.classList.add('sidebar-open');
+        toggle.setAttribute('aria-expanded', 'true');
+    };
+
+    toggle.addEventListener('click', () => {
+        if (shell.classList.contains('sidebar-open')) {
+            closeSidebar();
+            return;
+        }
+
+        openSidebar();
+    });
+
+    overlay.addEventListener('click', closeSidebar);
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 720) {
+            closeSidebar();
+        }
+    });
+})();

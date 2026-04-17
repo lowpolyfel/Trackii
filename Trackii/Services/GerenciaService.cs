@@ -103,6 +103,117 @@ public class GerenciaService
         return vm;
     }
 
+    public GerenciaBackendLobbyVm GetBackendLobby()
+    {
+        var vm = new GerenciaBackendLobbyVm
+        {
+            SnapshotAtUtc = DateTime.UtcNow
+        };
+
+        var locationOrder = new[]
+        {
+            "Alloy",
+            "Backfill",
+            "Fastcast",
+            "Moldeo",
+            "Inspeccion Final",
+            "Tie Bar",
+            "Tin Plate",
+            "Prueba Electrica",
+            "Empaque",
+            "Calidad"
+        };
+
+        vm.Locations.AddRange(locationOrder);
+
+        var groupDefs = new[]
+        {
+            new BackendLobbyGroupDef("LATERAL LED", 93000, new HashSet<int> { 11, 12 }),
+            new BackendLobbyGroupDef("LATERAL SENSOR", 36500, new HashSet<int> { 8, 9 }),
+            new BackendLobbyGroupDef("OPB LATERAL", 11500, new HashSet<int> { 10 }),
+            new BackendLobbyGroupDef("MINI AXIALES", 16500, new HashSet<int> { 3, 4, 5, 6 }),
+            new BackendLobbyGroupDef("OPB MINI AXIAL", 3600, new HashSet<int> { 7 }),
+            new BackendLobbyGroupDef("MAXI AXIAL", 8500, new HashSet<int> { 1, 2 }),
+            new BackendLobbyGroupDef("FOTOLÓGICO", 38000, new HashSet<int> { 14, 15, 16 }),
+            new BackendLobbyGroupDef("OPB FOTO", 3600, new HashSet<int> { 13 })
+        };
+
+        var dataMap = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var group in groupDefs)
+        {
+            dataMap[group.Name] = locationOrder.ToDictionary(location => location, _ => 0, StringComparer.OrdinalIgnoreCase);
+        }
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using (var cmd = new MySqlCommand(@"
+            WITH latest_qty AS (
+                SELECT wse.wip_item_id,
+                       wse.qty_in,
+                       ROW_NUMBER() OVER (PARTITION BY wse.wip_item_id ORDER BY wse.create_at DESC, wse.id DESC) AS rn
+                FROM wip_step_execution wse
+            )
+            SELECT sf.id AS subfamily_id,
+                   l.name AS location_name,
+                   COALESCE(SUM(lq.qty_in), 0) AS qty_total
+            FROM wip_item wip
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            JOIN subfamily sf ON sf.id = p.id_subfamily
+            JOIN route_step rs ON rs.id = wip.current_step_id
+            JOIN location l ON l.id = rs.location_id
+            LEFT JOIN latest_qty lq ON lq.wip_item_id = wip.id AND lq.rn = 1
+            WHERE wip.status IN ('OPEN', 'IN_PROGRESS', 'HOLD', 'FINISHED')
+            GROUP BY sf.id, l.name", cn))
+        {
+            using var rd = cmd.ExecuteReader();
+            while (rd.Read())
+            {
+                var subfamilyId = rd.GetInt32("subfamily_id");
+                var location = NormalizeLocationName(rd.GetString("location_name"));
+                var qty = Convert.ToInt32(rd.GetInt64("qty_total"));
+
+                if (!locationOrder.Contains(location, StringComparer.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var group = groupDefs.FirstOrDefault(item => item.SubfamilyIds.Contains(subfamilyId));
+                if (group is null)
+                {
+                    continue;
+                }
+
+                dataMap[group.Name][location] = dataMap[group.Name][location] + qty;
+            }
+        }
+
+        foreach (var group in groupDefs)
+        {
+            var row = new BackendLobbyGroupRowVm
+            {
+                GroupName = group.Name,
+                DailyGoal = group.DailyGoal
+            };
+
+            foreach (var location in locationOrder)
+            {
+                row.LocationTotals.Add(dataMap[group.Name][location]);
+            }
+
+            vm.Groups.Add(row);
+        }
+
+        for (var i = 0; i < vm.Locations.Count; i++)
+        {
+            vm.ColumnTotals.Add(vm.Groups.Sum(group => group.LocationTotals[i]));
+        }
+
+        vm.GrandTotal = vm.ColumnTotals.Sum();
+        return vm;
+    }
+
     public GerenciaDayDetailVm GetDiscreteDayDetail(DateTime day, string? sortBy)
     {
         var vm = new GerenciaDayDetailVm
@@ -1223,6 +1334,28 @@ public class GerenciaService
             _ => "pieces"
         };
     }
+
+    private static string NormalizeLocationName(string locationName)
+    {
+        return locationName.Trim().ToLowerInvariant() switch
+        {
+            "inspeccion final" => "Inspeccion Final",
+            "inspección final" => "Inspeccion Final",
+            "prueba electrica" => "Prueba Electrica",
+            "prueba eléctrica" => "Prueba Electrica",
+            "tie bar" => "Tie Bar",
+            "tin plate" => "Tin Plate",
+            "alloy" => "Alloy",
+            "backfill" => "Backfill",
+            "fastcast" => "Fastcast",
+            "moldeo" => "Moldeo",
+            "empaque" => "Empaque",
+            "calidad" => "Calidad",
+            _ => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(locationName.Trim().ToLowerInvariant())
+        };
+    }
+
+    private sealed record BackendLobbyGroupDef(string Name, int DailyGoal, HashSet<int> SubfamilyIds);
 
     private static string NormalizeQuickRange(string? periodType)
     {

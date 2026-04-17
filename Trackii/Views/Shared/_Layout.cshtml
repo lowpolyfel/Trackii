@@ -29,7 +29,13 @@
 
     <div class="app-shell">
 
-        <aside class="sidebar">
+        <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="mainSidebar">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <aside class="sidebar" id="mainSidebar">
             <div class="sidebar-header">
                 <div class="sidebar-brand-mark">T</div>
                 <div>
@@ -62,6 +68,11 @@
                     <a asp-controller="Gerencia" asp-action="DiscreteMap" class="@(currentController == "Gerencia" && currentAction == "DiscreteMap" ? "active" : string.Empty)">
                         <i class="fa-solid fa-map"></i>
                         <span>Mapa de discretos</span>
+                    </a>
+
+                    <a asp-controller="Gerencia" asp-action="BackendLobby" class="@(currentController == "Gerencia" && currentAction == "BackendLobby" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-table-cells"></i>
+                        <span>Lobby gerencia</span>
                     </a>
 
                     <a asp-controller="Gerencia" asp-action="DiscreteDailyPanels" class="@(currentController == "Gerencia" && currentAction == "DiscreteDailyPanels" ? "active" : string.Empty)">
