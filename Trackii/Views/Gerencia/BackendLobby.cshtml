@@ -6,68 +6,205 @@
     var spanish = new CultureInfo("es-MX");
 }
 
-<div class="page-header error-causes-header">
+<style>
+    /* Configuración para aprovechar todo el ancho */
+    #page-content-wrapper {
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+
+    /* Contenedor Flex para tablas lado a lado sin comprimirse */
+    .tables-side-by-side {
+        display: flex;
+        flex-direction: row;
+        gap: 20px;
+        align-items: flex-start;
+        overflow-x: auto;
+        padding-bottom: 20px;
+    }
+
+    .table-container-flex {
+        flex: 0 0 auto;
+        min-width: 49%; /* Asegura que se vean dos tablas grandes */
+        background: white;
+    }
+
+    /* Estilos de Días (Muted/Profesional) */
+    .day-1 { background-color: #f8d7da !important; }
+    .day-2 { background-color: #fff3cd !important; }
+    .day-3 { background-color: #d1ecf1 !important; }
+    .day-4 { background-color: #d4edda !important; }
+    .day-5 { background-color: #e2e3e5 !important; }
+    .day-6 { background-color: #ede7f6 !important; }
+    .day-7 { background-color: #fce4ec !important; }
+
+    /* Resaltado de sincronización */
+    .sync-highlight {
+        outline: 3px solid #2c3e50 !important;
+        box-shadow: 0 0 10px rgba(44, 62, 80, 0.5) !important;
+        z-index: 10;
+        position: relative;
+    }
+
+    .clickable-day { cursor: crosshair; }
+    .total-column { background-color: #f8f9fa; font-weight: bold; border-left: 2px solid #dee2e6 !important; }
+</style>
+
+<div class="page-header d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h2>Lobby de Gerencia · Discretos</h2>
-        <p class="subtitle" style="margin:0;">Actualización en tiempo real al cargar la vista: <strong>@Model.SnapshotAtUtc.ToString("dddd dd MMM yyyy HH:mm:ss", spanish)</strong>.</p>
-        <p class="subtitle" style="margin:0;">Corte de datos acumulado hasta: <strong>@Model.DataCutoffUtc.ToString("dddd dd MMM yyyy HH:mm:ss", spanish)</strong> (UTC).</p>
+        <h2 class="m-0">Lobby de Gerencia · Discretos</h2>
+        <small class="text-muted">Actualización: @Model.DataCutoffUtc.ToString("dd/MM/yyyy HH:mm", spanish)</small>
     </div>
-    <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Ir a mapa</a>
+    <div class="btn-group">
+        <button onclick="toggleSidebar()" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-maximize"></i> <span id="btnText">Expandir Espacio</span>
+        </button>
+        <a asp-action="DiscreteMap" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Mapa</a>
+    </div>
 </div>
 
-<div class="table-wrapper discrete-map-wrapper shadow-sm rounded" style="margin-top: 20px; overflow-x: auto; max-height: 70vh;">
-    <table class="table table-sm table-bordered table-striped table-hover align-middle text-center" style="font-size: 0.80rem; white-space: nowrap;">
-        <thead class="table-dark" style="background-color: #2c3e50; color: white; position: sticky; top: 0; z-index: 1;">
-            <tr>
-                <th>META DIARIA</th>
-                @foreach (var column in Model.Columns)
-                {
-                    <th class="text-right">
-                        @(Model.DailyGoalsByColumn.TryGetValue(column, out var goal) && goal.HasValue ? goal.Value.ToString("N0") : "-")
-                    </th>
-                }
-                <th class="text-right">@Model.DailyGoalsByColumn.Values.Where(v => v.HasValue).Sum(v => v!.Value).ToString("N0")</th>
-            </tr>
-            <tr>
-                <th>LOCALIDAD</th>
-                @foreach (var column in Model.Columns)
-                {
-                    <th>@column</th>
-                }
-                <th class="text-right">TOTAL LOCALIDAD</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (!Model.Rows.Any())
-            {
-                <tr>
-                    <td colspan="@(Model.Columns.Count + 2)" class="text-center">Sin producción disponible.</td>
+<div class="tables-side-by-side">
+    
+    <div class="table-container-flex shadow-sm rounded border">
+        <div class="p-2 bg-dark text-white d-flex justify-content-between align-items-center">
+            <span class="small fw-bold text-uppercase">Producción por Localidad</span>
+        </div>
+        <table class="table table-sm table-bordered table-hover m-0 align-middle text-center" style="font-size: 0.75rem; white-space: nowrap;">
+            <thead class="table-light">
+                <tr class="table-secondary">
+                    <th class="text-start">META DIARIA</th>
+                    @foreach (var col in Model.Columns) {
+                        <th class="text-end">@(Model.DailyGoalsByColumn.TryGetValue(col, out var g) ? g?.ToString("N0") : "-")</th>
+                    }
+                    <th class="total-column text-end">@Model.DailyGoalsByColumn.Values.Sum(v => v ?? 0).ToString("N0")</th>
                 </tr>
-            }
-            else
-            {
-                @foreach (var row in Model.Rows)
-                {
+                <tr>
+                    <th class="text-start">LOCALIDAD</th>
+                    @foreach (var col in Model.Columns) { <th>@col</th> }
+                    <th class="total-column">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows) {
                     <tr>
-                        <td><strong>@row.LocationName</strong></td>
-                        @foreach (var column in Model.Columns)
-                        {
-                            var qty = row.PiecesByColumn.TryGetValue(column, out var value) ? value : 0;
-                            <td class="text-right">@(qty == 0 ? "-" : qty.ToString("N0"))</td>
+                        <td class="text-start fw-bold">@row.LocationName</td>
+                        @foreach (var col in Model.Columns) {
+                            var qty = row.PiecesByColumn.TryGetValue(col, out var v) ? v : 0;
+                            <td data-loc="@row.LocationName" data-fam="@col">@(qty == 0 ? "-" : qty.ToString("N0"))</td>
                         }
-                        <td class="text-right"><strong>@row.TotalPieces.ToString("N0")</strong></td>
+                        <td class="total-column text-end">@row.TotalPieces.ToString("N0")</td>
                     </tr>
                 }
+            </tbody>
+            <tfoot class="table-dark">
+                <tr>
+                    <td class="text-start">TOTALES</td>
+                    @foreach (var col in Model.Columns) {
+                        <td class="text-end">@Model.TotalsByColumn[col].ToString("N0")</td>
+                    }
+                    <td class="text-end">@Model.GrandTotalPieces.ToString("N0")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    @{
+        var dayClasses = new[] { "day-1", "day-2", "day-3", "day-4", "day-5", "day-6", "day-7" };
+        var colTotalsTable2 = Model.Columns.ToDictionary(c => c, c => 0);
+
+        (int suma, string sources) GetDayData(string[] locs, string col) {
+            int t = 0; List<string> s = new();
+            foreach(var l in locs) {
+                var row = Model.Rows.FirstOrDefault(r => r.LocationName.Equals(l, StringComparison.OrdinalIgnoreCase));
+                if (row != null && row.PiecesByColumn.TryGetValue(col, out var val)) { t += val; s.Add(l); }
             }
-            <tr class="table-secondary" style="font-weight: bold; border-top: 2px solid #2c3e50;">
-                <td class="text-start">TOTAL</td>
-                @foreach (var column in Model.Columns)
-                {
-                    var total = Model.TotalsByColumn.TryGetValue(column, out var value) ? value : 0;
-                    <td class="text-right"><strong>@total.ToString("N0")</strong></td>
+            return (t, string.Join(",", s));
+        }
+    }
+
+    <div class="table-container-flex shadow-sm rounded border">
+        <div class="p-2 bg-primary text-white">
+            <span class="small fw-bold text-uppercase">Inventario por Días (Lead Time)</span>
+        </div>
+        <table class="table table-sm table-bordered m-0 align-middle text-center" style="font-size: 0.75rem; white-space: nowrap;">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-start">DÍA</th>
+                    @foreach (var col in Model.Columns) { <th>@col</th> }
+                    <th class="total-column">SUMA DÍA</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int i = 0; i < 7; i++) {
+                    int totalFilaDia = 0;
+                    <tr>
+                        <td class="text-start fw-bold table-light">Día @(i + 1)</td>
+                        @foreach (var col in Model.Columns) {
+                            var data = (suma: 0, sources: "");
+                            
+                            // Lógica LATERAL LED
+                            if (col.Contains("LATERAL LED", StringComparison.OrdinalIgnoreCase) || col.Contains("OPB LATERAL", StringComparison.OrdinalIgnoreCase)) {
+                                if (i == 2) data = GetDayData(new[] { "Alloy" }, col);
+                                if (i == 4) data = GetDayData(new[] { "Alloy" }, col);
+                                if (i == 5) data = GetDayData(new[] { "Moldeo", "Inspeccion Final", "Tie Bar" }, col);
+                                if (i == 6) data = GetDayData(new[] { "Prueba Electrica", "Empaque", "QC" }, col);
+                            }
+                            
+                            totalFilaDia += data.suma;
+                            colTotalsTable2[col] += data.suma;
+
+                            var hasVal = data.suma > 0;
+                            <td class="@(hasVal ? dayClasses[i] : "") clickable-day" 
+                                onmouseenter="highlightTopTable('@data.sources', '@col')" 
+                                onmouseleave="clearHighlight()"
+                                style="@(!hasVal ? "background-color: white !important; color: #eee;" : "")">
+                                @(hasVal ? data.suma.ToString("N0") : "-")
+                            </td>
+                        }
+                        <td class="total-column text-end">@(totalFilaDia > 0 ? totalFilaDia.ToString("N0") : "-")</td>
+                    </tr>
                 }
-                <td class="text-right"><strong>@Model.GrandTotalPieces.ToString("N0")</strong></td>
-            </tr>
-        </tbody>
-    </table>
+            </tbody>
+            <tfoot class="table-dark">
+                <tr>
+                    <td class="text-start">TOTALES</td>
+                    @foreach (var col in Model.Columns) {
+                        <td class="text-end">@colTotalsTable2[col].ToString("N0")</td>
+                    }
+                    <td class="text-end">@colTotalsTable2.Values.Sum().ToString("N0")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
 </div>
+
+<script>
+    // Corrección para expandir espacio ocultando el sidebar real de Trackii
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar-wrapper');
+        const btnText = document.getElementById('btnText');
+        
+        if (sidebar) {
+            if (sidebar.style.display === 'none') {
+                sidebar.style.display = 'block';
+                btnText.innerText = 'Expandir Espacio';
+            } else {
+                sidebar.style.display = 'none';
+                btnText.innerText = 'Mostrar Menú';
+            }
+        }
+    }
+
+    // Sincronización visual entre tablas
+    function highlightTopTable(sources, family) {
+        if (!sources) return;
+        sources.split(',').forEach(loc => {
+            const cell = document.querySelector(`[data-loc="${loc}"][data-fam="${family}"]`);
+            if (cell) cell.classList.add('sync-highlight');
+        });
+    }
+
+    function clearHighlight() {
+        document.querySelectorAll('.sync-highlight').forEach(el => el.classList.remove('sync-highlight'));
+    }
+</script>

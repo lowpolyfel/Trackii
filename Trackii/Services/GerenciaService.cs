@@ -187,7 +187,8 @@ public class GerenciaService
         var opbFamilyIds = families.Where(f => f.HasOpb).Select(f => f.FamilyId).ToHashSet();
 
         using (var cmd = new MySqlCommand(@"
-            SELECT COALESCE(l.name, 'Sin localidad') AS location_name,
+            SELECT l.id AS location_id,
+                   COALESCE(l.name, 'Sin localidad') AS location_name,
                    f.id AS family_id,
                    UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' AS is_opb,
                    COALESCE(SUM(wse.qty_in), 0) AS qty
@@ -197,18 +198,36 @@ public class GerenciaService
             JOIN product p ON p.id = wo.product_id
             JOIN subfamily sf ON sf.id = p.id_subfamily
             JOIN family f ON f.id = sf.id_family
-            LEFT JOIN location l ON l.id = wse.location_id
-          WHERE wse.create_at >= '2026-04-01 00:00:00' 
+            LEFT JOIN route_step rs ON rs.id = wse.route_step_id
+            LEFT JOIN location l ON l.id = COALESCE(wse.location_id, rs.location_id)
+            WHERE wse.create_at >= '2026-04-01 00:00:00' 
               AND wse.create_at <= @dataCutoffUtc
-            GROUP BY location_name, f.id, is_opb", cn))
+            GROUP BY location_id, location_name, f.id, is_opb", cn))
         {
             cmd.Parameters.AddWithValue("@dataCutoffUtc", vm.DataCutoffUtc);
 
             using var rd = cmd.ExecuteReader();
             while (rd.Read())
             {
-                // Agregamos .Trim() para eliminar espacios en blanco accidentales que vienen de la base de datos
-                var locationName = rd.GetString("location_name").Trim();
+                var locId = rd.IsDBNull(rd.GetOrdinal("location_id")) ? 0 : rd.GetInt32("location_id");
+                var rawLocationName = rd.GetString("location_name").Trim();
+                var locationName = rawLocationName;
+
+                // 1) Forzamos a "Backfill" si detectamos el ID 8, ignorando cómo esté escrito en BD
+                if (locId == 8 || rawLocationName.Contains("Backfill", StringComparison.OrdinalIgnoreCase))
+                {
+                    locationName = "Backfill";
+                }
+                // 2) Aseguramos empate seguro con "FAST CAST"
+                else if (rawLocationName.Contains("Fast", StringComparison.OrdinalIgnoreCase))
+                {
+                    locationName = "FAST CAST";
+                }
+                // 3) Aseguramos "Empaque" por si hay errores de captura (ej. Empque)
+                else if (rawLocationName.Contains("Emp", StringComparison.OrdinalIgnoreCase))
+                {
+                    locationName = "Empaque";
+                }
 
                 if (!rowByLocation.TryGetValue(locationName, out var row))
                 {
