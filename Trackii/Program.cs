@@ -92,6 +92,7 @@ builder.Services.AddScoped<Trackii.Services.Search.SearchService>();
 builder.Services.AddScoped<DeviceService>();
 builder.Services.AddScoped<DeviceActivationApiService>();
 builder.Services.AddScoped<AdminWipService>();
+builder.Services.AddScoped<ExcelGeneratorService>();
 
 // =====================
 // Services (API)

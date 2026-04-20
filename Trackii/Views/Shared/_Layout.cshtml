@@ -9,7 +9,7 @@
     var isAdmin = User.IsInRole("Admin");
     var isEngineering = User.IsInRole("Engineering") || User.IsInRole("Ingenieria");
     var isGerencia = User.IsInRole("Gerencia");
-    var altasBajasControllers = new[] { "AltasBajas", "Area", "Family", "Subfamily", "Product", "Route", "UnregisteredParts", "HardMod", "User", "Location", "Device", "Role", "ViewCatalog", "AdminWip" };
+    var altasBajasControllers = new[] { "AltasBajas", "Area", "Family", "Subfamily", "Product", "Route", "UnregisteredParts", "HardMod", "User", "Location", "Device", "Role", "ViewCatalog", "AdminWip", "ExcelGenerator" };
     var isAltasBajasActive = altasBajasControllers.Contains(currentController);
 }
 
@@ -121,6 +121,16 @@
                     <a asp-controller="AdminWip" asp-action="Index" class="@(currentController == "AdminWip" ? "active" : string.Empty)">
                         <i class="fa-solid fa-industry"></i>
                         <span>WIP Manager</span>
+                    </a>
+                }
+
+
+
+                @if (isAdmin)
+                {
+                    <a asp-controller="ExcelGenerator" asp-action="Index" class="@(currentController == "ExcelGenerator" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>Generador de Excel</span>
                     </a>
                 }
 
