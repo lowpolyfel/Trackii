@@ -2,34 +2,103 @@
 @model Trackii.Models.Gerencia.GerenciaBackendLobbyVm
 
 @{
-    ViewData["Title"] = "Lobby de Gerencia";
+    ViewData["Title"] = "Dashboard Gerencial - Lobby";
     var spanish = new CultureInfo("es-MX");
+
+    // Cálculos Globales para las donas
+    double totalGoal = Model.DailyGoalsByColumn.Values.Sum(v => v ?? 0);
+    double totalActual = Model.GrandTotalPieces;
+    double overallPct = totalGoal > 0 ? Math.Round((totalActual / totalGoal) * 100, 1) : 0;
+    string overallColor = overallPct >= 100 ? "#28a745" : (overallPct >= 75 ? "#ffc107" : "#dc3545");
 }
 
 <style>
-    /* Configuración para aprovechar todo el ancho */
-    #page-content-wrapper {
-        width: 100%;
+    /* Transición suave y expansión al 100% */
+    .app-shell .main-content {
         transition: all 0.3s ease;
+        max-width: 100% !important;
+        background-color: #f4f6f9;
+        padding-bottom: 40px;
     }
 
-    /* Contenedor Flex para tablas lado a lado sin comprimirse */
-    .tables-side-by-side {
+    /* Tarjetas de Métrica / Cumplimiento */
+    .metric-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 1px solid #e9ecef;
+        padding: 15px;
         display: flex;
-        flex-direction: row;
-        gap: 20px;
-        align-items: flex-start;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 220px;
+        flex: 1;
+        transition: transform 0.2s;
+    }
+    .metric-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
+    
+    .metrics-container {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 15px;
         overflow-x: auto;
-        padding-bottom: 20px;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        -webkit-overflow-scrolling: touch; 
     }
 
-    .table-container-flex {
-        flex: 0 0 auto;
-        min-width: 49%; /* Asegura que se vean dos tablas grandes */
+    /* Gráfico de Pastel (Dona) en CSS */
+    .circular-progress {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: conic-gradient(var(--color) calc(var(--pct) * 1%), #e9ecef 0);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .circular-progress::before {
+        content: "";
+        position: absolute;
+        width: 46px;
+        height: 46px;
+        background-color: white;
+        border-radius: 50%;
+    }
+    .progress-value {
+        position: relative;
+        font-weight: 800;
+        font-size: 0.8rem;
+        color: #2c3e50;
+    }
+
+    /* Contenedores de Tablas */
+    .dashboard-table-card {
         background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border: 1px solid #eef0f3;
+        margin-bottom: 30px;
+        overflow: hidden;
+    }
+    
+    .table-header-band {
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #2c3e50, #34495e);
+        color: white;
+        font-weight: 600;
+        letter-spacing: 1px;
+        display: flex;
+        justify-content: space-between;
     }
 
-    /* Estilos de Días (Muted/Profesional) */
+    .table-header-band.alt-band {
+        background: linear-gradient(135deg, #0984e3, #2980b9);
+    }
+
+    /* Colores Muted Profesionales */
     .day-1 { background-color: #f8d7da !important; }
     .day-2 { background-color: #fff3cd !important; }
     .day-3 { background-color: #d1ecf1 !important; }
@@ -38,173 +107,307 @@
     .day-6 { background-color: #ede7f6 !important; }
     .day-7 { background-color: #fce4ec !important; }
 
-    /* Resaltado de sincronización */
-    .sync-highlight {
-        outline: 3px solid #2c3e50 !important;
-        box-shadow: 0 0 10px rgba(44, 62, 80, 0.5) !important;
+    /* Resaltado Activo Sincronizado */
+    .sync-highlight-active {
+        outline: 4px solid #2c3e50 !important;
+        box-shadow: 0 0 20px rgba(0,0,0,0.2) !important;
         z-index: 10;
         position: relative;
+        transform: scale(1.05);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
-    .clickable-day { cursor: crosshair; }
+    .clickable-day { 
+        cursor: pointer; 
+        transition: filter 0.2s;
+    }
+    .clickable-day:active { transform: scale(0.95); }
     .total-column { background-color: #f8f9fa; font-weight: bold; border-left: 2px solid #dee2e6 !important; }
+
+    /* Estilo para Tablets */
+    @@media (max-width: 1199px) {
+        .metric-card { min-width: 180px; padding: 10px; }
+        .circular-progress { width: 50px; height: 50px; }
+        .circular-progress::before { width: 38px; height: 38px; }
+        .table-sm th, .table-sm td { font-size: 0.75rem; padding: 0.4rem; }
+    }
 </style>
 
-<div class="page-header d-flex justify-content-between align-items-center mb-3">
+<div class="page-header d-flex justify-content-between align-items-center mb-4 pt-3">
     <div>
-        <h2 class="m-0">Lobby de Gerencia · Discretos</h2>
-        <small class="text-muted">Actualización: @Model.DataCutoffUtc.ToString("dd/MM/yyyy HH:mm", spanish)</small>
+        <h2 class="m-0" style="color: #2c3e50; font-weight: 800;">War Room · Producción</h2>
+        <small class="text-muted"><i class="fa-regular fa-clock"></i> Corte: @Model.DataCutoffUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", spanish)</small>
     </div>
-    <div class="btn-group">
-        <button onclick="toggleSidebar()" class="btn btn-primary btn-sm">
-            <i class="fa-solid fa-maximize"></i> <span id="btnText">Expandir Espacio</span>
+    <div class="btn-group shadow-sm">
+        <button onclick="toggleSidebar()" class="btn btn-dark">
+            <i class="fa-solid fa-expand"></i> <span id="btnText">Pantalla Completa</span>
         </button>
-        <a asp-action="DiscreteMap" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Mapa</a>
+        <a asp-action="DiscreteMap" class="btn btn-outline-dark"><i class="fa-solid fa-map-location-dot"></i> Mapa</a>
     </div>
 </div>
 
-<div class="tables-side-by-side">
-    
-    <div class="table-container-flex shadow-sm rounded border">
-        <div class="p-2 bg-dark text-white d-flex justify-content-between align-items-center">
-            <span class="small fw-bold text-uppercase">Producción por Localidad</span>
+<div class="metrics-container">
+    <div class="metric-card" style="border-left: 5px solid @overallColor;">
+        <div>
+            <h6 class="text-muted m-0" style="font-size: 0.75rem; text-transform: uppercase;">Total General</h6>
+            <h4 class="m-0 fw-bold" style="color: #2c3e50;">@totalActual.ToString("N0") <span style="font-size: 0.8rem; color: #95a5a6;">/ @totalGoal.ToString("N0")</span></h4>
         </div>
-        <table class="table table-sm table-bordered table-hover m-0 align-middle text-center" style="font-size: 0.75rem; white-space: nowrap;">
+        <div class="circular-progress" style="--pct: @overallPct; --color: @overallColor;">
+            <span class="progress-value">@overallPct%</span>
+        </div>
+    </div>
+
+    @foreach (var col in Model.Columns)
+    {
+        double colGoal = Model.DailyGoalsByColumn.TryGetValue(col, out var cg) ? (cg ?? 0) : 0;
+        double colActual = Model.TotalsByColumn.TryGetValue(col, out var ca) ? ca : 0;
+        double colPct = colGoal > 0 ? Math.Round((colActual / colGoal) * 100, 1) : 0;
+        string colColor = colPct >= 100 ? "#28a745" : (colPct >= 75 ? "#ffc107" : "#dc3545");
+
+        <div class="metric-card">
+            <div>
+                <h6 class="text-muted m-0" style="font-size: 0.65rem; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">@col</h6>
+                <h5 class="m-0 fw-bold" style="color: #34495e;">@colActual.ToString("N0")</h5>
+            </div>
+            <div class="circular-progress" style="--pct: @(colPct > 100 ? 100 : colPct); --color: @colColor;">
+                <span class="progress-value">@colPct%</span>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="dashboard-table-card" id="inventoryTableCard">
+    <div class="table-header-band">
+        <span><i class="fa-solid fa-industry"></i> MAPA DE INVENTARIO (LOCALIDADES)</span>
+        <span>Vista de Origen</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered table-hover m-0 align-middle text-center" style="font-size: 0.80rem; white-space: nowrap;">
             <thead class="table-light">
                 <tr class="table-secondary">
-                    <th class="text-start">META DIARIA</th>
+                    <th class="text-start py-2">META DIARIA</th>
                     @foreach (var col in Model.Columns) {
-                        <th class="text-end">@(Model.DailyGoalsByColumn.TryGetValue(col, out var g) ? g?.ToString("N0") : "-")</th>
+                        <th class="text-end py-2">@(Model.DailyGoalsByColumn.TryGetValue(col, out var g) ? g?.ToString("N0") : "-")</th>
                     }
-                    <th class="total-column text-end">@Model.DailyGoalsByColumn.Values.Sum(v => v ?? 0).ToString("N0")</th>
+                    <th class="total-column text-end py-2">@totalGoal.ToString("N0")</th>
                 </tr>
                 <tr>
-                    <th class="text-start">LOCALIDAD</th>
-                    @foreach (var col in Model.Columns) { <th>@col</th> }
-                    <th class="total-column">TOTAL</th>
+                    <th class="text-start py-2">LOCALIDAD</th>
+                    @foreach (var col in Model.Columns) { <th class="py-2 text-muted">@col</th> }
+                    <th class="total-column py-2">TOTAL</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var row in Model.Rows) {
                     <tr>
-                        <td class="text-start fw-bold">@row.LocationName</td>
+                        <td class="text-start fw-bold text-dark">@row.LocationName</td>
                         @foreach (var col in Model.Columns) {
                             var qty = row.PiecesByColumn.TryGetValue(col, out var v) ? v : 0;
-                            <td data-loc="@row.LocationName" data-fam="@col">@(qty == 0 ? "-" : qty.ToString("N0"))</td>
+                            <td data-loc="@row.LocationName" data-fam="@col" class="inventory-cell" style="@(qty == 0 ? "color: #d1d8e0;" : "color: #2c3e50;")">
+                                @(qty == 0 ? "-" : qty.ToString("N0"))
+                            </td>
                         }
                         <td class="total-column text-end">@row.TotalPieces.ToString("N0")</td>
                     </tr>
                 }
             </tbody>
-            <tfoot class="table-dark">
-                <tr>
-                    <td class="text-start">TOTALES</td>
-                    @foreach (var col in Model.Columns) {
-                        <td class="text-end">@Model.TotalsByColumn[col].ToString("N0")</td>
-                    }
-                    <td class="text-end">@Model.GrandTotalPieces.ToString("N0")</td>
-                </tr>
-            </tfoot>
         </table>
     </div>
+</div>
 
-    @{
-        var dayClasses = new[] { "day-1", "day-2", "day-3", "day-4", "day-5", "day-6", "day-7" };
-        var colTotalsTable2 = Model.Columns.ToDictionary(c => c, c => 0);
+@{
+    var dayClasses = new[] { "day-1", "day-2", "day-3", "day-4", "day-5", "day-6", "day-7" };
+    var colTotalsTable2 = Model.Columns.ToDictionary(c => c, c => 0);
 
-        (int suma, string sources) GetDayData(string[] locs, string col) {
-            int t = 0; List<string> s = new();
-            foreach(var l in locs) {
-                var row = Model.Rows.FirstOrDefault(r => r.LocationName.Equals(l, StringComparison.OrdinalIgnoreCase));
-                if (row != null && row.PiecesByColumn.TryGetValue(col, out var val)) { t += val; s.Add(l); }
+    (int suma, string sources) GetDayData(string[] locs, string col) {
+        int t = 0; List<string> s = new();
+        foreach(var l in locs) {
+            var row = Model.Rows.FirstOrDefault(r => r.LocationName.Equals(l, StringComparison.OrdinalIgnoreCase));
+            if (row != null && row.PiecesByColumn.TryGetValue(col, out var val)) { 
+                t += val; if(val > 0) s.Add(l); 
             }
-            return (t, string.Join(",", s));
         }
+        return (t, string.Join(",", s));
     }
 
-    <div class="table-container-flex shadow-sm rounded border">
-        <div class="p-2 bg-primary text-white">
-            <span class="small fw-bold text-uppercase">Inventario por Días (Lead Time)</span>
-        </div>
-        <table class="table table-sm table-bordered m-0 align-middle text-center" style="font-size: 0.75rem; white-space: nowrap;">
+    string GetPenetration(string col) {
+        var c = col.ToUpper();
+        if (c.Contains("LATERAL SENSOR")) return "19%";
+        if (c.Contains("LATERAL LED")) return "38%";
+        if (c.Contains("OPB LATERAL")) return "4%";
+        if (c.Contains("OPB MINI")) return "3%";
+        if (c.Contains("MINI AXIAL")) return "10%";
+        if (c.Contains("MAXI AXIAL")) return "14%";
+        if (c.Contains("OPB FOTO")) return "3%";
+        if (c.Contains("FOTOLOGICO")) return "9%";
+        return "-";
+    }
+
+    int GetMetaPza(string col) {
+        var c = col.ToUpper();
+        if (c.Contains("LATERAL SENSOR")) return 20000;
+        if (c.Contains("LATERAL LED")) return 40000;
+        if (c.Contains("OPB LATERAL")) return 4000;
+        if (c.Contains("OPB MINI")) return 3000;
+        if (c.Contains("MINI AXIAL")) return 10000;
+        if (c.Contains("MAXI AXIAL")) return 15000;
+        if (c.Contains("OPB FOTO")) return 3000;
+        if (c.Contains("FOTOLOGICO")) return 9000;
+        return 0;
+    }
+}
+
+<div class="dashboard-table-card">
+    <div class="table-header-band alt-band">
+        <span><i class="fa-solid fa-calendar-days"></i> FLUJO DE TRÁNSITO (MAPA POR DÍAS)</span>
+        <span>Haz clic en un día para rastrear su origen</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered m-0 align-middle text-center" style="font-size: 0.80rem; white-space: nowrap;">
             <thead class="table-light">
+                <tr style="background-color: #f1f3f5;">
+                    <th class="text-start py-2">% PENETRACIÓN</th>
+                    @foreach (var col in Model.Columns) {
+                        <th class="text-center py-2" style="color: #16a085; font-weight: 700;">@GetPenetration(col)</th>
+                    }
+                    <th class="total-column text-end py-2">100%</th>
+                </tr>
+                <tr style="background-color: #f1f3f5;">
+                    <th class="text-start py-2">META PZA</th>
+                    @foreach (var col in Model.Columns) {
+                        var m = GetMetaPza(col);
+                        <th class="text-center py-2" style="color: #2980b9; font-weight: 700;">@(m > 0 ? m.ToString("N0") : "-")</th>
+                    }
+                    <th class="total-column text-end py-2">104,000</th>
+                </tr>
                 <tr>
-                    <th class="text-start">DÍA</th>
-                    @foreach (var col in Model.Columns) { <th>@col</th> }
-                    <th class="total-column">SUMA DÍA</th>
+                    <th class="text-start py-2">DÍA DE CICLO</th>
+                    @foreach (var col in Model.Columns) { <th class="py-2 text-muted">@col</th> }
+                    <th class="total-column py-2">SUMA</th>
                 </tr>
             </thead>
             <tbody>
                 @for (int i = 0; i < 7; i++) {
                     int totalFilaDia = 0;
                     <tr>
-                        <td class="text-start fw-bold table-light">Día @(i + 1)</td>
+                        <td class="text-start fw-bold py-2" style="background-color: #f8f9fa;">Día @(i + 1)</td>
                         @foreach (var col in Model.Columns) {
                             var data = (suma: 0, sources: "");
+                            var c = col.ToUpper();
                             
-                            // Lógica LATERAL LED
-                            if (col.Contains("LATERAL LED", StringComparison.OrdinalIgnoreCase) || col.Contains("OPB LATERAL", StringComparison.OrdinalIgnoreCase)) {
+                            // APLICACIÓN DE REGLAS SEGÚN FAMILIA
+                            if (c.Contains("LATERAL SENSOR")) {
+                                if (i == 3) data = GetDayData(new[] { "Alloy" }, col);
+                                if (i == 5) data = GetDayData(new[] { "Moldeo", "Backfill", "Inspeccion Final", "Tie Bar" }, col);
+                                if (i == 6) data = GetDayData(new[] { "Tin Plate", "Prueba Electrica", "Empaque", "QC" }, col);
+                            }
+                            else if (c.Contains("LATERAL LED")) {
                                 if (i == 2) data = GetDayData(new[] { "Alloy" }, col);
-                                if (i == 4) data = GetDayData(new[] { "Alloy" }, col);
-                                if (i == 5) data = GetDayData(new[] { "Moldeo", "Inspeccion Final", "Tie Bar" }, col);
+                                if (i == 5) data = GetDayData(new[] { "Moldeo", "Backfill", "Inspeccion Final", "Tie Bar" }, col);
+                                if (i == 6) data = GetDayData(new[] { "Tin Plate", "Prueba Electrica", "Empaque", "QC" }, col);
+                            }
+                            else if (c.Contains("OPB LATERAL")) {
+                                if (i == 1) data = GetDayData(new[] { "Alloy" }, col); 
+                                if (i == 4) data = GetDayData(new[] { "Backfill", "Inspeccion Final", "Tie Bar" }, col); 
+                                if (i == 5) data = GetDayData(new[] { "Tin Plate" }, col); 
+                                if (i == 6) data = GetDayData(new[] { "Prueba Electrica", "Empaque", "QC" }, col); 
+                            }
+                            else if (c.Contains("OPB MINI")) {
+                                if (i == 0) data = GetDayData(new[] { "Alloy" }, col);
+                                if (i == 1) data = GetDayData(new[] { "Backfill" }, col);
+                                if (i == 2) data = GetDayData(new[] { "Inspeccion Final", "Tie Bar", "Tin Plate" }, col);
+                                if (i == 6) data = GetDayData(new[] { "Prueba Electrica", "Empaque", "QC" }, col);
+                            }
+                            else if (c.Contains("MINI AXIAL")) {
+                                if (i == 2) data = GetDayData(new[] { "Alloy" }, col);
+                                if (i == 3) data = GetDayData(new[] { "Moldeo", "Backfill" }, col);
+                                if (i == 4) data = GetDayData(new[] { "Inspeccion Final", "Tie Bar", "Tin Plate" }, col);
+                                if (i == 6) data = GetDayData(new[] { "Prueba Electrica", "Empaque", "QC" }, col);
+                            }
+                            else if (c.Contains("MAXI AXIAL")) {
+                                if (i == 1) data = GetDayData(new[] { "Alloy" }, col);
+                                if (i == 3) data = GetDayData(new[] { "Backfill" }, col);
+                                if (i == 4) data = GetDayData(new[] { "FAST CAST", "Inspeccion Final" }, col);
+                                if (i == 5) data = GetDayData(new[] { "Tie Bar", "Tin Plate" }, col);
+                                if (i == 6) data = GetDayData(new[] { "Prueba Electrica", "Empaque", "QC" }, col);
+                            }
+                            else if (c.Contains("OPB FOTO")) {
+                                if (i == 3) data = GetDayData(new[] { "Alloy" }, col);
+                                if (i == 4) data = GetDayData(new[] { "Moldeo", "Backfill" }, col);
+                                if (i == 5) data = GetDayData(new[] { "Inspeccion Final", "Tie Bar", "Tin Plate" }, col);
+                                if (i == 6) data = GetDayData(new[] { "Prueba Electrica", "Empaque", "QC" }, col);
+                            }
+                            else if (c.Contains("FOTOLOGICO")) {
+                                if (i == 2) data = GetDayData(new[] { "Alloy" }, col);
+                                if (i == 3) data = GetDayData(new[] { "Moldeo", "Backfill" }, col);
+                                if (i == 5) data = GetDayData(new[] { "Inspeccion Final", "Tie Bar", "Tin Plate" }, col);
                                 if (i == 6) data = GetDayData(new[] { "Prueba Electrica", "Empaque", "QC" }, col);
                             }
                             
                             totalFilaDia += data.suma;
                             colTotalsTable2[col] += data.suma;
 
-                            var hasVal = data.suma > 0;
-                            <td class="@(hasVal ? dayClasses[i] : "") clickable-day" 
-                                onmouseenter="highlightTopTable('@data.sources', '@col')" 
-                                onmouseleave="clearHighlight()"
-                                style="@(!hasVal ? "background-color: white !important; color: #eee;" : "")">
-                                @(hasVal ? data.suma.ToString("N0") : "-")
+                            var hasVal = data.suma > 0 || !string.IsNullOrEmpty(data.sources);
+                            <td class="@(hasVal ? dayClasses[i] : "") clickable-day py-2" 
+                                onclick="traceInventory(this, '@data.sources', '@col', '@dayClasses[i]')"
+                                style="@(!hasVal ? "color: #d1d8e0;" : "font-weight: 600; color: #2c3e50;")">
+                                @(data.suma > 0 ? data.suma.ToString("N0") : "-")
                             </td>
                         }
-                        <td class="total-column text-end">@(totalFilaDia > 0 ? totalFilaDia.ToString("N0") : "-")</td>
+                        <td class="total-column text-end py-2">@(totalFilaDia > 0 ? totalFilaDia.ToString("N0") : "-")</td>
                     </tr>
                 }
             </tbody>
-            <tfoot class="table-dark">
-                <tr>
-                    <td class="text-start">TOTALES</td>
-                    @foreach (var col in Model.Columns) {
-                        <td class="text-end">@colTotalsTable2[col].ToString("N0")</td>
-                    }
-                    <td class="text-end">@colTotalsTable2.Values.Sum().ToString("N0")</td>
-                </tr>
-            </tfoot>
         </table>
     </div>
 </div>
 
 <script>
-    // Corrección para expandir espacio ocultando el sidebar real de Trackii
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar-wrapper');
-        const btnText = document.getElementById('btnText');
-        
-        if (sidebar) {
-            if (sidebar.style.display === 'none') {
-                sidebar.style.display = 'block';
-                btnText.innerText = 'Expandir Espacio';
-            } else {
-                sidebar.style.display = 'none';
-                btnText.innerText = 'Mostrar Menú';
+    let traceTimer = null;
+
+    function traceInventory(element, sources, family, colorClass) {
+        if (!sources) return;
+
+        // 1. Limpiar cualquier resaltado previo
+        clearTrace();
+
+        // 2. Aplicar color y efecto a las celdas de la Tabla A
+        const sourceArray = sources.split(',');
+        sourceArray.forEach(loc => {
+            const targetCell = document.querySelector(`[data-loc="${loc}"][data-fam="${family}"]`);
+            if (targetCell) {
+                targetCell.classList.add(colorClass); // Aplica el mismo color (Rosa, Azul, etc.)
+                targetCell.classList.add('sync-highlight-active');
             }
-        }
+        });
+
+        // 3. Desplazar pantalla a la Tabla A (Inventory) de forma suave
+        document.getElementById('inventoryTableCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // 4. Iniciar temporizador de 5 segundos para limpiar
+        traceTimer = setTimeout(() => {
+            clearTrace();
+        }, 5000);
     }
 
-    // Sincronización visual entre tablas
-    function highlightTopTable(sources, family) {
-        if (!sources) return;
-        sources.split(',').forEach(loc => {
-            const cell = document.querySelector(`[data-loc="${loc}"][data-fam="${family}"]`);
-            if (cell) cell.classList.add('sync-highlight');
+    function clearTrace() {
+        if (traceTimer) clearTimeout(traceTimer);
+        document.querySelectorAll('.inventory-cell').forEach(el => {
+            // Removemos todas las posibles clases day-X y el efecto visual
+            for (let i = 1; i <= 7; i++) el.classList.remove(`day-${i}`);
+            el.classList.remove('sync-highlight-active');
         });
     }
 
-    function clearHighlight() {
-        document.querySelectorAll('.sync-highlight').forEach(el => el.classList.remove('sync-highlight'));
+    function toggleSidebar() {
+        const sidebar = document.getElementById('mainSidebar');
+        const btnText = document.getElementById('btnText');
+        if (sidebar) {
+            if (sidebar.style.display === 'none') {
+                sidebar.style.display = ''; btnText.innerText = 'Pantalla Completa';
+            } else {
+                sidebar.style.display = 'none'; btnText.innerText = 'Restaurar Menú';
+            }
+        }
     }
 </script>
