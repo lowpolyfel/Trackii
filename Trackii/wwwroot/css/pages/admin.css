@@ -45,3 +45,13 @@
     color: var(--text-muted);
     font-size: .82rem;
 }
+
+.excel-preview-table {
+    max-height: 520px;
+    overflow: auto;
+}
+
+.excel-preview-table th,
+.excel-preview-table td {
+    white-space: nowrap;
+}
