@@ -100,26 +100,34 @@ public class ExcelGeneratorService
         ", cn);
 
         using var rd = cmd.ExecuteReader();
+
+        var productIdOrdinal = rd.GetOrdinal("product_id");
+        var productOrdinal = rd.GetOrdinal("product");
+        var familyOrdinal = rd.GetOrdinal("family");
+        var subfamilyOrdinal = rd.GetOrdinal("subfamily");
+        var stepNumberOrdinal = rd.GetOrdinal("step_number");
+        var stepLocationOrdinal = rd.GetOrdinal("step_location");
+
         while (rd.Read())
         {
-            var productId = rd.GetUInt32("product_id");
+            var productId = rd.GetUInt32(productIdOrdinal);
 
             if (!rows.TryGetValue(productId, out var row))
             {
                 row = new ExcelGeneratorRowVm
                 {
-                    Product = rd.GetString("product"),
-                    Family = rd.GetString("family"),
-                    Subfamily = rd.GetString("subfamily")
+                    Product = rd.GetString(productOrdinal),
+                    Family = rd.GetString(familyOrdinal),
+                    Subfamily = rd.GetString(subfamilyOrdinal)
                 };
                 rows.Add(productId, row);
             }
 
-            if (!rd.IsDBNull("step_number"))
+            if (!rd.IsDBNull(stepNumberOrdinal))
             {
-                row.RouteSteps.Add(rd.IsDBNull("step_location")
-                    ? $"Paso {rd.GetInt32("step_number")}"
-                    : rd.GetString("step_location"));
+                row.RouteSteps.Add(rd.IsDBNull(stepLocationOrdinal)
+                    ? $"Paso {rd.GetInt32(stepNumberOrdinal)}"
+                    : rd.GetString(stepLocationOrdinal));
             }
         }
 
