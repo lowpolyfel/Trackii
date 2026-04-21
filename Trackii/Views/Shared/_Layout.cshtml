@@ -9,6 +9,7 @@
     var isAdmin = User.IsInRole("Admin");
     var isEngineering = User.IsInRole("Engineering") || User.IsInRole("Ingenieria");
     var isGerencia = User.IsInRole("Gerencia");
+    var showGerenciaSidebarExtras = false;
     var altasBajasControllers = new[] { "AltasBajas", "Area", "Family", "Subfamily", "Product", "Route", "UnregisteredParts", "HardMod", "User", "Location", "Device", "Role", "ViewCatalog", "AdminWip", "ExcelGenerator" };
     var isAltasBajasActive = altasBajasControllers.Contains(currentController);
 }
@@ -75,10 +76,13 @@
                         <span>Lobby gerencia</span>
                     </a>
 
-                    <a asp-controller="Gerencia" asp-action="DiscreteDailyPanels" class="@(currentController == "Gerencia" && currentAction == "DiscreteDailyPanels" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-table-cells-large"></i>
-                        <span>Paneles diarios discretos</span>
-                    </a>
+                    @if (showGerenciaSidebarExtras)
+                    {
+                        <a asp-controller="Gerencia" asp-action="DiscreteDailyPanels" class="@(currentController == "Gerencia" && currentAction == "DiscreteDailyPanels" ? "active" : string.Empty)">
+                            <i class="fa-solid fa-table-cells-large"></i>
+                            <span>Paneles diarios discretos</span>
+                        </a>
+                    }
 
                     <a asp-controller="Gerencia" asp-action="ActiveOrders" class="@(currentController == "Gerencia" && currentAction == "ActiveOrders" ? "active" : string.Empty)">
                         <i class="fa-solid fa-list-check"></i>
@@ -90,25 +94,37 @@
                         <span>Causas de errores</span>
                     </a>
 
-                    <a asp-controller="Gerencia" asp-action="DailyTrend" class="@(currentController == "Gerencia" && currentAction == "DailyTrend" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-chart-line"></i>
-                        <span>Tendencia diaria</span>
-                    </a>
+                    @if (showGerenciaSidebarExtras)
+                    {
+                        <a asp-controller="Gerencia" asp-action="DailyTrend" class="@(currentController == "Gerencia" && currentAction == "DailyTrend" ? "active" : string.Empty)">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <span>Tendencia diaria</span>
+                        </a>
+                    }
 
-                    <a asp-controller="Gerencia" asp-action="Throughput" class="@(currentController == "Gerencia" && currentAction == "Throughput" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-chart-column"></i>
-                        <span>Throughput</span>
-                    </a>
+                    @if (showGerenciaSidebarExtras)
+                    {
+                        <a asp-controller="Gerencia" asp-action="Throughput" class="@(currentController == "Gerencia" && currentAction == "Throughput" ? "active" : string.Empty)">
+                            <i class="fa-solid fa-chart-column"></i>
+                            <span>Throughput</span>
+                        </a>
+                    }
 
-                    <a asp-controller="Gerencia" asp-action="ReworkSummary" class="@(currentController == "Gerencia" && currentAction == "ReworkSummary" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-rotate"></i>
-                        <span>Rework</span>
-                    </a>
+                    @if (showGerenciaSidebarExtras)
+                    {
+                        <a asp-controller="Gerencia" asp-action="ReworkSummary" class="@(currentController == "Gerencia" && currentAction == "ReworkSummary" ? "active" : string.Empty)">
+                            <i class="fa-solid fa-rotate"></i>
+                            <span>Rework</span>
+                        </a>
+                    }
 
-                    <a asp-controller="Gerencia" asp-action="WoHealth" class="@(currentController == "Gerencia" && currentAction == "WoHealth" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-heart-pulse"></i>
-                        <span>Salud de órdenes</span>
-                    </a>
+                    @if (showGerenciaSidebarExtras)
+                    {
+                        <a asp-controller="Gerencia" asp-action="WoHealth" class="@(currentController == "Gerencia" && currentAction == "WoHealth" ? "active" : string.Empty)">
+                            <i class="fa-solid fa-heart-pulse"></i>
+                            <span>Salud de órdenes</span>
+                        </a>
+                    }
                 }
 
                 @if (isAdmin || isEngineering)
@@ -134,7 +150,7 @@
                     </a>
                 }
 
-                @if (isAdmin || isEngineering || isGerencia)
+                @if (showGerenciaSidebarExtras && (isAdmin || isEngineering || isGerencia))
                 {
                     <a asp-controller="Reports" asp-action="Index" class="@(currentController == "Reports" ? "active" : string.Empty)">
                         <i class="fa-solid fa-chart-pie"></i>

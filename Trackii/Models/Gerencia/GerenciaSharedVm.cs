@@ -17,6 +17,8 @@ public class WorkOrderVm
     public string WoNumber { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string Product { get; set; } = string.Empty;
+    public string Subfamily { get; set; } = "Sin subfamilia";
+    public int Qty { get; set; }
     public uint? WipItemId { get; set; }
     public string? WipStatus { get; set; }
     public string? CurrentLocation { get; set; }

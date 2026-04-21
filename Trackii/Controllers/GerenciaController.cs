@@ -65,9 +65,11 @@ public class GerenciaController : Controller
     }
 
     [HttpGet("OrdenesActivas")]
-    public IActionResult ActiveOrders()
+    public IActionResult ActiveOrders(string? location, string? subfamily)
     {
         var vm = _svc.GetActiveOrdersDetail();
+        ViewBag.SelectedLocation = location;
+        ViewBag.SelectedSubfamily = subfamily;
         return View($"{ViewBase}ActiveOrders.cshtml", vm);
     }
 

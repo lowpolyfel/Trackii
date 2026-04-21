@@ -1910,15 +1910,28 @@ public class GerenciaService
             SELECT wo.wo_number,
                    wo.status,
                    p.part_number,
+                   COALESCE(s.name, 'Sin subfamilia') AS subfamily_name,
                    wip.id AS wip_id,
                    wip.status AS wip_status,
                    wip.created_at,
-                   l.name AS location_name
+                   l.name AS location_name,
+                   COALESCE(last_qty.qty_in, 0) AS current_qty
             FROM work_order wo
             JOIN product p ON p.id = wo.product_id
+            LEFT JOIN subfamily s ON s.id = p.id_subfamily
             LEFT JOIN wip_item wip ON wip.wo_order_id = wo.id
             LEFT JOIN route_step rs ON rs.id = wip.current_step_id
             LEFT JOIN location l ON l.id = rs.location_id
+            LEFT JOIN (
+                SELECT wse.wip_item_id,
+                       wse.qty_in
+                FROM wip_step_execution wse
+                INNER JOIN (
+                    SELECT wip_item_id, MAX(id) AS last_step_id
+                    FROM wip_step_execution
+                    GROUP BY wip_item_id
+                ) latest ON latest.last_step_id = wse.id
+            ) last_qty ON last_qty.wip_item_id = wip.id
             WHERE wo.status = @status
             ORDER BY wo.wo_number", cn);
 
@@ -1937,6 +1950,8 @@ public class GerenciaService
                 WoNumber = rd.GetString("wo_number"),
                 Status = rd.GetString("status"),
                 Product = rd.GetString("part_number"),
+                Subfamily = rd.GetString("subfamily_name"),
+                Qty = Convert.ToInt32(rd.GetInt64("current_qty")),
                 WipItemId = rd.IsDBNull(wipIdOrdinal) ? null : rd.GetUInt32(wipIdOrdinal),
                 WipStatus = rd.IsDBNull(wipStatusOrdinal) ? null : rd.GetString(wipStatusOrdinal),
                 CurrentLocation = rd.IsDBNull(locationOrdinal) ? null : rd.GetString(locationOrdinal),
