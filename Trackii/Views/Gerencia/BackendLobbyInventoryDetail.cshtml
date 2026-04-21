@@ -1,0 +1,82 @@
+@model Trackii.Models.Gerencia.GerenciaLobbyInventoryCellDetailVm
+@{
+    ViewData["Title"] = "Detalle de inventario por localidad";
+}
+
+<div class="dashboard">
+    <div class="page-header error-causes-header">
+        <div>
+            <h2>@Model.Location · @Model.FamilyGroup</h2>
+            <p class="subtitle">
+                Órdenes activas de la combinación seleccionada en el mapa de inventario.
+                @if (Model.ViewMode == Trackii.Models.Gerencia.GerenciaBackendLobbyVm.OrdersSinceMode && Model.OrdersOpenedFromDate.HasValue)
+                {
+                    <text>Filtro aplicado: órdenes abiertas desde @Model.OrdersOpenedFromDate.Value.ToString("yyyy-MM-dd").</text>
+                }
+            </p>
+        </div>
+        <a asp-action="BackendLobby" asp-route-mode="@Model.ViewMode" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver al mapa</a>
+    </div>
+
+    <section class="error-kpis" aria-label="KPIs detalle inventario">
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Órdenes</span>
+            <strong class="kpi-value">@Model.Orders.Count.ToString("N0")</strong>
+            <small>Total de órdenes activas.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Piezas</span>
+            <strong class="kpi-value">@Model.TotalQty.ToString("N0")</strong>
+            <small>Suma de cantidades actuales.</small>
+        </article>
+    </section>
+
+    <div class="card apple-card error-causes-card">
+        <div class="card-heading">
+            <h3>Tabla de órdenes por localidad/familia</h3>
+            <span class="chip">Responsive</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>WO</th>
+                        <th>Producto</th>
+                        <th>Subfamilia</th>
+                        <th>Cantidad</th>
+                        <th>Estado WO</th>
+                        <th>WIP</th>
+                        <th>Estado WIP</th>
+                        <th>Fecha WIP</th>
+                        <th>Localidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Orders.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="empty">No hay órdenes activas para esta localidad/familia.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var row in Model.Orders)
+                        {
+                            <tr>
+                                <td>@row.WoNumber</td>
+                                <td>@row.Product</td>
+                                <td>@row.Subfamily</td>
+                                <td>@row.Qty.ToString("N0")</td>
+                                <td><span class="chip chip-muted">@UiTextHelper.NormalizeStatus(row.Status)</span></td>
+                                <td>@(row.WipItemId?.ToString() ?? "-")</td>
+                                <td>@(row.WipStatus is null ? "-" : UiTextHelper.NormalizeStatus(row.WipStatus))</td>
+                                <td>@(row.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                <td>@(row.CurrentLocation ?? "-")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

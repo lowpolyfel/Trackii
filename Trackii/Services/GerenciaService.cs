@@ -298,6 +298,115 @@ public class GerenciaService
         return vm;
     }
 
+    public GerenciaLobbyInventoryCellDetailVm GetBackendLobbyCellDetail(string location, string familyGroup, string? mode)
+    {
+        var normalizedMode = string.Equals(mode, GerenciaBackendLobbyVm.OrdersSinceMode, StringComparison.OrdinalIgnoreCase)
+            ? GerenciaBackendLobbyVm.OrdersSinceMode
+            : GerenciaBackendLobbyVm.FullInventoryMode;
+        var ordersOpenedFromDate = new DateTime(2026, 4, 13);
+
+        var vm = new GerenciaLobbyInventoryCellDetailVm
+        {
+            Location = location.Trim(),
+            FamilyGroup = familyGroup.Trim(),
+            ViewMode = normalizedMode,
+            OrdersOpenedFromDate = normalizedMode == GerenciaBackendLobbyVm.OrdersSinceMode ? ordersOpenedFromDate : null
+        };
+
+        var isOpbColumn = vm.FamilyGroup.StartsWith("OPB ", StringComparison.OrdinalIgnoreCase);
+        var baseFamily = isOpbColumn ? vm.FamilyGroup[4..].Trim() : vm.FamilyGroup;
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT wo.wo_number,
+                   wo.status,
+                   p.part_number,
+                   COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name,
+                   wip.id AS wip_id,
+                   wip.status AS wip_status,
+                   wip.created_at,
+                   CASE
+                       WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
+                       WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
+                       WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                       ELSE COALESCE(l.name, 'Sin localidad')
+                   END AS normalized_location,
+                   COALESCE(last_qty.qty_in, 0) AS current_qty
+            FROM wip_item wip
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            JOIN subfamily sf ON sf.id = p.id_subfamily
+            JOIN family f ON f.id = sf.id_family
+            LEFT JOIN route_step rs ON rs.id = wip.current_step_id
+            LEFT JOIN location l ON l.id = rs.location_id
+            LEFT JOIN (
+                SELECT wse.wip_item_id,
+                       wse.qty_in
+                FROM wip_step_execution wse
+                INNER JOIN (
+                    SELECT wip_item_id, MAX(id) AS last_step_id
+                    FROM wip_step_execution
+                    GROUP BY wip_item_id
+                ) latest ON latest.last_step_id = wse.id
+            ) last_qty ON last_qty.wip_item_id = wip.id
+            WHERE wo.status IN ('OPEN', 'IN_PROGRESS')
+              AND COALESCE(f.name, 'Sin familia') = @baseFamily
+              AND (
+                    @isOpbColumn = 0 AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%'
+                    OR @isOpbColumn = 1 AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%'
+                  )
+              AND (
+                    CASE
+                        WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
+                        WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
+                        WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                        ELSE COALESCE(l.name, 'Sin localidad')
+                    END
+                  ) = @location
+              AND (
+                    @viewMode <> @ordersSinceMode
+                    OR wo.id IN (
+                        SELECT wip_filtered.wo_order_id
+                        FROM wip_item wip_filtered
+                        GROUP BY wip_filtered.wo_order_id
+                        HAVING MIN(wip_filtered.created_at) >= @ordersOpenedFromDate
+                    )
+                  )
+            ORDER BY wip.created_at DESC, wo.wo_number", cn);
+
+        cmd.Parameters.AddWithValue("@location", vm.Location);
+        cmd.Parameters.AddWithValue("@baseFamily", baseFamily);
+        cmd.Parameters.AddWithValue("@isOpbColumn", isOpbColumn ? 1 : 0);
+        cmd.Parameters.AddWithValue("@viewMode", vm.ViewMode);
+        cmd.Parameters.AddWithValue("@ordersSinceMode", GerenciaBackendLobbyVm.OrdersSinceMode);
+        cmd.Parameters.AddWithValue("@ordersOpenedFromDate", ordersOpenedFromDate);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            var wipIdOrdinal = rd.GetOrdinal("wip_id");
+            var wipStatusOrdinal = rd.GetOrdinal("wip_status");
+            var createdAtOrdinal = rd.GetOrdinal("created_at");
+
+            vm.Orders.Add(new WorkOrderVm
+            {
+                WoNumber = rd.GetString("wo_number"),
+                Status = rd.GetString("status"),
+                Product = rd.GetString("part_number"),
+                Subfamily = rd.GetString("subfamily_name"),
+                Qty = Convert.ToInt32(rd.GetInt64("current_qty")),
+                WipItemId = rd.IsDBNull(wipIdOrdinal) ? null : rd.GetUInt32(wipIdOrdinal),
+                WipStatus = rd.IsDBNull(wipStatusOrdinal) ? null : rd.GetString(wipStatusOrdinal),
+                CurrentLocation = rd.GetString("normalized_location"),
+                WipCreatedAt = rd.IsDBNull(createdAtOrdinal) ? null : rd.GetDateTime(createdAtOrdinal)
+            });
+        }
+
+        return vm;
+    }
+
     private Dictionary<string, int> GetLobbyDailyGoals()
     {
         var defaults = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)

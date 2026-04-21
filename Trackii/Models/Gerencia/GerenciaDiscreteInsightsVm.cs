@@ -53,6 +53,16 @@ public class BackendLobbyLocationRowVm
     public int TotalPieces => PiecesByColumn.Values.Sum();
 }
 
+public class GerenciaLobbyInventoryCellDetailVm
+{
+    public string Location { get; set; } = string.Empty;
+    public string FamilyGroup { get; set; } = string.Empty;
+    public string ViewMode { get; set; } = GerenciaBackendLobbyVm.FullInventoryMode;
+    public DateTime? OrdersOpenedFromDate { get; set; }
+    public List<WorkOrderVm> Orders { get; } = new();
+    public int TotalQty => Orders.Sum(x => x.Qty);
+}
+
 // Compatibilidad temporal para builds con servicio legado.
 public class BackendLobbyGroupRowVm
 {

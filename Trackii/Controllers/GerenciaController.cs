@@ -36,6 +36,13 @@ public class GerenciaController : Controller
         return View($"{ViewBase}BackendLobby.cshtml", vm);
     }
 
+    [HttpGet("LobbyInventarioDetalle")]
+    public IActionResult BackendLobbyInventoryDetail(string location, string familyGroup, string? mode)
+    {
+        var vm = _svc.GetBackendLobbyCellDetail(location, familyGroup, mode);
+        return View($"{ViewBase}BackendLobbyInventoryDetail.cshtml", vm);
+    }
+
     [HttpGet("DiaDiscretos")]
     public IActionResult DiscreteDay(DateTime day, string? sortBy)
     {
