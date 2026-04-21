@@ -8,6 +8,7 @@ public class GerenciaService
 {
     private readonly string _conn;
     private readonly IConfiguration _cfg;
+    private static readonly DateTime HistoricalCutoffUtc = new(2026, 4, 1, 23, 59, 59, DateTimeKind.Utc);
 
     public GerenciaService(IConfiguration cfg)
     {
@@ -110,12 +111,12 @@ public class GerenciaService
         var normalizedMode = string.Equals(mode, GerenciaBackendLobbyVm.OrdersSinceMode, StringComparison.OrdinalIgnoreCase)
             ? GerenciaBackendLobbyVm.OrdersSinceMode
             : GerenciaBackendLobbyVm.FullInventoryMode;
-        var ordersOpenedFromDate = new DateTime(2026, 4, 13);
+        var ordersOpenedFromDate = new DateTime(2026, 3, 13, 0, 0, 0, DateTimeKind.Utc);
 
         var vm = new GerenciaBackendLobbyVm
         {
-            SnapshotAtUtc = DateTime.UtcNow,
-            DataCutoffUtc = DateTime.UtcNow,
+            SnapshotAtUtc = HistoricalCutoffUtc,
+            DataCutoffUtc = HistoricalCutoffUtc,
             ViewMode = normalizedMode,
             OrdersOpenedFromDate = normalizedMode == GerenciaBackendLobbyVm.OrdersSinceMode ? ordersOpenedFromDate : null
         };
@@ -195,20 +196,45 @@ public class GerenciaService
 
         using (var cmd = new MySqlCommand(@"
             SELECT l.id AS location_id,
-                   COALESCE(l.name, 'Sin localidad') AS location_name,
+                   CASE
+                       WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
+                       WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
+                       WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                       ELSE COALESCE(l.name, 'Sin localidad')
+                   END AS location_name,
                    f.id AS family_id,
                    UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' AS is_opb,
-                   COALESCE(SUM(wse.qty_in), 0) AS qty
-            FROM wip_step_execution wse
-            JOIN wip_item wip ON wip.id = wse.wip_item_id
+                   COALESCE(SUM(COALESCE(last_qty.qty_in, 0)), 0) AS qty
+            FROM wip_item wip
             JOIN work_order wo ON wo.id = wip.wo_order_id
             JOIN product p ON p.id = wo.product_id
             JOIN subfamily sf ON sf.id = p.id_subfamily
             JOIN family f ON f.id = sf.id_family
-            LEFT JOIN route_step rs ON rs.id = wse.route_step_id
-            LEFT JOIN location l ON l.id = COALESCE(wse.location_id, rs.location_id)
-            WHERE wse.create_at >= '2026-04-01 00:00:00' 
-              AND wse.create_at <= @dataCutoffUtc
+            LEFT JOIN route_step rs ON rs.id = wip.current_step_id
+            LEFT JOIN location l ON l.id = rs.location_id
+            LEFT JOIN (
+                SELECT wse.wip_item_id,
+                       wse.qty_in
+                FROM wip_step_execution wse
+                INNER JOIN (
+                    SELECT wip_item_id, MAX(id) AS last_step_id
+                    FROM wip_step_execution
+                    GROUP BY wip_item_id
+                ) latest ON latest.last_step_id = wse.id
+            ) last_qty ON last_qty.wip_item_id = wip.id
+            WHERE wo.status IN ('OPEN', 'IN_PROGRESS')
+              AND wip.created_at <= @dataCutoffUtc
+              AND NOT (
+                    (
+                        CASE
+                            WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
+                            WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
+                            WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                            ELSE COALESCE(l.name, 'Sin localidad')
+                        END
+                    ) = 'Alloy'
+                    AND TIMESTAMPDIFF(DAY, wip.created_at, @dataCutoffUtc) > 20
+                  )
               AND (
                     @viewMode <> @ordersSinceMode
                     OR wo.id IN (
@@ -229,24 +255,7 @@ public class GerenciaService
             while (rd.Read())
             {
                 var locId = rd.IsDBNull(rd.GetOrdinal("location_id")) ? 0 : rd.GetInt32("location_id");
-                var rawLocationName = rd.GetString("location_name").Trim();
-                var locationName = rawLocationName;
-
-                // 1) Forzamos a "Backfill" si detectamos el ID 8, ignorando cómo esté escrito en BD
-                if (locId == 8 || rawLocationName.Contains("Backfill", StringComparison.OrdinalIgnoreCase))
-                {
-                    locationName = "Backfill";
-                }
-                // 2) Aseguramos empate seguro con "FAST CAST"
-                else if (rawLocationName.Contains("Fast", StringComparison.OrdinalIgnoreCase))
-                {
-                    locationName = "FAST CAST";
-                }
-                // 3) Aseguramos "Empaque" por si hay errores de captura (ej. Empque)
-                else if (rawLocationName.Contains("Emp", StringComparison.OrdinalIgnoreCase))
-                {
-                    locationName = "Empaque";
-                }
+                var locationName = rd.GetString("location_name").Trim();
 
                 if (!rowByLocation.TryGetValue(locationName, out var row))
                 {
@@ -303,7 +312,7 @@ public class GerenciaService
         var normalizedMode = string.Equals(mode, GerenciaBackendLobbyVm.OrdersSinceMode, StringComparison.OrdinalIgnoreCase)
             ? GerenciaBackendLobbyVm.OrdersSinceMode
             : GerenciaBackendLobbyVm.FullInventoryMode;
-        var ordersOpenedFromDate = new DateTime(2026, 4, 13);
+        var ordersOpenedFromDate = new DateTime(2026, 3, 13, 0, 0, 0, DateTimeKind.Utc);
 
         var vm = new GerenciaLobbyInventoryCellDetailVm
         {
@@ -352,6 +361,18 @@ public class GerenciaService
                 ) latest ON latest.last_step_id = wse.id
             ) last_qty ON last_qty.wip_item_id = wip.id
             WHERE wo.status IN ('OPEN', 'IN_PROGRESS')
+              AND wip.created_at <= @dataCutoffUtc
+              AND NOT (
+                    (
+                        CASE
+                            WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
+                            WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
+                            WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                            ELSE COALESCE(l.name, 'Sin localidad')
+                        END
+                    ) = 'Alloy'
+                    AND TIMESTAMPDIFF(DAY, wip.created_at, @dataCutoffUtc) > 20
+                  )
               AND COALESCE(f.name, 'Sin familia') = @baseFamily
               AND (
                     @isOpbColumn = 0 AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%'
@@ -379,6 +400,7 @@ public class GerenciaService
         cmd.Parameters.AddWithValue("@location", vm.Location);
         cmd.Parameters.AddWithValue("@baseFamily", baseFamily);
         cmd.Parameters.AddWithValue("@isOpbColumn", isOpbColumn ? 1 : 0);
+        cmd.Parameters.AddWithValue("@dataCutoffUtc", HistoricalCutoffUtc);
         cmd.Parameters.AddWithValue("@viewMode", vm.ViewMode);
         cmd.Parameters.AddWithValue("@ordersSinceMode", GerenciaBackendLobbyVm.OrdersSinceMode);
         cmd.Parameters.AddWithValue("@ordersOpenedFromDate", ordersOpenedFromDate);
@@ -2042,9 +2064,22 @@ public class GerenciaService
                 ) latest ON latest.last_step_id = wse.id
             ) last_qty ON last_qty.wip_item_id = wip.id
             WHERE wo.status = @status
+              AND wip.created_at <= @dataCutoffUtc
+              AND NOT (
+                    (
+                        CASE
+                            WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
+                            WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
+                            WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                            ELSE COALESCE(l.name, 'Sin localidad')
+                        END
+                    ) = 'Alloy'
+                    AND TIMESTAMPDIFF(DAY, wip.created_at, @dataCutoffUtc) > 20
+                  )
             ORDER BY wo.wo_number", cn);
 
         cmd.Parameters.AddWithValue("@status", status);
+        cmd.Parameters.AddWithValue("@dataCutoffUtc", HistoricalCutoffUtc);
 
         using var rd = cmd.ExecuteReader();
         while (rd.Read())
