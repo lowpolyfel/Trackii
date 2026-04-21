@@ -26,8 +26,13 @@ public class GerenciaDiscreteMapVm
 
 public class GerenciaBackendLobbyVm
 {
+    public const string FullInventoryMode = "full_inventory";
+    public const string OrdersSinceMode = "orders_since_2026_04_13";
+
     public DateTime SnapshotAtUtc { get; set; }
     public DateTime DataCutoffUtc { get; set; }
+    public string ViewMode { get; set; } = FullInventoryMode;
+    public DateTime? OrdersOpenedFromDate { get; set; }
     // Compatibilidad temporal para builds con servicio legado.
     public List<BackendLobbyGroupRowVm> Groups { get; } = new();
     public List<string> Columns { get; } = new();

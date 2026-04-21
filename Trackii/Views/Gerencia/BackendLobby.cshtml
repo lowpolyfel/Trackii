@@ -126,10 +126,52 @@
 
     /* Estilo para Tablets */
     @@media (max-width: 1199px) {
+        .sidebar-toggle {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1250;
+            width: min(82vw, 320px);
+            height: 100vh;
+            transform: translateX(-108%);
+            transition: transform .25s ease;
+            border-radius: 0;
+        }
+
+        .app-shell.sidebar-open .sidebar {
+            transform: translateX(0);
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1210;
+            background: rgba(8, 16, 34, 0.45);
+        }
+
+        .app-shell.sidebar-open .sidebar-overlay {
+            display: block;
+        }
+
         .metric-card { min-width: 180px; padding: 10px; }
         .circular-progress { width: 50px; height: 50px; }
         .circular-progress::before { width: 38px; height: 38px; }
         .table-sm th, .table-sm td { font-size: 0.75rem; padding: 0.4rem; }
+    }
+
+    .mode-switch-wrapper {
+        margin-top: 16px;
+        display: flex;
+        justify-content: flex-end;
+        position: sticky;
+        bottom: 8px;
+        z-index: 20;
     }
 </style>
 
@@ -137,10 +179,17 @@
     <div>
         <h2 class="m-0" style="color: #2c3e50; font-weight: 800;">War Room · Producción</h2>
         <small class="text-muted"><i class="fa-regular fa-clock"></i> Corte: @Model.DataCutoffUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", spanish)</small>
+        @if (Model.ViewMode == Trackii.Models.Gerencia.GerenciaBackendLobbyVm.OrdersSinceMode && Model.OrdersOpenedFromDate.HasValue)
+        {
+            <small class="d-block text-muted">
+                <i class="fa-solid fa-filter"></i>
+                Modo: órdenes abiertas desde @Model.OrdersOpenedFromDate.Value.ToString("dd/MM/yyyy")
+            </small>
+        }
     </div>
     <div class="btn-group shadow-sm">
-        <button onclick="toggleSidebar()" class="btn btn-dark">
-            <i class="fa-solid fa-expand"></i> <span id="btnText">Pantalla Completa</span>
+        <button type="button" onclick="openSidebarMenu()" class="btn btn-dark">
+            <i class="fa-solid fa-bars"></i> Menú
         </button>
         <a asp-action="DiscreteMap" class="btn btn-outline-dark"><i class="fa-solid fa-map-location-dot"></i> Mapa</a>
     </div>
@@ -362,6 +411,25 @@
     </div>
 </div>
 
+<div class="mode-switch-wrapper">
+    @if (Model.ViewMode == Trackii.Models.Gerencia.GerenciaBackendLobbyVm.OrdersSinceMode)
+    {
+        <a asp-action="BackendLobby"
+           asp-route-mode="@Trackii.Models.Gerencia.GerenciaBackendLobbyVm.FullInventoryMode"
+           class="btn btn-dark shadow-sm">
+            <i class="fa-solid fa-table-cells"></i> Ver inventario completo
+        </a>
+    }
+    else
+    {
+        <a asp-action="BackendLobby"
+           asp-route-mode="@Trackii.Models.Gerencia.GerenciaBackendLobbyVm.OrdersSinceMode"
+           class="btn btn-outline-dark shadow-sm">
+            <i class="fa-solid fa-filter"></i> Ver órdenes abiertas desde 13/04/2026
+        </a>
+    }
+</div>
+
 <script>
     let traceTimer = null;
 
@@ -399,15 +467,12 @@
         });
     }
 
-    function toggleSidebar() {
-        const sidebar = document.getElementById('mainSidebar');
-        const btnText = document.getElementById('btnText');
-        if (sidebar) {
-            if (sidebar.style.display === 'none') {
-                sidebar.style.display = ''; btnText.innerText = 'Pantalla Completa';
-            } else {
-                sidebar.style.display = 'none'; btnText.innerText = 'Restaurar Menú';
-            }
-        }
+    function openSidebarMenu() {
+        const shell = document.querySelector('.app-shell');
+        const toggle = document.getElementById('sidebarToggle');
+        if (!shell || !toggle) return;
+
+        shell.classList.add('sidebar-open');
+        toggle.setAttribute('aria-expanded', 'true');
     }
 </script>

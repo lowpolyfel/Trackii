@@ -105,12 +105,19 @@ public class GerenciaService
         return vm;
     }
 
-    public GerenciaBackendLobbyVm GetBackendLobby()
+    public GerenciaBackendLobbyVm GetBackendLobby(string? mode)
     {
+        var normalizedMode = string.Equals(mode, GerenciaBackendLobbyVm.OrdersSinceMode, StringComparison.OrdinalIgnoreCase)
+            ? GerenciaBackendLobbyVm.OrdersSinceMode
+            : GerenciaBackendLobbyVm.FullInventoryMode;
+        var ordersOpenedFromDate = new DateTime(2026, 4, 13);
+
         var vm = new GerenciaBackendLobbyVm
         {
             SnapshotAtUtc = DateTime.UtcNow,
-            DataCutoffUtc = DateTime.UtcNow
+            DataCutoffUtc = DateTime.UtcNow,
+            ViewMode = normalizedMode,
+            OrdersOpenedFromDate = normalizedMode == GerenciaBackendLobbyVm.OrdersSinceMode ? ordersOpenedFromDate : null
         };
 
         using var cn = new MySqlConnection(_conn);
@@ -202,9 +209,21 @@ public class GerenciaService
             LEFT JOIN location l ON l.id = COALESCE(wse.location_id, rs.location_id)
             WHERE wse.create_at >= '2026-04-01 00:00:00' 
               AND wse.create_at <= @dataCutoffUtc
+              AND (
+                    @viewMode <> @ordersSinceMode
+                    OR wo.id IN (
+                        SELECT wip_filtered.wo_order_id
+                        FROM wip_item wip_filtered
+                        GROUP BY wip_filtered.wo_order_id
+                        HAVING MIN(wip_filtered.created_at) >= @ordersOpenedFromDate
+                    )
+                  )
             GROUP BY location_id, location_name, f.id, is_opb", cn))
         {
             cmd.Parameters.AddWithValue("@dataCutoffUtc", vm.DataCutoffUtc);
+            cmd.Parameters.AddWithValue("@viewMode", vm.ViewMode);
+            cmd.Parameters.AddWithValue("@ordersSinceMode", GerenciaBackendLobbyVm.OrdersSinceMode);
+            cmd.Parameters.AddWithValue("@ordersOpenedFromDate", ordersOpenedFromDate);
 
             using var rd = cmd.ExecuteReader();
             while (rd.Read())

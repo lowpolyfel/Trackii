@@ -30,9 +30,9 @@ public class GerenciaController : Controller
     }
 
     [HttpGet("LobbyGerencia")]
-    public IActionResult BackendLobby()
+    public IActionResult BackendLobby(string? mode)
     {
-        var vm = _svc.GetBackendLobby();
+        var vm = _svc.GetBackendLobby(mode);
         return View($"{ViewBase}BackendLobby.cshtml", vm);
     }
 
