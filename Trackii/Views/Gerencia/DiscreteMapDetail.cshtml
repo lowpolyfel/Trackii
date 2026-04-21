@@ -11,7 +11,16 @@
             <h2>Detalle · @Model.Location / @Model.Subfamily</h2>
             <p class="subtitle">Periodo: <strong>@Model.StartDate.ToString("yyyy-MM-dd")</strong> a <strong>@Model.EndDate.ToString("yyyy-MM-dd")</strong>.</p>
         </div>
-        <a asp-controller="Gerencia" asp-action="DiscreteMap" asp-route-periodType="@Model.PeriodType" asp-route-weekValue="@Model.WeekValue" asp-route-monthValue="@Model.MonthValue" asp-route-fromDate="@(Model.StartDate.ToString("yyyy-MM-dd"))" asp-route-toDate="@(Model.EndDate.ToString("yyyy-MM-dd"))" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver al mapa</a>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a asp-controller="Gerencia"
+               asp-action="ActiveOrders"
+               asp-route-location="@Model.Location"
+               asp-route-subfamily="@Model.Subfamily"
+               class="btn btn-primary">
+                <i class="fa-solid fa-list-check"></i> Ver órdenes activas
+            </a>
+            <a asp-controller="Gerencia" asp-action="DiscreteMap" asp-route-periodType="@Model.PeriodType" asp-route-weekValue="@Model.WeekValue" asp-route-monthValue="@Model.MonthValue" asp-route-fromDate="@(Model.StartDate.ToString("yyyy-MM-dd"))" asp-route-toDate="@(Model.EndDate.ToString("yyyy-MM-dd"))" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver al mapa</a>
+        </div>
     </div>
 
     <div class="card">

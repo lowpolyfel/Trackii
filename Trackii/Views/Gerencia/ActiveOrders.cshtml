@@ -2,13 +2,39 @@
 @model Trackii.Models.Gerencia.GerenciaActiveOrdersVm
 @{
     ViewData["Title"] = "Órdenes activas - Detalle";
+    var selectedLocation = (ViewBag.SelectedLocation as string ?? string.Empty).Trim();
+    var selectedSubfamily = (ViewBag.SelectedSubfamily as string ?? string.Empty).Trim();
 
     var allOrders = Model.ActiveOrders.Concat(Model.InProgressOrders).ToList();
-    var recentThreshold = DateTime.UtcNow.AddHours(-24);
-    var recentCreatedCount = allOrders.Count(x => x.WipCreatedAt.HasValue && x.WipCreatedAt.Value >= recentThreshold);
-    var withLocationCount = allOrders.Count(x => !string.IsNullOrWhiteSpace(x.CurrentLocation));
+    var locationOptions = allOrders
+        .Select(x => x.CurrentLocation)
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x)
+        .ToList();
+    var subfamilyOptions = allOrders
+        .Select(x => x.Subfamily)
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x)
+        .ToList();
+    bool MatchesFilters(Trackii.Models.Gerencia.WorkOrderVm order)
+    {
+        var locationMatch = string.IsNullOrWhiteSpace(selectedLocation)
+            || string.Equals(order.CurrentLocation ?? string.Empty, selectedLocation, StringComparison.OrdinalIgnoreCase);
+        var subfamilyMatch = string.IsNullOrWhiteSpace(selectedSubfamily)
+            || string.Equals(order.Subfamily, selectedSubfamily, StringComparison.OrdinalIgnoreCase);
+        return locationMatch && subfamilyMatch;
+    }
+    var filteredOpenOrders = Model.ActiveOrders.Where(MatchesFilters).ToList();
+    var filteredInProgressOrders = Model.InProgressOrders.Where(MatchesFilters).ToList();
+    var filteredOrders = filteredOpenOrders.Concat(filteredInProgressOrders).ToList();
 
-    var locationRows = allOrders
+    var recentThreshold = DateTime.UtcNow.AddHours(-24);
+    var recentCreatedCount = filteredOrders.Count(x => x.WipCreatedAt.HasValue && x.WipCreatedAt.Value >= recentThreshold);
+    var withLocationCount = filteredOrders.Count(x => !string.IsNullOrWhiteSpace(x.CurrentLocation));
+
+    var locationRows = filteredOrders
         .Where(x => !string.IsNullOrWhiteSpace(x.CurrentLocation))
         .GroupBy(x => x.CurrentLocation!)
         .Select(g => new { Location = g.Key, Count = g.Count() })
@@ -22,14 +48,14 @@
 
     var statusRows = new[]
     {
-        new { Label = "Abiertas", Count = Model.ActiveOrders.Count },
-        new { Label = "En progreso", Count = Model.InProgressOrders.Count }
+        new { Label = "Abiertas", Count = filteredOpenOrders.Count },
+        new { Label = "En progreso", Count = filteredInProgressOrders.Count }
     };
 
     var statusLabels = statusRows.Select(x => x.Label).ToList();
     var statusValues = statusRows.Select(x => x.Count).ToList();
 
-    var dailyRows = allOrders
+    var dailyRows = filteredOrders
         .Where(x => x.WipCreatedAt.HasValue)
         .GroupBy(x => x.WipCreatedAt!.Value.Date)
         .Select(g => new { Day = g.Key, Count = g.Count() })
@@ -45,20 +71,61 @@
     <div class="page-header error-causes-header">
         <div>
             <h2>Órdenes activas detalladas</h2>
-            <p class="subtitle">Panel operativo con métricas, distribución y detalle de órdenes abiertas/en progreso.</p>
+            <p class="subtitle">Panel operativo por localidad y subfamilia con fecha, cantidad y detalle de órdenes activas.</p>
         </div>
         <a asp-controller="Gerencia" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+    </div>
+
+    <div class="card apple-card error-causes-card">
+        <form method="get" class="filters discrete-filters" style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;">
+            <div class="discrete-filter-field" style="min-width:220px;">
+                <label for="location">Localidad</label>
+                <select id="location" name="location">
+                    <option value="">Todas</option>
+                    @foreach (var option in locationOptions)
+                    {
+                        if (string.Equals(option, selectedLocation, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <option value="@option" selected>@option</option>
+                        }
+                        else
+                        {
+                            <option value="@option">@option</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="discrete-filter-field" style="min-width:220px;">
+                <label for="subfamily">Subfamilia</label>
+                <select id="subfamily" name="subfamily">
+                    <option value="">Todas</option>
+                    @foreach (var option in subfamilyOptions)
+                    {
+                        if (string.Equals(option, selectedSubfamily, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <option value="@option" selected>@option</option>
+                        }
+                        else
+                        {
+                            <option value="@option">@option</option>
+                        }
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+            <a asp-action="ActiveOrders" class="btn btn-secondary">Limpiar</a>
+        </form>
     </div>
 
     <section class="error-kpis" aria-label="KPIs de órdenes activas">
         <article class="kpi-highlight apple-card error-kpi-card">
             <span class="kpi-label">Órdenes abiertas</span>
-            <strong class="kpi-value">@Model.ActiveOrders.Count.ToString("N0")</strong>
+            <strong class="kpi-value">@filteredOpenOrders.Count.ToString("N0")</strong>
             <small>Estado OPEN.</small>
         </article>
         <article class="kpi-highlight apple-card error-kpi-card">
             <span class="kpi-label">Órdenes en progreso</span>
-            <strong class="kpi-value">@Model.InProgressOrders.Count.ToString("N0")</strong>
+            <strong class="kpi-value">@filteredInProgressOrders.Count.ToString("N0")</strong>
             <small>Estado IN_PROGRESS.</small>
         </article>
         <article class="kpi-highlight apple-card error-kpi-card">
@@ -69,7 +136,7 @@
         <article class="kpi-highlight apple-card error-kpi-card">
             <span class="kpi-label">Con localidad asignada</span>
             <strong class="kpi-value">@withLocationCount.ToString("N0")</strong>
-            <small>Sobre @allOrders.Count órdenes activas.</small>
+            <small>Sobre @filteredOrders.Count órdenes activas filtradas.</small>
         </article>
     </section>
 
@@ -105,19 +172,22 @@
             </div>
             <div class="table-wrapper table-wrapper-tall">
                 <table class="table">
-                    <thead><tr><th>WO</th><th>Producto</th><th>Estado</th><th>WIP</th><th>Localidad</th></tr></thead>
+                    <thead><tr><th>WO</th><th>Producto</th><th>Subfamilia</th><th>Cantidad</th><th>Fecha</th><th>Estado</th><th>WIP</th><th>Localidad</th></tr></thead>
                     <tbody>
-                        @if (!Model.ActiveOrders.Any())
+                        @if (!filteredOpenOrders.Any())
                         {
-                            <tr><td colspan="5" class="empty">No hay órdenes abiertas activas.</td></tr>
+                            <tr><td colspan="8" class="empty">No hay órdenes abiertas para los filtros seleccionados.</td></tr>
                         }
                         else
                         {
-                            @foreach (var item in Model.ActiveOrders)
+                            @foreach (var item in filteredOpenOrders)
                             {
                                 <tr>
                                     <td>@item.WoNumber</td>
                                     <td>@item.Product</td>
+                                    <td>@item.Subfamily</td>
+                                    <td>@item.Qty.ToString("N0")</td>
+                                    <td>@(item.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
                                     <td><span class="chip chip-muted">@UiTextHelper.NormalizeStatus(item.Status)</span></td>
                                     <td>@(item.WipItemId?.ToString() ?? "-")</td>
                                     <td>@(item.CurrentLocation ?? "-")</td>
@@ -137,19 +207,22 @@
         </div>
         <div class="table-wrapper">
             <table class="table">
-                <thead><tr><th>WO</th><th>Producto</th><th>Estado</th><th>WIP</th><th>Estado WIP</th><th>Localidad</th></tr></thead>
+                <thead><tr><th>WO</th><th>Producto</th><th>Subfamilia</th><th>Cantidad</th><th>Fecha</th><th>Estado</th><th>WIP</th><th>Estado WIP</th><th>Localidad</th></tr></thead>
                 <tbody>
-                    @if (!Model.InProgressOrders.Any())
+                    @if (!filteredInProgressOrders.Any())
                     {
-                        <tr><td colspan="6" class="empty">No hay órdenes en progreso activas.</td></tr>
+                        <tr><td colspan="9" class="empty">No hay órdenes en progreso para los filtros seleccionados.</td></tr>
                     }
                     else
                     {
-                        @foreach (var item in Model.InProgressOrders)
+                        @foreach (var item in filteredInProgressOrders)
                         {
                             <tr>
                                 <td>@item.WoNumber</td>
                                 <td>@item.Product</td>
+                                <td>@item.Subfamily</td>
+                                <td>@item.Qty.ToString("N0")</td>
+                                <td>@(item.WipCreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
                                 <td><span class="chip chip-muted">@UiTextHelper.NormalizeStatus(item.Status)</span></td>
                                 <td>@(item.WipItemId?.ToString() ?? "-")</td>
                                 <td>@(item.WipStatus is null ? "-" : UiTextHelper.NormalizeStatus(item.WipStatus))</td>
