@@ -197,12 +197,14 @@ public class GerenciaService
 
         using (var cmd = new MySqlCommand(@"
             SELECT l.id AS location_id,
-                   CASE
-                       WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
-                       WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
-                       WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
-                       ELSE COALESCE(l.name, 'Sin localidad')
-                   END AS location_name,
+                       CASE
+                           WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
+                           WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
+                           WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                           WHEN COALESCE(l.name, '') LIKE '%QC%' OR COALESCE(l.name, '') LIKE '%Q.C.%' OR COALESCE(l.name, '') LIKE '%Calidad%' THEN 'QC'
+                           WHEN COALESCE(l.name, '') LIKE '%Prueba%' THEN 'Prueba Electrica'
+                           ELSE COALESCE(l.name, 'Sin localidad')
+                       END AS location_name,
                    f.id AS family_id,
                    UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' AS is_opb,
                    COALESCE(SUM(COALESCE(last_qty.qty_in, 0)), 0) AS qty
@@ -317,6 +319,8 @@ public class GerenciaService
                        WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
                        WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
                        WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                       WHEN COALESCE(l.name, '') LIKE '%QC%' OR COALESCE(l.name, '') LIKE '%Q.C.%' OR COALESCE(l.name, '') LIKE '%Calidad%' THEN 'QC'
+                       WHEN COALESCE(l.name, '') LIKE '%Prueba%' THEN 'Prueba Electrica'
                        ELSE COALESCE(l.name, 'Sin localidad')
                    END AS normalized_location,
                    COALESCE(last_qty.qty_in, 0) AS current_qty
@@ -350,6 +354,8 @@ public class GerenciaService
                         WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
                         WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
                         WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                        WHEN COALESCE(l.name, '') LIKE '%QC%' OR COALESCE(l.name, '') LIKE '%Q.C.%' OR COALESCE(l.name, '') LIKE '%Calidad%' THEN 'QC'
+                        WHEN COALESCE(l.name, '') LIKE '%Prueba%' THEN 'Prueba Electrica'
                         ELSE COALESCE(l.name, 'Sin localidad')
                     END
                   ) = @location
@@ -2025,6 +2031,8 @@ public class GerenciaService
                             WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
                             WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
                             WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                            WHEN COALESCE(l.name, '') LIKE '%QC%' OR COALESCE(l.name, '') LIKE '%Q.C.%' OR COALESCE(l.name, '') LIKE '%Calidad%' THEN 'QC'
+                            WHEN COALESCE(l.name, '') LIKE '%Prueba%' THEN 'Prueba Electrica'
                             ELSE COALESCE(l.name, 'Sin localidad')
                         END
                     ) = 'Alloy'
