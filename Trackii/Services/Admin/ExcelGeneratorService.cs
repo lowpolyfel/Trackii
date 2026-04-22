@@ -128,10 +128,8 @@ public class ExcelGeneratorService
         if (rows.Count > 0)
         {
             var daysColumnRange = sheet.Range(2, 7, currentRow - 1, 7);
-            var colorScale = daysColumnRange.AddConditionalFormat().ColorScale();
-            colorScale.LowValue.Color = XLColor.FromHtml("#dcfce7");
-            colorScale.MidValue.Color = XLColor.FromHtml("#fef08a");
-            colorScale.HighValue.Color = XLColor.FromHtml("#fecaca");
+            daysColumnRange.Style.NumberFormat.Format = "0";
+            daysColumnRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         }
     }
 
