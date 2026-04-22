@@ -1,4 +1,4 @@
-@model Trackii.Models.Admin.ExcelGenerator.ExcelGeneratorVm
+@model Trackii.Models.Admin.ExcelGenerator.ExcelGeneratorLandingVm
 
 @{
     ViewData["Title"] = "Generador de Excel";
@@ -8,57 +8,37 @@
     <div class="page-header">
         <div>
             <h2>Generador de Excel</h2>
-            <p class="subtitle">Exporta rutas por subfamilia y un apartado extra con órdenes, días sin actualizar y estación actual (ordenado de mayor a menor).</p>
+            <p class="subtitle">Selecciona el tipo de exportación. Cada módulo abre su vista dedicada con preview y archivo listo para descargar.</p>
         </div>
-
-        <form method="post" action="/Admin/ExcelGenerator/Export">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-primary">
-                <i class="fa-solid fa-file-excel"></i>
-                Generar Excel
-            </button>
-        </form>
     </div>
 
-    <div class="alert info">
-        <i class="fa-solid fa-circle-info"></i>
-        Vista previa de @Model.PreviewRows.Count registro(s) de @Model.TotalRows total(es).
-    </div>
+    <div class="excel-generator-grid">
+        <a class="card excel-generator-option" href="/Admin/ExcelGenerator/RoutesBySubfamily">
+            <div class="excel-generator-icon icon-routes">
+                <i class="fa-solid fa-route"></i>
+            </div>
+            <div>
+                <h3>Rutas por subfamilia</h3>
+                <p>Incluye producto, familia y todos los pasos de ruta en formato de tabla limpia para ingeniería y producción.</p>
+            </div>
+            <div class="excel-generator-meta">
+                <span>@Model.RoutesBySubfamilyTotalRows registros</span>
+                <span class="btn btn-secondary btn-sm">Abrir módulo</span>
+            </div>
+        </a>
 
-    <div class="table-wrapper excel-preview-table">
-        <table class="table">
-            <thead>
-                <tr>
-                    @foreach (var header in Model.Headers)
-                    {
-                        <th>@header</th>
-                    }
-                </tr>
-            </thead>
-            <tbody>
-                @if (!Model.PreviewRows.Any())
-                {
-                    <tr>
-                        <td colspan="@Math.Max(1, Model.Headers.Count)" class="empty">No hay datos para exportar.</td>
-                    </tr>
-                }
-                else
-                {
-                    foreach (var row in Model.PreviewRows)
-                    {
-                        <tr>
-                            <td>@row.Product</td>
-                            <td>@row.Family</td>
-                            <td>@row.Subfamily</td>
-
-                            @for (var i = 0; i < Model.MaxSteps; i++)
-                            {
-                                <td>@(i < row.RouteSteps.Count ? row.RouteSteps[i] : "-")</td>
-                            }
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
+        <a class="card excel-generator-option" href="/Admin/ExcelGenerator/ActiveOrders">
+            <div class="excel-generator-icon icon-orders">
+                <i class="fa-solid fa-stopwatch"></i>
+            </div>
+            <div>
+                <h3>Órdenes activas congeladas</h3>
+                <p>Tabla de órdenes activas totales ordenadas de la más antigua a la más reciente, con ubicación congelada y días parada.</p>
+            </div>
+            <div class="excel-generator-meta">
+                <span>@Model.ActiveOrdersTotalRows registros</span>
+                <span class="btn btn-secondary btn-sm">Abrir módulo</span>
+            </div>
+        </a>
     </div>
 </div>
