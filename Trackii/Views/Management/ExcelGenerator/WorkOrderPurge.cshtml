@@ -81,6 +81,14 @@
                 <tbody id="purgeMissingBody"></tbody>
             </table>
         </div>
+
+        <div id="purgeActions" class="purge-actions hidden">
+            <button type="button" id="purgeDeactivateBtn" class="btn btn-danger">
+                <i class="fa-solid fa-trash"></i>
+                Purgar masivamente (active=0, status=CANCELLED)
+            </button>
+            <div id="purgeDeactivateMsg" class="purge-action-message"></div>
+        </div>
     </section>
 </div>
 
@@ -94,6 +102,10 @@
     const errorBox = document.getElementById('purgeError');
     const results = document.getElementById('purgeResults');
     const missingBody = document.getElementById('purgeMissingBody');
+    const purgeActions = document.getElementById('purgeActions');
+    const purgeDeactivateBtn = document.getElementById('purgeDeactivateBtn');
+    const purgeDeactivateMsg = document.getElementById('purgeDeactivateMsg');
+    let latestMissingWos = [];
 
     const setProgress = (value) => {
         const safeValue = Math.max(0, Math.min(100, value));
@@ -119,11 +131,15 @@
         const renderMissingRows = (missingList) => {
             missingBody.innerHTML = '';
 
-            if (!Array.isArray(missingList) || missingList.length === 0) {
-                missingBody.innerHTML = '<tr><td colspan="2" class="empty">Excelente: todas tus WO activas del sistema sí aparecen en el Excel global.</td></tr>';
-                return;
-            }
+        if (!Array.isArray(missingList) || missingList.length === 0) {
+            latestMissingWos = [];
+            purgeActions.classList.add('hidden');
+            missingBody.innerHTML = '<tr><td colspan="2" class="empty">Excelente: todas tus WO activas del sistema sí aparecen en el Excel global.</td></tr>';
+            return;
+        }
 
+        latestMissingWos = missingList;
+        purgeActions.classList.remove('hidden');
         missingBody.innerHTML = missingList
             .map((wo, index) => `<tr><td>${index + 1}</td><td>${wo}</td></tr>`)
             .join('');
@@ -133,6 +149,8 @@
         event.preventDefault();
         clearError();
         results.classList.add('hidden');
+        purgeActions.classList.add('hidden');
+        purgeDeactivateMsg.textContent = '';
         progressContainer.classList.remove('hidden');
         setProgress(0);
 
@@ -176,6 +194,46 @@
         } finally {
             clearInterval(timer);
             setTimeout(() => progressContainer.classList.add('hidden'), 350);
+        }
+    });
+
+    purgeDeactivateBtn.addEventListener('click', async () => {
+        if (!latestMissingWos.length) {
+            purgeDeactivateMsg.textContent = 'No hay órdenes para purgar.';
+            return;
+        }
+
+        const ok = confirm(`Se desactivarán ${latestMissingWos.length} orden(es) y se pondrán en CANCELLED. ¿Deseas continuar?`);
+        if (!ok) return;
+
+        purgeDeactivateBtn.disabled = true;
+        purgeDeactivateMsg.textContent = 'Aplicando purga masiva...';
+
+        try {
+            const token = form.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            const response = await fetch('/Admin/ExcelGenerator/WorkOrderPurge/DeactivateMissing', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'RequestVerificationToken': token } : {})
+                },
+                body: JSON.stringify({ workOrders: latestMissingWos })
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                purgeDeactivateMsg.textContent = payload?.error || 'No se pudo completar la purga.';
+                return;
+            }
+
+            purgeDeactivateMsg.textContent = `Purga completada. Solicitadas: ${payload.requested}. Actualizadas: ${payload.updated}.`;
+            latestMissingWos = [];
+            setKpiValue('kpiMissingInExcel', 0);
+            renderMissingRows([]);
+        } catch {
+            purgeDeactivateMsg.textContent = 'Error inesperado durante la purga masiva.';
+        } finally {
+            purgeDeactivateBtn.disabled = false;
         }
     });
 })();

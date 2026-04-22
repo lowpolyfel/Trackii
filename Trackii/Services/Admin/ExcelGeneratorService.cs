@@ -297,7 +297,8 @@ public class ExcelGeneratorService
                 FROM wip_step_execution wse
                 GROUP BY wse.wip_item_id
             ) last_exec ON last_exec.wip_item_id = wip.id
-            WHERE wo.status IN ('OPEN', 'IN_PROGRESS', 'HOLD')
+            WHERE wo.active = 1
+              AND wo.status IN ('OPEN', 'IN_PROGRESS', 'HOLD')
             ORDER BY " + orderBy + @"
         ", cn);
 
@@ -385,7 +386,8 @@ public class ExcelGeneratorService
         using var cmd = new MySqlCommand(@"
             SELECT wo_number
             FROM work_order
-            WHERE status IN ('OPEN', 'IN_PROGRESS', 'HOLD')
+            WHERE active = 1
+              AND status IN ('OPEN', 'IN_PROGRESS', 'HOLD')
         ", cn);
 
         using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken);
@@ -395,5 +397,51 @@ public class ExcelGeneratorService
         }
 
         return output;
+    }
+
+    public async Task<int> DeactivateWorkOrdersAsync(IEnumerable<string> workOrders, CancellationToken cancellationToken = default)
+    {
+        var normalized = workOrders
+            .Where(wo => !string.IsNullOrWhiteSpace(wo))
+            .Select(wo => wo.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (normalized.Count == 0)
+        {
+            return 0;
+        }
+
+        var affected = 0;
+        using var cn = new MySqlConnection(_conn);
+        await cn.OpenAsync(cancellationToken);
+
+        const int chunkSize = 1000;
+        for (var offset = 0; offset < normalized.Count; offset += chunkSize)
+        {
+            var chunk = normalized.Skip(offset).Take(chunkSize).ToList();
+            var parameterNames = new List<string>(chunk.Count);
+            using var cmd = new MySqlCommand();
+            cmd.Connection = cn;
+
+            for (var i = 0; i < chunk.Count; i++)
+            {
+                var paramName = $"@w{i}";
+                parameterNames.Add(paramName);
+                cmd.Parameters.Add(paramName, MySqlDbType.VarChar).Value = chunk[i];
+            }
+
+            cmd.CommandText = $@"
+                UPDATE work_order
+                SET active = 0,
+                    status = 'CANCELLED'
+                WHERE active = 1
+                  AND wo_number IN ({string.Join(",", parameterNames)})
+            ";
+
+            affected += await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        return affected;
     }
 }

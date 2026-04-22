@@ -251,6 +251,19 @@
     margin-top: 16px;
 }
 
+.purge-actions {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.purge-action-message {
+    color: var(--text-muted);
+    font-size: .9rem;
+}
+
 .purge-kpis .purge-kpi {
     min-height: 128px;
 }

@@ -51,3 +51,14 @@ public class WorkOrderPurgeAnalysisVm
     public int MissingInExcel { get; set; }
     public List<string> MissingFromExcelWorkOrders { get; set; } = new();
 }
+
+public class WorkOrderPurgeDeactivateRequestVm
+{
+    public List<string> WorkOrders { get; set; } = new();
+}
+
+public class WorkOrderPurgeDeactivateResultVm
+{
+    public int Requested { get; set; }
+    public int Updated { get; set; }
+}

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Trackii.Models.Admin.ExcelGenerator;
 using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
@@ -96,5 +97,24 @@ public class ExcelGeneratorController : Controller
             return BadRequest(new { error = ex.Message });
         }
 
+    }
+
+    [HttpPost("WorkOrderPurge/DeactivateMissing")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeactivateMissingWorkOrders(
+        [FromBody] WorkOrderPurgeDeactivateRequestVm request,
+        CancellationToken cancellationToken)
+    {
+        if (request.WorkOrders is null || request.WorkOrders.Count == 0)
+        {
+            return BadRequest(new { error = "No se enviaron órdenes para purgar." });
+        }
+
+        var updated = await _service.DeactivateWorkOrdersAsync(request.WorkOrders, cancellationToken);
+        return Json(new WorkOrderPurgeDeactivateResultVm
+        {
+            Requested = request.WorkOrders.Count,
+            Updated = updated
+        });
     }
 }
