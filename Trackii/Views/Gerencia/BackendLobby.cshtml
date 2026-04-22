@@ -281,15 +281,11 @@
     var colTotalsTable2 = Model.Columns.ToDictionary(c => c, c => 0);
 
     (int suma, string sources) GetDayData(string[] locs, string col) {
-        int t = 0;
-        List<string> s = new();
+        int t = 0; List<string> s = new();
         foreach(var l in locs) {
-            // Se agrega la localidad siempre para asegurar que se ilumine al hacer clic, tenga o no piezas actualmente.
-            s.Add(l);
-
             var row = Model.Rows.FirstOrDefault(r => r.LocationName.Equals(l, StringComparison.OrdinalIgnoreCase));
-            if (row != null && row.PiecesByColumn.TryGetValue(col, out var val)) {
-                t += val;
+            if (row != null && row.PiecesByColumn.TryGetValue(col, out var val)) { 
+                t += val; if(val > 0) s.Add(l); 
             }
         }
         return (t, string.Join(",", s));
