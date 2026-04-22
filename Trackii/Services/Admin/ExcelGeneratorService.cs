@@ -35,6 +35,7 @@ public class ExcelGeneratorService
         var rows = GetRows();
         var maxSteps = rows.Count == 0 ? 0 : rows.Max(r => r.RouteSteps.Count);
         var headers = BuildHeaders(maxSteps);
+        var staleOrders = GetStaleOrdersRows();
 
         using var workbook = new XLWorkbook();
         BuildRoutesBySubfamilySheet(workbook, headers, rows, maxSteps);
