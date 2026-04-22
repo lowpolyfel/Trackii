@@ -19,7 +19,7 @@ public class ExcelGeneratorService
         return new ExcelGeneratorLandingVm
         {
             RoutesBySubfamilyTotalRows = GetRows().Count,
-            ActiveOrdersTotalRows = GetActiveOrdersRows().Count
+            ActiveOrdersTotalRows = GetActiveOrdersRows("oldest").Count
         };
     }
 
