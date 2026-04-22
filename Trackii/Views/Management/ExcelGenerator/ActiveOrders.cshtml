@@ -1,0 +1,95 @@
+@model Trackii.Models.Admin.ExcelGenerator.ActiveOrdersExcelVm
+
+@{
+    ViewData["Title"] = "Excel | Órdenes activas";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Órdenes activas congeladas</h2>
+            <p class="subtitle">Por defecto se ordenan de la más antigua a la más reciente. También puedes ordenar por días parada.</p>
+        </div>
+
+        <div class="header-actions">
+            <a href="/Admin/ExcelGenerator" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i>
+                Regresar
+            </a>
+            <form method="get" action="/Admin/ExcelGenerator/ActiveOrders" class="active-orders-sort-form">
+                <select name="sort" class="input">
+                    <option value="oldest" selected="@(Model.Sort == "oldest" ? "selected" : null)">Más antigua a más reciente (default)</option>
+                    <option value="newest" selected="@(Model.Sort == "newest" ? "selected" : null)">Más reciente a más antigua</option>
+                    <option value="days_desc" selected="@(Model.Sort == "days_desc" ? "selected" : null)">Días parada: descendente</option>
+                    <option value="days_asc" selected="@(Model.Sort == "days_asc" ? "selected" : null)">Días parada: ascendente</option>
+                </select>
+                <button type="submit" class="btn btn-secondary">
+                    <i class="fa-solid fa-filter"></i>
+                    Aplicar
+                </button>
+            </form>
+            <form method="post" action="/Admin/ExcelGenerator/ActiveOrders/Export">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="sort" value="@Model.Sort" />
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-file-excel"></i>
+                    Exportar Excel estético
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="alert info">
+        <i class="fa-solid fa-circle-info"></i>
+        Vista previa de @Model.PreviewRows.Count registro(s) de @Model.TotalRows total(es).
+    </div>
+
+    <div class="table-wrapper excel-preview-table">
+        <table class="table active-orders-table">
+            <thead>
+                <tr>
+                    <th>WO</th>
+                    <th>No. Parte</th>
+                    <th>Estatus Orden</th>
+                    <th>Estatus WIP</th>
+                    <th>Localidad congelada</th>
+                    <th>Creación WO</th>
+                    <th>Último movimiento</th>
+                    <th>Días parada</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.PreviewRows.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="empty">No hay órdenes activas para exportar.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var row in Model.PreviewRows)
+                    {
+                        var severityClass = row.DaysStopped >= 10
+                            ? "stale-high"
+                            : row.DaysStopped >= 5
+                                ? "stale-medium"
+                                : "stale-low";
+
+                        <tr>
+                            <td>@row.WorkOrder</td>
+                            <td>@row.PartNumber</td>
+                            <td>@row.WorkOrderStatus</td>
+                            <td>@row.WipStatus</td>
+                            <td>@row.FrozenLocation</td>
+                            <td>@row.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@row.LastMovementAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>
+                                <span class="stale-pill @severityClass">@row.DaysStopped día(s)</span>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

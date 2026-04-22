@@ -1,0 +1,70 @@
+@model Trackii.Models.Admin.ExcelGenerator.RoutesBySubfamilyExcelVm
+
+@{
+    ViewData["Title"] = "Excel | Rutas por subfamilia";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Rutas por subfamilia</h2>
+            <p class="subtitle">Exporta la ruta completa de cada producto por subfamilia.</p>
+        </div>
+
+        <div class="header-actions">
+            <a href="/Admin/ExcelGenerator" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i>
+                Regresar
+            </a>
+            <form method="post" action="/Admin/ExcelGenerator/RoutesBySubfamily/Export">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-file-excel"></i>
+                    Exportar Excel
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="alert info">
+        <i class="fa-solid fa-circle-info"></i>
+        Vista previa de @Model.PreviewRows.Count registro(s) de @Model.TotalRows total(es).
+    </div>
+
+    <div class="table-wrapper excel-preview-table">
+        <table class="table">
+            <thead>
+                <tr>
+                    @foreach (var header in Model.Headers)
+                    {
+                        <th>@header</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.PreviewRows.Any())
+                {
+                    <tr>
+                        <td colspan="@Math.Max(1, Model.Headers.Count)" class="empty">No hay datos para exportar.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var row in Model.PreviewRows)
+                    {
+                        <tr>
+                            <td>@row.Product</td>
+                            <td>@row.Family</td>
+                            <td>@row.Subfamily</td>
+
+                            @for (var i = 0; i < Model.MaxSteps; i++)
+                            {
+                                <td>@(i < row.RouteSteps.Count ? row.RouteSteps[i] : "-")</td>
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
