@@ -358,33 +358,9 @@ public class ExcelGeneratorService
             }
         }
 
-        var existingInDb = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (workOrdersFromExcel.Count > 0)
-        {
-            using var cn = new MySqlConnection(_conn);
-            await cn.OpenAsync(cancellationToken);
-
-            const int chunkSize = 1000;
-            var batch = new List<string>(chunkSize);
-
-            foreach (var wo in workOrdersFromExcel)
-            {
-                batch.Add(wo);
-                if (batch.Count >= chunkSize)
-                {
-                    await LoadExistingWorkOrdersBatchAsync(cn, batch, existingInDb, cancellationToken);
-                    batch.Clear();
-                }
-            }
-
-            if (batch.Count > 0)
-            {
-                await LoadExistingWorkOrdersBatchAsync(cn, batch, existingInDb, cancellationToken);
-            }
-        }
-
-        var missing = workOrdersFromExcel
-            .Where(wo => !existingInDb.Contains(wo))
+        var activeWorkOrdersInSystem = await LoadActiveSystemWorkOrdersAsync(cancellationToken);
+        var missingFromExcel = activeWorkOrdersInSystem
+            .Where(wo => !workOrdersFromExcel.Contains(wo))
             .OrderBy(wo => wo, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -393,39 +369,31 @@ public class ExcelGeneratorService
             SheetUsed = worksheet.Name,
             TotalRowsRead = allRowsRead,
             UniqueWorkOrdersInExcel = workOrdersFromExcel.Count,
-            ExistingInDatabase = existingInDb.Count,
-            MissingInDatabase = missing.Count,
-            MissingWorkOrders = missing
+            ActiveWorkOrdersInSystem = activeWorkOrdersInSystem.Count,
+            PresentInExcel = activeWorkOrdersInSystem.Count - missingFromExcel.Count,
+            MissingInExcel = missingFromExcel.Count,
+            MissingFromExcelWorkOrders = missingFromExcel
         };
     }
 
-    private static async Task LoadExistingWorkOrdersBatchAsync(
-        MySqlConnection cn,
-        List<string> batch,
-        HashSet<string> output,
+    private async Task<HashSet<string>> LoadActiveSystemWorkOrdersAsync(
         CancellationToken cancellationToken)
     {
-        var parameterNames = new List<string>(batch.Count);
-        using var cmd = new MySqlCommand();
-        cmd.Connection = cn;
-
-        for (var i = 0; i < batch.Count; i++)
-        {
-            var paramName = $"@p{i}";
-            parameterNames.Add(paramName);
-            cmd.Parameters.Add(paramName, MySqlDbType.VarChar).Value = batch[i];
-        }
-
-        cmd.CommandText = $@"
+        var output = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using var cn = new MySqlConnection(_conn);
+        await cn.OpenAsync(cancellationToken);
+        using var cmd = new MySqlCommand(@"
             SELECT wo_number
             FROM work_order
-            WHERE wo_number IN ({string.Join(",", parameterNames)})
-        ";
+            WHERE status IN ('OPEN', 'IN_PROGRESS', 'HOLD')
+        ", cn);
 
         using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken);
         while (await rd.ReadAsync(cancellationToken))
         {
             output.Add(rd.GetString("wo_number"));
         }
+
+        return output;
     }
 }

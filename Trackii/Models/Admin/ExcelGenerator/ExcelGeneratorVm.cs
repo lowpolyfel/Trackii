@@ -46,7 +46,8 @@ public class WorkOrderPurgeAnalysisVm
     public string SheetUsed { get; set; } = string.Empty;
     public int TotalRowsRead { get; set; }
     public int UniqueWorkOrdersInExcel { get; set; }
-    public int ExistingInDatabase { get; set; }
-    public int MissingInDatabase { get; set; }
-    public List<string> MissingWorkOrders { get; set; } = new();
+    public int ActiveWorkOrdersInSystem { get; set; }
+    public int PresentInExcel { get; set; }
+    public int MissingInExcel { get; set; }
+    public List<string> MissingFromExcelWorkOrders { get; set; } = new();
 }

@@ -27,7 +27,7 @@
             </button>
         </div>
 
-        <div class="purge-hint">Por defecto se analiza la hoja <strong>Reports</strong> (normalmente la #3). Solo se utiliza la columna A.</div>
+        <div class="purge-hint">Por defecto se analiza la hoja <strong>Reports</strong> (normalmente la #3). Se toma la columna A del Excel global y se identifica qué WO activas del sistema ya no están ahí.</div>
     </form>
 
     <div id="purgeProgress" class="purge-progress hidden" aria-live="polite">
@@ -57,12 +57,16 @@
                 <div id="kpiExcelUnique" class="kpi-value">0</div>
             </article>
             <article class="card kpi-card purge-kpi">
-                <div class="kpi-title">WO existentes en BD</div>
-                <div id="kpiExisting" class="kpi-value">0</div>
+                <div class="kpi-title">WO activas en sistema</div>
+                <div id="kpiSystemActive" class="kpi-value">0</div>
+            </article>
+            <article class="card kpi-card purge-kpi">
+                <div class="kpi-title">WO activas presentes en Excel</div>
+                <div id="kpiPresentInExcel" class="kpi-value">0</div>
             </article>
             <article class="card kpi-card purge-kpi purge-kpi-alert">
-                <div class="kpi-title">WO faltantes en BD</div>
-                <div id="kpiMissing" class="kpi-value">0</div>
+                <div class="kpi-title">WO en sistema y NO en Excel</div>
+                <div id="kpiMissingInExcel" class="kpi-value">0</div>
             </article>
         </div>
 
@@ -71,7 +75,7 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Work Order faltante en BD</th>
+                        <th>Work Order candidata para desactivar (no aparece en Excel)</th>
                     </tr>
                 </thead>
                 <tbody id="purgeMissingBody"></tbody>
@@ -112,13 +116,13 @@
         if (el) el.textContent = Number(value ?? 0).toLocaleString();
     };
 
-    const renderMissingRows = (missingList) => {
-        missingBody.innerHTML = '';
+        const renderMissingRows = (missingList) => {
+            missingBody.innerHTML = '';
 
-        if (!Array.isArray(missingList) || missingList.length === 0) {
-            missingBody.innerHTML = '<tr><td colspan="2" class="empty">No hay diferencias. Todas las WO del Excel existen en BD.</td></tr>';
-            return;
-        }
+            if (!Array.isArray(missingList) || missingList.length === 0) {
+                missingBody.innerHTML = '<tr><td colspan="2" class="empty">Excelente: todas tus WO activas del sistema sí aparecen en el Excel global.</td></tr>';
+                return;
+            }
 
         missingBody.innerHTML = missingList
             .map((wo, index) => `<tr><td>${index + 1}</td><td>${wo}</td></tr>`)
@@ -161,9 +165,10 @@
 
             setKpiValue('kpiRowsRead', payload.totalRowsRead);
             setKpiValue('kpiExcelUnique', payload.uniqueWorkOrdersInExcel);
-            setKpiValue('kpiExisting', payload.existingInDatabase);
-            setKpiValue('kpiMissing', payload.missingInDatabase);
-            renderMissingRows(payload.missingWorkOrders);
+            setKpiValue('kpiSystemActive', payload.activeWorkOrdersInSystem);
+            setKpiValue('kpiPresentInExcel', payload.presentInExcel);
+            setKpiValue('kpiMissingInExcel', payload.missingInExcel);
+            renderMissingRows(payload.missingFromExcelWorkOrders);
 
             results.classList.remove('hidden');
         } catch (error) {
