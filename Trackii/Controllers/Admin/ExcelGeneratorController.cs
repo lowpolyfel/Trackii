@@ -23,12 +23,25 @@ public class ExcelGeneratorController : Controller
         return View($"{ViewBase}Index.cshtml", vm);
     }
 
-    [HttpPost("Export")]
+    [HttpPost("ExportRoutes")]
     [ValidateAntiForgeryToken]
-    public IActionResult Export()
+    public IActionResult ExportRoutes()
     {
-        var fileBytes = _service.BuildExcelFile();
+        var fileBytes = _service.BuildRoutesExcelFile();
         var fileName = $"Rutas_Subfamilia_{DateTime.UtcNow:yyyyMMdd_HHmm}.xlsx";
+
+        return File(
+            fileBytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileName);
+    }
+
+    [HttpPost("ExportStaleOrders")]
+    [ValidateAntiForgeryToken]
+    public IActionResult ExportStaleOrders()
+    {
+        var fileBytes = _service.BuildStaleOrdersExcelFile();
+        var fileName = $"Ordenes_Sin_Actualizar_{DateTime.UtcNow:yyyyMMdd_HHmm}.xlsx";
 
         return File(
             fileBytes,

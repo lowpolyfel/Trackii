@@ -4,6 +4,7 @@ public class ExcelGeneratorVm
 {
     public int TotalRows { get; set; }
     public int MaxSteps { get; set; }
+    public int StaleOrdersTotalRows { get; set; }
     public List<string> Headers { get; set; } = new();
     public List<ExcelGeneratorRowVm> PreviewRows { get; set; } = new();
 }

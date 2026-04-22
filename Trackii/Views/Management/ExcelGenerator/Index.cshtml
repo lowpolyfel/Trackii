@@ -8,21 +8,41 @@
     <div class="page-header">
         <div>
             <h2>Generador de Excel</h2>
-            <p class="subtitle">Exporta producto, familia, subfamilia y todos los pasos de la ruta activa por subfamilia.</p>
+            <p class="subtitle">Selecciona el tipo de generador que necesitas y descarga solo ese registro.</p>
         </div>
+    </div>
 
-        <form method="post" action="/Admin/ExcelGenerator/Export">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-primary">
-                <i class="fa-solid fa-file-excel"></i>
-                Generar Excel
-            </button>
-        </form>
+    <div class="excel-generator-cards">
+        <article class="excel-generator-card">
+            <h3>Rutas por subfamilia</h3>
+            <p>Incluye producto, familia, subfamilia y todos los pasos de la ruta activa.</p>
+            <div class="excel-generator-card-meta">@Model.TotalRows registro(s)</div>
+            <form method="post" action="/Admin/ExcelGenerator/ExportRoutes">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-file-excel"></i>
+                    Descargar rutas
+                </button>
+            </form>
+        </article>
+
+        <article class="excel-generator-card">
+            <h3>Órdenes sin actualizar</h3>
+            <p>Listado de órdenes con días sin actualizar y estación actual, ordenado de mayor a menor.</p>
+            <div class="excel-generator-card-meta">@Model.StaleOrdersTotalRows registro(s)</div>
+            <form method="post" action="/Admin/ExcelGenerator/ExportStaleOrders">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-file-excel"></i>
+                    Descargar órdenes
+                </button>
+            </form>
+        </article>
     </div>
 
     <div class="alert info">
         <i class="fa-solid fa-circle-info"></i>
-        Vista previa de @Model.PreviewRows.Count registro(s) de @Model.TotalRows total(es).
+        Vista previa del generador de rutas: @Model.PreviewRows.Count registro(s) de @Model.TotalRows total(es).
     </div>
 
     <div class="table-wrapper excel-preview-table">
