@@ -9,7 +9,7 @@
         <section class="auth-form auth-form-modern">
             <div class="auth-brand auth-brand-modern">
                 <img src="~/Assets/Img/TT-logo.png" alt="TT Electronics" class="auth-brand-logo" />
-                <span class="auth-title">TTelectronics</span>
+                <span class="auth-title">Template<br />Design</span>
             </div>
 
             <div class="auth-avatar auth-avatar-modern">
@@ -28,7 +28,7 @@
 
                 <div class="auth-pill-field">
                     <i class="fa-solid fa-lock"></i>
-                    <input asp-for="Password" class="auth-input auth-input-pill" placeholder="PASSWORD" autocomplete="current-password" />
+                    <input asp-for="Password" type="password" class="auth-input auth-input-pill" placeholder="PASSWORD" autocomplete="current-password" />
                 </div>
                 <span asp-validation-for="Password" class="auth-error"></span>
 
@@ -51,8 +51,18 @@
         </section>
 
         <section class="auth-welcome auth-welcome-modern" aria-hidden="true">
+            <header class="auth-top-links">
+                <span>About</span>
+                <span>Download</span>
+                <span>Pricing</span>
+                <span>Contact</span>
+                <span class="auth-top-links-signin">Sign in</span>
+                <span class="auth-top-links-menu"><i class="fa-solid fa-bars"></i></span>
+            </header>
             <div class="auth-welcome-content auth-welcome-content-modern">
-                <h2>Bienvenido.</h2>
+                <h2>Welcome.</h2>
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore.</p>
+                <small>Not a member? <strong>Sign up now</strong></small>
             </div>
         </section>
     </div>
