@@ -1,0 +1,117 @@
+@using System.Globalization
+@model Trackii.Models.Gerencia.GerenciaBackendLobbyVm
+
+@{
+    ViewData["Title"] = "Inventario real";
+    var spanish = new CultureInfo("es-MX");
+    var grandTotal = Model.GrandTotalPieces;
+}
+
+<div class="dashboard real-inventory-dashboard">
+    <div class="page-header real-inventory-header">
+        <div>
+            <h2>INVENTARIO REAL</h2>
+            <p class="subtitle">Vista ejecutiva por localidad y familia/subfamilia OPB. Corte: <strong>@Model.DataCutoffUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", spanish)</strong>.</p>
+        </div>
+        <div class="real-inventory-kpis">
+            <span class="chip chip-muted">Localidades: @Model.Rows.Count</span>
+            <span class="chip">Piezas totales: @grandTotal.ToString("N0")</span>
+        </div>
+    </div>
+
+    <section class="card apple-card real-inventory-card">
+        <div class="real-inventory-toolbar">
+            <label class="real-inventory-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="search" id="inventorySearch" placeholder="Filtrar localidad..." autocomplete="off" />
+            </label>
+            <label class="real-inventory-toggle">
+                <input type="checkbox" id="hideEmptyRows" />
+                Ocultar filas en cero
+            </label>
+        </div>
+
+        <div class="table-wrapper real-inventory-table-wrapper">
+            <table class="table real-inventory-table" id="inventoryRealTable">
+                <thead>
+                    <tr>
+                        <th>LOCALIDAD</th>
+                        @foreach (var col in Model.Columns)
+                        {
+                            <th class="text-end">@col</th>
+                        }
+                        <th class="text-end total-column">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr data-location="@row.LocationName" data-total="@row.TotalPieces">
+                            <td class="location-cell">@row.LocationName</td>
+                            @foreach (var col in Model.Columns)
+                            {
+                                var qty = row.PiecesByColumn.TryGetValue(col, out var value) ? value : 0;
+                                <td class="text-end @(qty == 0 ? "is-zero" : string.Empty)">
+                                    @if (qty > 0)
+                                    {
+                                        <a asp-action="BackendLobbyInventoryDetail"
+                                           asp-route-location="@row.LocationName"
+                                           asp-route-familyGroup="@col"
+                                           asp-route-mode="@Model.ViewMode"
+                                           class="inventory-link">
+                                            @qty.ToString("N0")
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span>0</span>
+                                    }
+                                </td>
+                            }
+                            <td class="text-end total-column">@row.TotalPieces.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>TOTAL GENERAL</th>
+                        @foreach (var col in Model.Columns)
+                        {
+                            var totalByColumn = Model.TotalsByColumn.TryGetValue(col, out var total) ? total : 0;
+                            <th class="text-end">@totalByColumn.ToString("N0")</th>
+                        }
+                        <th class="text-end total-column">@grandTotal.ToString("N0")</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const table = document.getElementById('inventoryRealTable');
+            const searchInput = document.getElementById('inventorySearch');
+            const hideEmptyRows = document.getElementById('hideEmptyRows');
+            if (!table || !searchInput || !hideEmptyRows) return;
+
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            const applyFilters = () => {
+                const term = searchInput.value.trim().toLowerCase();
+                const hideZero = hideEmptyRows.checked;
+
+                rows.forEach(row => {
+                    const location = (row.dataset.location || '').toLowerCase();
+                    const total = Number(row.dataset.total || 0);
+                    const matchSearch = !term || location.includes(term);
+                    const matchZero = !hideZero || total > 0;
+                    row.style.display = matchSearch && matchZero ? '' : 'none';
+                });
+            };
+
+            searchInput.addEventListener('input', applyFilters);
+            hideEmptyRows.addEventListener('change', applyFilters);
+        })();
+    </script>
+}

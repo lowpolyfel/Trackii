@@ -68,6 +68,11 @@
                         <span>Gerencia</span>
                     </a>
 
+                    <a asp-controller="Gerencia" asp-action="InventarioReal" class="@(currentController == "Gerencia" && (currentAction == "InventarioReal" || currentAction == "Lobby" || currentAction == "Index") ? "active" : string.Empty)">
+                        <i class="fa-solid fa-table"></i>
+                        <span>INVENTARIO REAL</span>
+                    </a>
+
                     @if (showGerenciaAlternateModules)
                     {
                         <a asp-controller="Gerencia" asp-action="DiscreteMap" class="@(currentController == "Gerencia" && currentAction == "DiscreteMap" ? "active" : string.Empty)">
