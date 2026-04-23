@@ -1,0 +1,89 @@
+@model Trackii.Models.Admin.WorkOrderReactivation.WorkOrderReactivationVm
+
+@{
+    ViewData["Title"] = "Alta de órdenes";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Alta de órdenes</h2>
+            <p class="subtitle">Listado de WorkOrder inactivas (active = 0) con el paso donde fueron detenidas.</p>
+        </div>
+    </div>
+
+    @if (TempData["Ok"] is string ok)
+    {
+        <div class="alert" style="margin-bottom:12px;">
+            <i class="fa-solid fa-circle-check"></i>
+            @ok
+        </div>
+    }
+
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert error" style="margin-bottom:12px;">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            @error
+        </div>
+    }
+
+    <form method="get" action="/Admin/WorkOrderReactivation" class="filters" style="margin-bottom: 16px;">
+        <input type="search"
+               class="input"
+               name="search"
+               value="@Model.Search"
+               placeholder="Buscar por WO o Part Number..."
+               autocomplete="off" />
+
+        <button type="submit" class="btn btn-secondary">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            Buscar
+        </button>
+
+        <a href="/Admin/WorkOrderReactivation" class="btn btn-secondary">Limpiar</a>
+    </form>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>WO</th>
+                    <th>Part Number</th>
+                    <th>Status actual</th>
+                    <th>Paso donde se canceló/desactivó</th>
+                    <th style="width: 190px;">Reactivar</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="empty">No hay WorkOrder inactivas con esos filtros.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var wo in Model.Items)
+                    {
+                        <tr>
+                            <td>@wo.WoNumber</td>
+                            <td>@wo.PartNumber</td>
+                            <td>@wo.Status</td>
+                            <td>@wo.CancelledAtStep</td>
+                            <td>
+                                <form method="post" action="/Admin/WorkOrderReactivation/Reactivate" class="inline-form" style="display:flex; gap:8px; align-items:center;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="workOrderId" value="@wo.WorkOrderId" />
+                                    <input type="hidden" name="search" value="@Model.Search" />
+                                    <input type="checkbox" name="confirm" value="1" required title="Confirma para activar nuevamente" />
+                                    <button type="submit" class="btn-chip success">Activar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -10,7 +10,7 @@
     var isEngineering = User.IsInRole("Engineering") || User.IsInRole("Ingenieria");
     var isGerencia = User.IsInRole("Gerencia");
     var showGerenciaSidebarExtras = false;
-    var altasBajasControllers = new[] { "AltasBajas", "Area", "Family", "Subfamily", "Product", "Route", "UnregisteredParts", "HardMod", "User", "Location", "Device", "Role", "ViewCatalog", "AdminWip", "ExcelGenerator" };
+    var altasBajasControllers = new[] { "AltasBajas", "Area", "Family", "Subfamily", "Product", "Route", "UnregisteredParts", "HardMod", "User", "Location", "Device", "Role", "ViewCatalog", "AdminWip", "ExcelGenerator", "WorkOrderReactivation" };
     var isAltasBajasActive = altasBajasControllers.Contains(currentController);
 }
 
@@ -144,6 +144,11 @@
 
                 @if (isAdmin)
                 {
+                    <a asp-controller="WorkOrderReactivation" asp-action="Index" class="@(currentController == "WorkOrderReactivation" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-file-circle-plus"></i>
+                        <span>Alta de órdenes</span>
+                    </a>
+
                     <a asp-controller="ExcelGenerator" asp-action="Index" class="@(currentController == "ExcelGenerator" ? "active" : string.Empty)">
                         <i class="fa-solid fa-file-excel"></i>
                         <span>Generador de Excel</span>

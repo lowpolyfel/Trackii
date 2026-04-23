@@ -93,6 +93,7 @@ builder.Services.AddScoped<DeviceService>();
 builder.Services.AddScoped<DeviceActivationApiService>();
 builder.Services.AddScoped<AdminWipService>();
 builder.Services.AddScoped<ExcelGeneratorService>();
+builder.Services.AddScoped<WorkOrderReactivationService>();
 
 // =====================
 // Services (API)
