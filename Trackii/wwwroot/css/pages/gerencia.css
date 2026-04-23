@@ -784,3 +784,90 @@
     margin: 0;
     color: #516887;
 }
+
+.real-inventory-dashboard {
+    display: grid;
+    gap: 1.2rem;
+}
+
+.real-inventory-header {
+    align-items: center;
+}
+
+.real-inventory-kpis {
+    display: inline-flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.real-inventory-card {
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    overflow: hidden;
+}
+
+.real-inventory-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: .8rem;
+    flex-wrap: wrap;
+    padding: 1rem 1rem 0;
+}
+
+.real-inventory-search {
+    display: inline-flex;
+    align-items: center;
+    gap: .6rem;
+    min-width: 260px;
+    border: 1px solid rgba(23, 88, 177, 0.2);
+    border-radius: 12px;
+    padding: .55rem .8rem;
+    background: #fff;
+}
+
+.real-inventory-search input {
+    border: 0;
+    outline: 0;
+    width: 100%;
+    background: transparent;
+}
+
+.real-inventory-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.real-inventory-table-wrapper {
+    max-height: 68vh;
+    overflow: auto;
+}
+
+.real-inventory-table th,
+.real-inventory-table td {
+    white-space: nowrap;
+}
+
+.real-inventory-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #eef4ff;
+}
+
+.real-inventory-table tfoot th {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: #ecfdf5;
+}
+
+.real-inventory-table .location-cell {
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.real-inventory-table .is-zero {
+    color: #94a3b8;
+}

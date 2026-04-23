@@ -259,6 +259,143 @@ public class GerenciaService
         return vm;
     }
 
+    public GerenciaBackendLobbyVm GetRealInventoryLobby()
+    {
+        var vm = new GerenciaBackendLobbyVm
+        {
+            SnapshotAtUtc = CurrentCutoffUtc,
+            DataCutoffUtc = CurrentCutoffUtc,
+            ViewMode = GerenciaBackendLobbyVm.FullInventoryMode,
+            OrdersOpenedFromDate = null
+        };
+
+        string[] orderedColumns =
+        {
+            "LATERAL LED",
+            "LATERAL SENSOR",
+            "LATERAL OPB",
+            "MINI AXIAL",
+            "MINI AXIAL OPB",
+            "MAXI AXIAL",
+            "FOTOLOGICO",
+            "PHOTO OPBS"
+        };
+
+        var orderedLocations = new[]
+        {
+            "Alloy",
+            "Backfill",
+            "Moldeo",
+            "FAST CAST",
+            "Inspeccion Final",
+            "Tie bar",
+            "Tin plate",
+            "Prueba Electrica",
+            "Empaque",
+            "QC",
+            "Almacen"
+        };
+
+        vm.Columns.AddRange(orderedColumns);
+
+        foreach (var location in orderedLocations)
+        {
+            var row = new BackendLobbyLocationRowVm { LocationName = location };
+            foreach (var column in orderedColumns)
+            {
+                row.PiecesByColumn[column] = 0;
+            }
+            vm.Rows.Add(row);
+        }
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT
+                CASE
+                    WHEN COALESCE(l.name, '') LIKE '%Alloy%' THEN 'Alloy'
+                    WHEN l.id = 8 OR COALESCE(l.name, '') LIKE '%Backfill%' THEN 'Backfill'
+                    WHEN COALESCE(l.name, '') LIKE '%Molde%' THEN 'Moldeo'
+                    WHEN COALESCE(l.name, '') LIKE '%Fast%' THEN 'FAST CAST'
+                    WHEN COALESCE(l.name, '') LIKE '%Inspec%' THEN 'Inspeccion Final'
+                    WHEN COALESCE(l.name, '') LIKE '%Tie%' THEN 'Tie bar'
+                    WHEN COALESCE(l.name, '') LIKE '%Tin%' THEN 'Tin plate'
+                    WHEN COALESCE(l.name, '') LIKE '%Prueba%' THEN 'Prueba Electrica'
+                    WHEN COALESCE(l.name, '') LIKE '%Emp%' THEN 'Empaque'
+                    WHEN COALESCE(l.name, '') LIKE '%QC%' OR COALESCE(l.name, '') LIKE '%Q.C.%' OR COALESCE(l.name, '') LIKE '%Calidad%' THEN 'QC'
+                    WHEN COALESCE(l.name, '') LIKE '%Almacen%' OR COALESCE(l.name, '') LIKE '%Almacén%' THEN 'Almacen'
+                    ELSE NULL
+                END AS normalized_location,
+                CASE
+                    WHEN UPPER(f.name) = 'LATERAL LED' THEN 'LATERAL LED'
+                    WHEN UPPER(f.name) = 'LATERAL SENSOR' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'LATERAL SENSOR'
+                    WHEN UPPER(f.name) = 'LATERAL SENSOR' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'LATERAL OPB'
+                    WHEN UPPER(f.name) = 'MINI AXIALES' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'MINI AXIAL'
+                    WHEN UPPER(f.name) = 'MINI AXIALES' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'MINI AXIAL OPB'
+                    WHEN UPPER(f.name) = 'MAXI AXIALES' THEN 'MAXI AXIAL'
+                    WHEN UPPER(f.name) = 'FOTOLOGICOS' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'FOTOLOGICO'
+                    WHEN UPPER(f.name) = 'FOTOLOGICOS' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'PHOTO OPBS'
+                    ELSE NULL
+                END AS inventory_column,
+                COALESCE(SUM(COALESCE(last_qty.qty_in, 0)), 0) AS qty_in
+            FROM wip_item wip
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN product p ON p.id = wo.product_id
+            JOIN subfamily sf ON sf.id = p.id_subfamily
+            JOIN family f ON f.id = sf.id_family
+            LEFT JOIN route_step rs ON rs.id = wip.current_step_id
+            LEFT JOIN location l ON l.id = rs.location_id
+            LEFT JOIN (
+                SELECT wse.wip_item_id,
+                       wse.qty_in
+                FROM wip_step_execution wse
+                INNER JOIN (
+                    SELECT wip_item_id, MAX(id) AS last_step_id
+                    FROM wip_step_execution
+                    GROUP BY wip_item_id
+                ) latest ON latest.last_step_id = wse.id
+            ) last_qty ON last_qty.wip_item_id = wip.id
+            WHERE wo.active = 1
+              AND wip.status = 'ACTIVE'
+            GROUP BY normalized_location, inventory_column", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            if (rd.IsDBNull(rd.GetOrdinal("normalized_location")) || rd.IsDBNull(rd.GetOrdinal("inventory_column")))
+                continue;
+
+            var location = rd.GetString("normalized_location").Trim();
+            var column = rd.GetString("inventory_column").Trim();
+            var qty = rd.GetInt32("qty_in");
+
+            var row = vm.Rows.FirstOrDefault(r => r.LocationName.Equals(location, StringComparison.OrdinalIgnoreCase));
+            if (row is null)
+                continue;
+
+            if (!vm.Columns.Contains(column, StringComparer.Ordinal))
+                continue;
+
+            if (!row.PiecesByColumn.ContainsKey(column))
+                row.PiecesByColumn[column] = 0;
+
+            row.PiecesByColumn[column] += qty;
+        }
+
+        vm.Groups.AddRange(
+            vm.Rows.SelectMany(row => row.PiecesByColumn.Select(cell => new BackendLobbyGroupRowVm
+            {
+                LugarNombre = row.LocationName,
+                LocationName = row.LocationName,
+                FamilyGroupName = cell.Key,
+                Piezas = cell.Value,
+                Ordenes = 0
+            })));
+
+        return vm;
+    }
+
     public GerenciaLobbyInventoryCellDetailVm GetBackendLobbyCellDetail(string location, string familyGroup, string? mode)
     {
         var vm = new GerenciaLobbyInventoryCellDetailVm
@@ -269,8 +406,12 @@ public class GerenciaService
             OrdersOpenedFromDate = null
         };
 
-        var isOpbColumn = vm.FamilyGroup.StartsWith("OPB ", StringComparison.OrdinalIgnoreCase);
-        var baseFamily = isOpbColumn ? vm.FamilyGroup[4..].Trim() : vm.FamilyGroup;
+        var normalizedFamilyGroup = vm.FamilyGroup.Trim().ToUpperInvariant();
+        var isOpbColumn =
+            normalizedFamilyGroup.StartsWith("OPB ", StringComparison.OrdinalIgnoreCase) ||
+            normalizedFamilyGroup.EndsWith(" OPB", StringComparison.OrdinalIgnoreCase) ||
+            normalizedFamilyGroup.Contains("PHOTO OPBS", StringComparison.OrdinalIgnoreCase);
+        var baseFamily = NormalizeFamilyAlias(vm.FamilyGroup);
 
         using var cn = new MySqlConnection(_conn);
         cn.Open();
@@ -317,7 +458,7 @@ public class GerenciaService
             ) last_qty ON last_qty.wip_item_id = wip.id
             WHERE wo.active = 1
               AND wip.status = 'ACTIVE'
-              AND COALESCE(f.name, 'Sin familia') = @baseFamily
+              AND UPPER(COALESCE(f.name, 'Sin familia')) = UPPER(@baseFamily)
               AND (
                     @isOpbColumn = 0 AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%'
                     OR @isOpbColumn = 1 AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%'
@@ -349,6 +490,26 @@ public class GerenciaService
         }
 
         return vm;
+    }
+
+    private static string NormalizeFamilyAlias(string baseFamily)
+    {
+        var normalized = baseFamily.Trim().ToUpperInvariant();
+        if (normalized is "LATERAL OPB" or "LATERAL SENSOR")
+            return "LATERAL SENSOR";
+        if (normalized is "LATERAL" or "LATERAL SENSOR SIN OPB")
+            return "LATERAL SENSOR";
+        if (normalized is "MINI AXIAL OPB")
+            return "MINI AXIALES";
+        if (normalized is "MINI AXIAL" or "MINI AXIALES" or "MINIAXIAL")
+            return "MINI AXIALES";
+        if (normalized is "MAXI AXIAL" or "MAXI AXIALES")
+            return "MAXI AXIALES";
+        if (normalized is "PHOTO OPBS")
+            return "FOTOLOGICOS";
+        if (normalized is "FOTOLOGICO" or "FOTOLOGICOS")
+            return "FOTOLOGICOS";
+        return baseFamily.Trim();
     }
 
     private static int GetBackendLobbyLocationOrder(string locationName)
