@@ -46,15 +46,19 @@ public class WorkOrderReactivationService
         using var rd = cmd.ExecuteReader();
         while (rd.Read())
         {
-            var stepLabel = rd.IsDBNull("step_number")
+            var stepNumberOrdinal = rd.GetOrdinal("step_number");
+            var locationNameOrdinal = rd.GetOrdinal("location_name");
+            var partNumberOrdinal = rd.GetOrdinal("part_number");
+
+            var stepLabel = rd.IsDBNull(stepNumberOrdinal)
                 ? "Sin paso registrado"
-                : $"Paso {rd.GetInt32("step_number")} - {(rd.IsDBNull("location_name") ? "Sin localidad" : rd.GetString("location_name"))}";
+                : $"Paso {rd.GetInt32("step_number")} - {(rd.IsDBNull(locationNameOrdinal) ? "Sin localidad" : rd.GetString("location_name"))}";
 
             vm.Items.Add(new WorkOrderReactivationRowVm
             {
                 WorkOrderId = rd.GetUInt32("id"),
                 WoNumber = rd.GetString("wo_number"),
-                PartNumber = rd.IsDBNull("part_number") ? "-" : rd.GetString("part_number"),
+                PartNumber = rd.IsDBNull(partNumberOrdinal) ? "-" : rd.GetString("part_number"),
                 Status = rd.GetString("status"),
                 CancelledAtStep = stepLabel
             });
