@@ -7,6 +7,7 @@
     var spanish = new CultureInfo("es-MX");
     var weekRatioClass = Model.WeekRatioUp ? "ratio-up" : "ratio-down";
     var dayRatioClass = Model.DayRatioUp ? "ratio-up" : "ratio-down";
+    var showGerenciaAlternateModules = false;
 }
 
 <div class="dashboard gerencia-dashboard-v2">
@@ -15,20 +16,23 @@
             <h2>Lobby de órdenes · Discretos</h2>
             <p class="subtitle">Actualizado automáticamente al día y hora actual: <strong>@Model.SnapshotAtUtc.ToString("dddd dd MMM yyyy HH:mm", spanish)</strong>.</p>
         </div>
-        <div class="header-actions">
-            <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-primary">
-                <i class="fa-solid fa-map"></i>
-                Mapa de discretos
-            </a>
-            <a asp-controller="Gerencia" asp-action="BackendLobby" class="btn btn-primary">
-                <i class="fa-solid fa-table-cells-large"></i>
-                Lobby gerencia
-            </a>
-            <a asp-controller="Gerencia" asp-action="ActiveOrders" class="btn btn-secondary">
-                <i class="fa-solid fa-list-check"></i>
-                Ver órdenes activas
-            </a>
-        </div>
+        @if (showGerenciaAlternateModules)
+        {
+            <div class="header-actions">
+                <a asp-controller="Gerencia" asp-action="DiscreteMap" class="btn btn-primary">
+                    <i class="fa-solid fa-map"></i>
+                    Mapa de discretos
+                </a>
+                <a asp-controller="Gerencia" asp-action="BackendLobby" class="btn btn-primary">
+                    <i class="fa-solid fa-table-cells-large"></i>
+                    Lobby gerencia
+                </a>
+                <a asp-controller="Gerencia" asp-action="ActiveOrders" class="btn btn-secondary">
+                    <i class="fa-solid fa-list-check"></i>
+                    Ver órdenes activas
+                </a>
+            </div>
+        }
     </div>
 
     <section class="executive-grid">
