@@ -76,6 +76,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<LobbyService>();
 builder.Services.AddScoped<GerenciaService>();
 builder.Services.AddScoped<InventoryMapService>();
+builder.Services.AddScoped<ProjectedInventoryService>();
 builder.Services.AddScoped<GerenciaLobbyService>();
 builder.Services.AddScoped<Trackii.Services.Reports.ReportsService>();
 builder.Services.AddScoped<Trackii.Services.Engineering.UnregisteredPartsService>();
