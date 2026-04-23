@@ -116,6 +116,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    margin-top: 8px;
 }
 
 .auth-error {
@@ -148,7 +149,8 @@
     min-height: 560px;
     overflow: hidden;
     display: flex;
-    align-items: flex-end;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-end;
     padding: clamp(20px, 4vw, 44px);
     isolation: isolate;
@@ -207,5 +209,9 @@
 
     .auth-welcome-content-modern {
         text-align: left;
+    }
+
+    .auth-top-links {
+        justify-content: flex-start;
     }
 }
