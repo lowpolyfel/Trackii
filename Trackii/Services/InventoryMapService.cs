@@ -56,14 +56,21 @@ public class InventoryMapService
                     ELSE 'Sin localidad'
                 END AS normalized_location,
                 CASE
-                    WHEN UPPER(f.name) = 'LATERAL LED' THEN 'LATERAL LED'
-                    WHEN UPPER(f.name) = 'LATERAL SENSOR' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'LATERAL SENSOR'
-                    WHEN UPPER(f.name) = 'LATERAL SENSOR' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'LATERAL OPB'
-                    WHEN UPPER(f.name) = 'MINI AXIALES' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'MINI AXIAL'
-                    WHEN UPPER(f.name) = 'MINI AXIALES' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'MINI AXIAL OPB'
-                    WHEN UPPER(f.name) = 'MAXI AXIALES' THEN 'MAXI AXIAL'
-                    WHEN UPPER(f.name) = 'FOTOLOGICOS' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'FOTOLOGICO'
-                    WHEN UPPER(f.name) = 'FOTOLOGICOS' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'PHOTO OPBS'
+                    WHEN UPPER(f.name) LIKE '%LATERAL LED%' THEN 'LATERAL LED'
+
+                    WHEN UPPER(f.name) LIKE '%LATERAL%SENSOR%' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'LATERAL SENSOR'
+                    WHEN UPPER(f.name) LIKE '%LATERAL%SENSOR%' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'LATERAL OPB'
+
+                    WHEN UPPER(f.name) LIKE '%MINI%AXIAL%' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'MINI AXIAL'
+                    WHEN UPPER(f.name) LIKE '%MINI%AXIAL%' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'MINI AXIAL OPB'
+
+                    WHEN UPPER(f.name) LIKE '%MAXI%AXIAL%' THEN 'MAXI AXIAL'
+
+                    WHEN UPPER(f.name) LIKE '%FOTOLOGICO%' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'FOTOLOGICO'
+                    WHEN UPPER(f.name) LIKE '%FOTOLOGICO%' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'PHOTO OPBS'
+
+                    WHEN UPPER(COALESCE(sf.name, '')) LIKE '%LAT%RAL%OPB%' THEN 'LATERAL OPB'
+
                     ELSE NULL
                 END AS inventory_column,
                 COALESCE(SUM(last_qty.qty_in), 0) AS qty
