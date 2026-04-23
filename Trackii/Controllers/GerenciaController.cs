@@ -9,11 +9,13 @@ namespace Trackii.Controllers;
 public class GerenciaController : Controller
 {
     private readonly GerenciaService _svc;
+    private readonly InventoryMapService _inventoryService;
     private const string ViewBase = "~/Views/Gerencia/";
 
-    public GerenciaController(GerenciaService svc)
+    public GerenciaController(GerenciaService svc, InventoryMapService inventoryService)
     {
         _svc = svc;
+        _inventoryService = inventoryService;
     }
 
     [HttpGet("")]
@@ -31,7 +33,7 @@ public class GerenciaController : Controller
     [HttpGet("InventarioReal")]
     public IActionResult InventarioReal()
     {
-        var vm = _svc.GetRealInventoryLobby();
+        var vm = _inventoryService.GetRealInventoryMap();
         return View($"{ViewBase}InventarioReal.cshtml", vm);
     }
 
