@@ -150,6 +150,10 @@
     background: linear-gradient(135deg, #0f766e, #14b8a6);
 }
 
+.excel-generator-icon.icon-inventory {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+}
+
 .excel-generator-icon.icon-purge {
     background: linear-gradient(135deg, #7c3aed, #a855f7);
 }

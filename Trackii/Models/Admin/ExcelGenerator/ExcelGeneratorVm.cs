@@ -4,6 +4,7 @@ public class ExcelGeneratorLandingVm
 {
     public int RoutesBySubfamilyTotalRows { get; set; }
     public int ActiveOrdersTotalRows { get; set; }
+    public int InventoryLogTotalRows { get; set; }
 }
 
 public class RoutesBySubfamilyExcelVm
@@ -39,6 +40,23 @@ public class ActiveOrderExcelRowVm
     public DateTime CreatedAt { get; set; }
     public DateTime LastMovementAt { get; set; }
     public int DaysStopped { get; set; }
+}
+
+public class InventoryLogExcelVm
+{
+    public int TotalRows { get; set; }
+    public string Sort { get; set; } = "location_asc";
+    public List<InventoryLogExcelRowVm> PreviewRows { get; set; } = new();
+}
+
+public class InventoryLogExcelRowVm
+{
+    public string Location { get; set; } = string.Empty;
+    public string WorkOrder { get; set; } = string.Empty;
+    public string PartNumber { get; set; } = string.Empty;
+    public int PiecesQty { get; set; }
+    public int DaysInLocation { get; set; }
+    public DateTime LastMovementAt { get; set; }
 }
 
 public class WorkOrderPurgeAnalysisVm

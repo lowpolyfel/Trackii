@@ -1,0 +1,91 @@
+@model Trackii.Models.Admin.ExcelGenerator.InventoryLogExcelVm
+
+@{
+    ViewData["Title"] = "Excel | Log de inventario";
+}
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2>Log de inventario por localidad</h2>
+            <p class="subtitle">Exporta órdenes activas por localidad con número de parte, piezas y días acumulados en esa localidad.</p>
+        </div>
+
+        <div class="header-actions">
+            <a href="/Admin/ExcelGenerator" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i>
+                Regresar
+            </a>
+            <form method="get" action="/Admin/ExcelGenerator/InventoryLog" class="active-orders-sort-form">
+                <select name="sort" class="input">
+                    <option value="location_asc" selected="@(Model.Sort == "location_asc" ? "selected" : null)">Localidad A-Z</option>
+                    <option value="location_desc" selected="@(Model.Sort == "location_desc" ? "selected" : null)">Localidad Z-A</option>
+                    <option value="days_desc" selected="@(Model.Sort == "days_desc" ? "selected" : null)">Días en localidad: descendente</option>
+                    <option value="days_asc" selected="@(Model.Sort == "days_asc" ? "selected" : null)">Días en localidad: ascendente</option>
+                </select>
+                <button type="submit" class="btn btn-secondary">
+                    <i class="fa-solid fa-filter"></i>
+                    Aplicar
+                </button>
+            </form>
+            <form method="post" action="/Admin/ExcelGenerator/InventoryLog/Export">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="sort" value="@Model.Sort" />
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-file-excel"></i>
+                    Exportar Excel estético
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="alert info">
+        <i class="fa-solid fa-circle-info"></i>
+        Vista previa de @Model.PreviewRows.Count registro(s) de @Model.TotalRows total(es).
+    </div>
+
+    <div class="table-wrapper excel-preview-table">
+        <table class="table active-orders-table">
+            <thead>
+                <tr>
+                    <th>Localidad</th>
+                    <th>WO</th>
+                    <th>No. Parte</th>
+                    <th>Piezas</th>
+                    <th>Días en localidad</th>
+                    <th>Último movimiento</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.PreviewRows.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="empty">No hay inventario activo para exportar.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var row in Model.PreviewRows)
+                    {
+                        var severityClass = row.DaysInLocation >= 10
+                            ? "stale-high"
+                            : row.DaysInLocation >= 5
+                                ? "stale-medium"
+                                : "stale-low";
+
+                        <tr>
+                            <td>@row.Location</td>
+                            <td>@row.WorkOrder</td>
+                            <td>@row.PartNumber</td>
+                            <td>@row.PiecesQty</td>
+                            <td>
+                                <span class="stale-pill @severityClass">@row.DaysInLocation día(s)</span>
+                            </td>
+                            <td>@row.LastMovementAt.ToString("yyyy-MM-dd HH:mm")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

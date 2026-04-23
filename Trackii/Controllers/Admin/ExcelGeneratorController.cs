@@ -64,6 +64,26 @@ public class ExcelGeneratorController : Controller
             fileName);
     }
 
+    [HttpGet("InventoryLog")]
+    public IActionResult InventoryLog([FromQuery] string? sort = "location_asc")
+    {
+        var vm = _service.GetInventoryLogPreview(sort ?? "location_asc");
+        return View($"{ViewBase}InventoryLog.cshtml", vm);
+    }
+
+    [HttpPost("InventoryLog/Export")]
+    [ValidateAntiForgeryToken]
+    public IActionResult ExportInventoryLog([FromForm] string? sort = "location_asc")
+    {
+        var fileBytes = _service.BuildInventoryLogExcelFile(sort ?? "location_asc");
+        var fileName = $"Log_Inventario_{DateTime.UtcNow:yyyyMMdd_HHmm}.xlsx";
+
+        return File(
+            fileBytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileName);
+    }
+
     [HttpGet("WorkOrderPurge")]
     public IActionResult WorkOrderPurge()
     {

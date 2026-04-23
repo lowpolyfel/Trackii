@@ -20,7 +20,8 @@ public class ExcelGeneratorService
         return new ExcelGeneratorLandingVm
         {
             RoutesBySubfamilyTotalRows = GetRows().Count,
-            ActiveOrdersTotalRows = GetActiveOrdersRows("oldest").Count
+            ActiveOrdersTotalRows = GetActiveOrdersRows("oldest").Count,
+            InventoryLogTotalRows = GetInventoryLogRows("location_asc").Count
         };
     }
 
@@ -70,6 +71,30 @@ public class ExcelGeneratorService
 
         using var workbook = new XLWorkbook();
         BuildActiveOrdersSheet(workbook, rows);
+
+        using var ms = new MemoryStream();
+        workbook.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public InventoryLogExcelVm GetInventoryLogPreview(string sort = "location_asc", int previewCount = 35)
+    {
+        var normalizedSort = NormalizeInventorySort(sort);
+        var rows = GetInventoryLogRows(normalizedSort);
+        return new InventoryLogExcelVm
+        {
+            TotalRows = rows.Count,
+            Sort = normalizedSort,
+            PreviewRows = rows.Take(previewCount).ToList()
+        };
+    }
+
+    public byte[] BuildInventoryLogExcelFile(string sort = "location_asc")
+    {
+        var rows = GetInventoryLogRows(NormalizeInventorySort(sort));
+
+        using var workbook = new XLWorkbook();
+        BuildInventoryLogSheet(workbook, rows);
 
         using var ms = new MemoryStream();
         workbook.SaveAs(ms);
@@ -183,6 +208,78 @@ public class ExcelGeneratorService
 
             var locationRange = sheet.Range(2, 5, currentRow - 1, 5);
             locationRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#EEF4FF");
+        }
+    }
+
+    private static void BuildInventoryLogSheet(XLWorkbook workbook, List<InventoryLogExcelRowVm> rows)
+    {
+        var sheet = workbook.Worksheets.Add("Log inventario");
+        var headers = new[]
+        {
+            "LOCALIDAD",
+            "WO",
+            "NO. PARTE",
+            "PIEZAS",
+            "DÍAS EN LOCALIDAD",
+            "ÚLTIMO MOVIMIENTO"
+        };
+
+        for (var col = 0; col < headers.Length; col++)
+        {
+            sheet.Cell(1, col + 1).Value = headers[col];
+        }
+
+        var currentRow = 2;
+        foreach (var row in rows)
+        {
+            sheet.Cell(currentRow, 1).Value = row.Location;
+            sheet.Cell(currentRow, 2).Value = row.WorkOrder;
+            sheet.Cell(currentRow, 3).Value = row.PartNumber;
+            sheet.Cell(currentRow, 4).Value = row.PiecesQty;
+            sheet.Cell(currentRow, 5).Value = row.DaysInLocation;
+            sheet.Cell(currentRow, 6).Value = row.LastMovementAt;
+            sheet.Cell(currentRow, 6).Style.DateFormat.Format = "yyyy-mm-dd hh:mm";
+            currentRow++;
+        }
+
+        var usedRange = sheet.Range(1, 1, Math.Max(1, currentRow - 1), headers.Length);
+        var table = usedRange.CreateTable("InventarioLogTable");
+        table.Theme = XLTableTheme.TableStyleMedium15;
+
+        sheet.Row(1).Style.Font.Bold = true;
+        sheet.Row(1).Style.Font.FontColor = XLColor.White;
+        sheet.Row(1).Style.Fill.BackgroundColor = XLColor.FromHtml("#0F766E");
+        sheet.SheetView.FreezeRows(1);
+        usedRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        usedRange.Style.Alignment.WrapText = true;
+        usedRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+        usedRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+        usedRange.Style.Border.OutsideBorderColor = XLColor.FromHtml("#99F6E4");
+        usedRange.Style.Border.InsideBorderColor = XLColor.FromHtml("#CCFBF1");
+        sheet.Columns().AdjustToContents(14, 40);
+
+        if (rows.Count > 0)
+        {
+            var piecesRange = sheet.Range(2, 4, currentRow - 1, 4);
+            piecesRange.Style.NumberFormat.Format = "#,##0";
+            piecesRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            var daysRange = sheet.Range(2, 5, currentRow - 1, 5);
+            daysRange.Style.NumberFormat.Format = "0";
+            daysRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            daysRange.AddConditionalFormat()
+                .WhenGreaterThan(9)
+                .Fill.SetBackgroundColor(XLColor.FromHtml("#FECACA"))
+                .Font.SetFontColor(XLColor.FromHtml("#991B1B"));
+
+            daysRange.AddConditionalFormat()
+                .WhenBetween(5, 9)
+                .Fill.SetBackgroundColor(XLColor.FromHtml("#FEF3C7"))
+                .Font.SetFontColor(XLColor.FromHtml("#92400E"));
+
+            var locationRange = sheet.Range(2, 1, currentRow - 1, 1);
+            locationRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#ECFEFF");
         }
     }
 
@@ -329,6 +426,76 @@ public class ExcelGeneratorService
             "days_asc" => "days_asc",
             "newest" => "newest",
             _ => "oldest"
+        };
+    }
+
+    private List<InventoryLogExcelRowVm> GetInventoryLogRows(string sort)
+    {
+        var rows = new List<InventoryLogExcelRowVm>();
+        var orderBy = sort switch
+        {
+            "location_desc" => "location_name DESC, days_in_location DESC, wo.wo_number ASC",
+            "days_desc" => "days_in_location DESC, location_name ASC, wo.wo_number ASC",
+            "days_asc" => "days_in_location ASC, location_name ASC, wo.wo_number ASC",
+            _ => "location_name ASC, days_in_location DESC, wo.wo_number ASC"
+        };
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using var cmd = new MySqlCommand(@"
+            SELECT wo.wo_number,
+                   p.part_number,
+                   COALESCE(l.name, 'Sin localidad') AS location_name,
+                   COALESCE(last_qty.qty_in, 0) AS pieces_qty,
+                   COALESCE(last_qty.last_activity_date, wip.created_at, NOW()) AS last_movement_at,
+                   DATEDIFF(NOW(), COALESCE(last_qty.last_activity_date, wip.created_at, NOW())) AS days_in_location
+            FROM work_order wo
+            JOIN product p ON p.id = wo.product_id
+            LEFT JOIN wip_item wip ON wip.wo_order_id = wo.id
+            LEFT JOIN route_step rs ON rs.id = wip.current_step_id
+            LEFT JOIN location l ON l.id = rs.location_id
+            LEFT JOIN (
+                SELECT wse.wip_item_id,
+                       wse.qty_in,
+                       wse.create_at AS last_activity_date
+                FROM wip_step_execution wse
+                JOIN (
+                    SELECT wip_item_id, MAX(id) AS last_step_id
+                    FROM wip_step_execution
+                    GROUP BY wip_item_id
+                ) latest ON latest.last_step_id = wse.id
+            ) last_qty ON last_qty.wip_item_id = wip.id
+            WHERE wo.active = 1
+              AND wo.status IN ('OPEN', 'IN_PROGRESS', 'HOLD')
+            ORDER BY " + orderBy + @"
+        ", cn);
+
+        using var rd = cmd.ExecuteReader();
+        while (rd.Read())
+        {
+            rows.Add(new InventoryLogExcelRowVm
+            {
+                Location = rd.GetString("location_name"),
+                WorkOrder = rd.GetString("wo_number"),
+                PartNumber = rd.GetString("part_number"),
+                PiecesQty = Convert.ToInt32(rd.GetValue(rd.GetOrdinal("pieces_qty"))),
+                LastMovementAt = rd.GetDateTime("last_movement_at"),
+                DaysInLocation = Convert.ToInt32(rd.GetValue(rd.GetOrdinal("days_in_location")))
+            });
+        }
+
+        return rows;
+    }
+
+    private static string NormalizeInventorySort(string? sort)
+    {
+        return sort?.Trim().ToLowerInvariant() switch
+        {
+            "location_desc" => "location_desc",
+            "days_desc" => "days_desc",
+            "days_asc" => "days_asc",
+            _ => "location_asc"
         };
     }
 
