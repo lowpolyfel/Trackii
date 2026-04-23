@@ -37,18 +37,15 @@
 
 .auth-brand-modern {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
+    align-items: center;
+    justify-content: center;
     color: #1b2850;
-    font-weight: 700;
-    font-size: 1.28rem;
-    line-height: 1.1;
-    letter-spacing: -0.01em;
+    min-height: 76px;
 }
 
 .auth-brand-logo {
-    width: 48px;
-    height: 48px;
+    width: 92px;
+    height: 92px;
     object-fit: contain;
 }
 
@@ -126,7 +123,7 @@
 .auth-meta-modern {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     font-size: .73rem;
     color: #4e6188;
     margin-top: 2px;
@@ -235,7 +232,7 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 20px;
+    gap: 12px;
     color: rgba(239, 246, 255, 0.84);
     text-transform: uppercase;
     font-size: 0.62rem;
@@ -277,5 +274,43 @@
         justify-content: flex-start;
         gap: 12px;
         flex-wrap: wrap;
+    }
+}
+
+@media (orientation: portrait) and (max-width: 1200px) {
+    .auth-page {
+        align-items: stretch;
+        padding: 12px;
+    }
+
+    .auth-card {
+        width: min(560px, 100%);
+        margin: 0 auto;
+        border-radius: 22px;
+    }
+
+    .auth-card-modern {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-form-modern {
+        order: 2;
+        padding: 26px 20px 22px;
+    }
+
+    .auth-welcome-modern {
+        order: 1;
+        min-height: 280px;
+        padding: 20px;
+    }
+
+    .auth-welcome-content-modern {
+        max-width: 100%;
+        text-align: left;
+        align-self: flex-start;
+    }
+
+    .auth-welcome-content-modern p {
+        margin: 0 0 8px;
     }
 }
