@@ -52,7 +52,7 @@
                             {
                                 var qty = row.PiecesByColumn.TryGetValue(col, out var value) ? value : 0;
                                 <td class="text-end @(qty == 0 ? "is-zero" : string.Empty)">
-                                    @if (qty > 0 && !col.Equals("OTROS", StringComparison.OrdinalIgnoreCase))
+                                    @if (qty > 0)
                                     {
                                         <a asp-action="BackendLobbyInventoryDetail"
                                            asp-route-location="@row.LocationName"
@@ -61,10 +61,6 @@
                                            class="inventory-link">
                                             @qty.ToString("N0")
                                         </a>
-                                    }
-                                    else if (qty > 0)
-                                    {
-                                        <span>@qty.ToString("N0")</span>
                                     }
                                     else
                                     {

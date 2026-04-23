@@ -271,11 +271,14 @@ public class GerenciaService
 
         string[] orderedColumns =
         {
-            "MINI AXIALES",
-            "FOTOLOGICOS",
-            "OPB LATERAL",
-            "LATERAL SENSOR SIN OPB",
-            "OTROS"
+            "LATERAL LED",
+            "LATERAL SENSOR",
+            "LATERAL OPB",
+            "MINI AXIAL",
+            "MINI AXIAL OPB",
+            "MAXI AXIAL",
+            "FOTOLOGICO",
+            "PHOTO OPBS"
         };
 
         var orderedLocations = new[]
@@ -325,13 +328,17 @@ public class GerenciaService
                     ELSE NULL
                 END AS normalized_location,
                 CASE
-                    WHEN UPPER(f.name) = 'MINI AXIALES' THEN 'MINI AXIALES'
-                    WHEN UPPER(f.name) = 'FOTOLOGICOS' THEN 'FOTOLOGICOS'
-                    WHEN UPPER(f.name) = 'LATERAL SENSOR' AND UPPER(sf.name) LIKE '%OPB%' THEN 'OPB LATERAL'
-                    WHEN UPPER(f.name) = 'LATERAL SENSOR' AND UPPER(sf.name) NOT LIKE '%OPB%' THEN 'LATERAL SENSOR SIN OPB'
-                    ELSE 'OTROS'
+                    WHEN UPPER(f.name) = 'LATERAL LED' THEN 'LATERAL LED'
+                    WHEN UPPER(f.name) = 'LATERAL SENSOR' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'LATERAL SENSOR'
+                    WHEN UPPER(f.name) = 'LATERAL SENSOR' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'LATERAL OPB'
+                    WHEN UPPER(f.name) = 'MINI AXIALES' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'MINI AXIAL'
+                    WHEN UPPER(f.name) = 'MINI AXIALES' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'MINI AXIAL OPB'
+                    WHEN UPPER(f.name) = 'MAXI AXIALES' THEN 'MAXI AXIAL'
+                    WHEN UPPER(f.name) = 'FOTOLOGICOS' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'FOTOLOGICO'
+                    WHEN UPPER(f.name) = 'FOTOLOGICOS' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'PHOTO OPBS'
+                    ELSE NULL
                 END AS inventory_column,
-                COALESCE(SUM(COALESCE(last_qty.qty_in, 0)), 0) AS qty
+                COALESCE(SUM(COALESCE(last_qty.qty_in, 0)), 0) AS qty_in
             FROM wip_item wip
             JOIN work_order wo ON wo.id = wip.wo_order_id
             JOIN product p ON p.id = wo.product_id
@@ -361,11 +368,17 @@ public class GerenciaService
 
             var location = rd.GetString("normalized_location").Trim();
             var column = rd.GetString("inventory_column").Trim();
-            var qty = Convert.ToInt32(rd.GetValue(rd.GetOrdinal("qty")));
+            var qty = rd.GetInt32("qty_in");
 
             var row = vm.Rows.FirstOrDefault(r => r.LocationName.Equals(location, StringComparison.OrdinalIgnoreCase));
-            if (row is null || !row.PiecesByColumn.ContainsKey(column))
+            if (row is null)
                 continue;
+
+            if (!vm.Columns.Contains(column, StringComparer.Ordinal))
+                continue;
+
+            if (!row.PiecesByColumn.ContainsKey(column))
+                row.PiecesByColumn[column] = 0;
 
             row.PiecesByColumn[column] += qty;
         }
@@ -393,8 +406,12 @@ public class GerenciaService
             OrdersOpenedFromDate = null
         };
 
-        var isOpbColumn = vm.FamilyGroup.StartsWith("OPB ", StringComparison.OrdinalIgnoreCase);
-        var baseFamily = NormalizeFamilyAlias(isOpbColumn ? vm.FamilyGroup[4..].Trim() : vm.FamilyGroup);
+        var normalizedFamilyGroup = vm.FamilyGroup.Trim().ToUpperInvariant();
+        var isOpbColumn =
+            normalizedFamilyGroup.StartsWith("OPB ", StringComparison.OrdinalIgnoreCase) ||
+            normalizedFamilyGroup.EndsWith(" OPB", StringComparison.OrdinalIgnoreCase) ||
+            normalizedFamilyGroup.Contains("PHOTO OPBS", StringComparison.OrdinalIgnoreCase);
+        var baseFamily = NormalizeFamilyAlias(vm.FamilyGroup);
 
         using var cn = new MySqlConnection(_conn);
         cn.Open();
@@ -478,12 +495,18 @@ public class GerenciaService
     private static string NormalizeFamilyAlias(string baseFamily)
     {
         var normalized = baseFamily.Trim().ToUpperInvariant();
+        if (normalized is "LATERAL OPB" or "LATERAL SENSOR")
+            return "LATERAL SENSOR";
         if (normalized is "LATERAL" or "LATERAL SENSOR SIN OPB")
             return "LATERAL SENSOR";
+        if (normalized is "MINI AXIAL OPB")
+            return "MINI AXIALES";
         if (normalized is "MINI AXIAL" or "MINI AXIALES" or "MINIAXIAL")
             return "MINI AXIALES";
         if (normalized is "MAXI AXIAL" or "MAXI AXIALES")
             return "MAXI AXIALES";
+        if (normalized is "PHOTO OPBS")
+            return "FOTOLOGICOS";
         if (normalized is "FOTOLOGICO" or "FOTOLOGICOS")
             return "FOTOLOGICOS";
         return baseFamily.Trim();
