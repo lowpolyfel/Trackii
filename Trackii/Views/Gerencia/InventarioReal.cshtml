@@ -85,6 +85,11 @@
             </table>
         </div>
     </section>
+
+    @if (ViewBag.DaysMap is Trackii.Models.Gerencia.RealInventory.RealInventoryDaysVm daysMap)
+    {
+        <partial name="_RealInventoryDaysMap" model="daysMap" />
+    }
 </div>
 
 @section Scripts {

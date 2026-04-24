@@ -79,6 +79,7 @@ builder.Services.AddScoped<GerenciaService>();
 builder.Services.AddScoped<InventoryMapService>();
 builder.Services.AddScoped<ProjectedInventoryService>();
 builder.Services.AddScoped<RealInventoryMapService>();
+builder.Services.AddScoped<RealInventoryDaysMapService>();
 builder.Services.AddScoped<GerenciaLobbyService>();
 builder.Services.AddScoped<Trackii.Services.Reports.ReportsService>();
 builder.Services.AddScoped<Trackii.Services.Engineering.UnregisteredPartsService>();

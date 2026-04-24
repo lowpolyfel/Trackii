@@ -11,12 +11,17 @@ public class GerenciaController : Controller
 {
     private readonly GerenciaService _svc;
     private readonly RealInventoryMapService _realInventoryMapService;
+    private readonly RealInventoryDaysMapService _realInventoryDaysMapService;
     private const string ViewBase = "~/Views/Gerencia/";
 
-    public GerenciaController(GerenciaService svc, RealInventoryMapService realInventoryMapService)
+    public GerenciaController(
+        GerenciaService svc,
+        RealInventoryMapService realInventoryMapService,
+        RealInventoryDaysMapService realInventoryDaysMapService)
     {
         _svc = svc;
         _realInventoryMapService = realInventoryMapService;
+        _realInventoryDaysMapService = realInventoryDaysMapService;
     }
 
     [HttpGet("")]
@@ -35,6 +40,8 @@ public class GerenciaController : Controller
     public IActionResult InventarioReal()
     {
         var vm = _realInventoryMapService.GetMap();
+        var daysVm = _realInventoryDaysMapService.BuildDaysMap(vm);
+        ViewBag.DaysMap = daysVm;
         return View($"{ViewBase}InventarioReal.cshtml", vm);
     }
 

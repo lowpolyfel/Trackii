@@ -1,0 +1,77 @@
+@model Trackii.Models.Gerencia.RealInventory.RealInventoryDaysVm
+
+<section class="card apple-card real-inventory-card mt-4">
+    <div class="card-heading">
+        <h3>Inventario por días operativos</h3>
+    </div>
+    <p class="subtitle mb-3">
+        Los días son buckets operativos, no fechas ni días calendario. Las cantidades se agrupan desde el mapa de inventario por localidad.
+    </p>
+    <p class="subtitle mb-3"><strong>El total de este mapa excluye Almacen visual.</strong></p>
+
+    @if (Model.ValidationWarnings.Any())
+    {
+        <div class="alert alert-warning mb-3" role="alert">
+            <strong>Validación:</strong>
+            <ul class="mb-0">
+                @foreach (var warning in Model.ValidationWarnings)
+                {
+                    <li>@warning</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="table-wrapper real-inventory-table-wrapper">
+        <table class="table real-inventory-table">
+            <thead>
+                <tr>
+                    <th>Familia/Subfamilia</th>
+                    @foreach (var day in Model.DayColumns)
+                    {
+                        <th class="text-end">@day</th>
+                    }
+                    <th class="text-end total-column">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td class="location-cell">@row.FamilyGroup</td>
+                        @foreach (var day in Model.DayColumns)
+                        {
+                            row.PiecesByDay.TryGetValue(day, out var qty);
+                            <td class="text-end @(qty.HasValue && qty.Value == 0 ? "is-zero" : string.Empty)">
+                                @if (!qty.HasValue)
+                                {
+                                    <span>&nbsp;</span>
+                                }
+                                else if (qty.Value == 0)
+                                {
+                                    <span>0</span>
+                                }
+                                else
+                                {
+                                    <span>@qty.Value.ToString("N0")</span>
+                                }
+                            </td>
+                        }
+                        <td class="text-end total-column">@row.TotalPieces.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th>TOTAL GENERAL</th>
+                    @foreach (var day in Model.DayColumns)
+                    {
+                        var totalByDay = Model.TotalsByDay.TryGetValue(day, out var total) ? total : 0;
+                        <th class="text-end">@totalByDay.ToString("N0")</th>
+                    }
+                    <th class="text-end total-column">@Model.GrandTotalPieces.ToString("N0")</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</section>
