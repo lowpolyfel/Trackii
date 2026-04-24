@@ -495,20 +495,29 @@ public class GerenciaService
     private static string NormalizeFamilyAlias(string baseFamily)
     {
         var normalized = baseFamily.Trim().ToUpperInvariant();
-        if (normalized is "LATERAL OPB" or "LATERAL SENSOR")
+
+        if (normalized is "LATERAL OPB" or "OPB LATERAL")
+            return "LATERAL LED";
+
+        if (normalized is "LATERAL SENSOR" or "LATERAL" or "LATERAL SENSOR SIN OPB")
             return "LATERAL SENSOR";
-        if (normalized is "LATERAL" or "LATERAL SENSOR SIN OPB")
-            return "LATERAL SENSOR";
-        if (normalized is "MINI AXIAL OPB")
+
+        if (normalized is "MINI AXIAL OPB" or "OPB MINI AXIAL")
             return "MINI AXIALES";
+
         if (normalized is "MINI AXIAL" or "MINI AXIALES" or "MINIAXIAL")
             return "MINI AXIALES";
+
         if (normalized is "MAXI AXIAL" or "MAXI AXIALES")
             return "MAXI AXIALES";
-        if (normalized is "PHOTO OPBS")
+
+        if (normalized is "PHOTO OPBS" or "OPB FOTO")
             return "FOTOLOGICOS";
+
         if (normalized is "FOTOLOGICO" or "FOTOLOGICOS")
             return "FOTOLOGICOS";
+        
+
         return baseFamily.Trim();
     }
 
