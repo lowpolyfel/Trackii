@@ -1,0 +1,83 @@
+@model Trackii.Models.Gerencia.RealInventory.RealInventoryCellDetailVm
+@{
+    ViewData["Title"] = "Detalle de inventario real";
+}
+
+<div class="dashboard">
+    <div class="page-header error-causes-header">
+        <div>
+            <h2>@Model.Location · @Model.FamilyGroup</h2>
+            <p class="subtitle">Detalle por WO en la localidad actual (sin proyección a siguiente operación).</p>
+        </div>
+        <a asp-action="InventarioReal" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver a inventario real</a>
+    </div>
+
+    <section class="error-kpis" aria-label="KPIs detalle inventario real">
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Órdenes</span>
+            <strong class="kpi-value">@Model.Orders.Count.ToString("N0")</strong>
+            <small>Total de WIP activos.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Piezas</span>
+            <strong class="kpi-value">@Model.TotalQty.ToString("N0")</strong>
+            <small>Suma de la celda seleccionada.</small>
+        </article>
+    </section>
+
+    <div class="card apple-card error-causes-card">
+        <div class="card-heading">
+            <h3>Detalle de inventario real</h3>
+            <span class="chip">WO + WIP</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>WO</th>
+                        <th>Producto</th>
+                        <th>Familia</th>
+                        <th>Subfamilia</th>
+                        <th>Localidad actual</th>
+                        <th>Cantidad</th>
+                        <th>Status WO</th>
+                        <th>Status WIP</th>
+                        <th>Último movimiento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Orders.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="empty">No hay WIP activo para la combinación seleccionada.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var row in Model.Orders)
+                        {
+                            <tr>
+                                <td>@row.WoNumber</td>
+                                <td>@row.Product</td>
+                                <td>@row.Family</td>
+                                <td>@row.Subfamily</td>
+                                <td>@row.CurrentLocation</td>
+                                <td>@row.Qty.ToString("N0")</td>
+                                <td><span class="chip chip-muted">@UiTextHelper.NormalizeStatus(row.WoStatus)</span></td>
+                                <td><span class="chip chip-muted">@UiTextHelper.NormalizeStatus(row.WipStatus)</span></td>
+                                <td>@(row.LastMovementAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="5">TOTAL</th>
+                        <th>@Model.TotalQty.ToString("N0")</th>
+                        <th colspan="3"></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
