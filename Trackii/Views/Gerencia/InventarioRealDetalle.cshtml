@@ -1,6 +1,20 @@
 @model Trackii.Models.Gerencia.RealInventory.RealInventoryCellDetailVm
 @{
     ViewData["Title"] = "Detalle de inventario real";
+    var now = DateTime.Now;
+    var rowsWithDays = Model.Orders
+        .Select(o => new
+        {
+            Order = o,
+            DaysSinceLastStep = o.LastMovementAt.HasValue
+                ? Math.Max(0, (int)Math.Floor((now - o.LastMovementAt.Value).TotalDays))
+                : (int?)null
+        })
+        .ToList();
+    var avgDays = rowsWithDays.Where(x => x.DaysSinceLastStep.HasValue).Select(x => x.DaysSinceLastStep!.Value).DefaultIfEmpty(0).Average();
+    var maxDays = rowsWithDays.Where(x => x.DaysSinceLastStep.HasValue).Select(x => x.DaysSinceLastStep!.Value).DefaultIfEmpty(0).Max();
+    var topQty = rowsWithDays.Select(x => x.Order.Qty).DefaultIfEmpty(1).Max();
+    var topBars = rowsWithDays.OrderByDescending(x => x.Order.Qty).Take(5).ToList();
 }
 
 <div class="dashboard">
@@ -23,12 +37,52 @@
             <strong class="kpi-value">@Model.TotalQty.ToString("N0")</strong>
             <small>Suma de la celda seleccionada.</small>
         </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Promedio días</span>
+            <strong class="kpi-value">@avgDays.ToString("N1")</strong>
+            <small>Días desde el último paso registrado.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Mayor antigüedad</span>
+            <strong class="kpi-value">@maxDays.ToString("N0")</strong>
+            <small>Orden con más días sin nuevo paso.</small>
+        </article>
+    </section>
+
+    <section class="card apple-card error-causes-card mb-4">
+        <div class="card-heading">
+            <h3>Panel dinámico · Top cantidades</h3>
+            <span class="chip">Actualizable</span>
+        </div>
+        <div class="trend-bars">
+            @if (!topBars.Any())
+            {
+                <p class="subtitle">Sin datos para graficar.</p>
+            }
+            else
+            {
+                @foreach (var item in topBars)
+                {
+                    var width = topQty > 0 ? (item.Order.Qty * 100.0 / topQty) : 0;
+                    <div class="trend-row">
+                        <div class="trend-label">
+                            <strong>@item.Order.WoNumber</strong>
+                            <small>@item.Order.Product</small>
+                        </div>
+                        <div class="trend-bar-shell">
+                            <div class="trend-bar-fill" style="width:@width.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                        </div>
+                        <div class="trend-value">@item.Order.Qty.ToString("N0")</div>
+                    </div>
+                }
+            }
+        </div>
     </section>
 
     <div class="card apple-card error-causes-card">
         <div class="card-heading">
             <h3>Detalle de inventario real</h3>
-            <span class="chip">WO + WIP</span>
+            <span class="chip">Vista ejecutiva</span>
         </div>
         <div class="table-wrapper">
             <table class="table">
@@ -37,47 +91,87 @@
                         <th>WO</th>
                         <th>Producto</th>
                         <th>Familia</th>
-                        <th>Subfamilia</th>
                         <th>Localidad destino</th>
                         <th>Cantidad</th>
-                        <th>Status WO</th>
-                        <th>Status WIP</th>
-                        <th>Último movimiento</th>
+                        <th>Estatus</th>
+                        <th>Días de su último paso</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (!Model.Orders.Any())
+                    @if (!rowsWithDays.Any())
                     {
                         <tr>
-                            <td colspan="9" class="empty">No hay WIP activo para la combinación seleccionada.</td>
+                            <td colspan="7" class="empty">No hay WIP activo para la combinación seleccionada.</td>
                         </tr>
                     }
                     else
                     {
-                        @foreach (var row in Model.Orders)
+                        @foreach (var row in rowsWithDays)
                         {
                             <tr>
-                                <td>@row.WoNumber</td>
-                                <td>@row.Product</td>
-                                <td>@row.Family</td>
-                                <td>@row.Subfamily</td>
-                                <td>@row.CurrentLocation</td>
-                                <td>@row.Qty.ToString("N0")</td>
-                                <td><span class="chip chip-muted">@UiTextHelper.NormalizeStatus(row.WoStatus)</span></td>
-                                <td><span class="chip chip-muted">@UiTextHelper.NormalizeStatus(row.WipStatus)</span></td>
-                                <td>@(row.LastMovementAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                <td>@row.Order.WoNumber</td>
+                                <td>@row.Order.Product</td>
+                                <td>@row.Order.Family</td>
+                                <td>@row.Order.CurrentLocation</td>
+                                <td>@row.Order.Qty.ToString("N0")</td>
+                                <td>
+                                    <span class="chip chip-success status-out">
+                                        SALIÓ DE ESTA LOCALIDAD (@row.Order.CurrentLocation)
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (row.DaysSinceLastStep.HasValue)
+                                    {
+                                        <span class="chip chip-muted">@row.DaysSinceLastStep.Value día(s)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
                             </tr>
                         }
                     }
                 </tbody>
                 <tfoot>
                     <tr>
-                        <th colspan="5">TOTAL</th>
+                        <th colspan="4">TOTAL</th>
                         <th>@Model.TotalQty.ToString("N0")</th>
-                        <th colspan="3"></th>
+                        <th colspan="2"></th>
                     </tr>
                 </tfoot>
             </table>
         </div>
     </div>
 </div>
+
+<style>
+    .status-out {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+        font-weight: 700;
+    }
+    .trend-bars { display: grid; gap: 10px; }
+    .trend-row { display: grid; grid-template-columns: 220px 1fr 90px; align-items: center; gap: 12px; }
+    .trend-label { display: flex; flex-direction: column; }
+    .trend-bar-shell {
+        width: 100%;
+        background: #e2e8f0;
+        border-radius: 999px;
+        height: 14px;
+        overflow: hidden;
+    }
+    .trend-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #60a5fa, #2563eb);
+        animation: grow-bar .8s ease;
+    }
+    .trend-value { text-align: right; font-weight: 700; }
+    @@keyframes grow-bar { from { width: 0; } to { width: 100%; } }
+    @@media (max-width: 900px) {
+        .trend-row { grid-template-columns: 1fr; gap: 6px; }
+        .trend-value { text-align: left; }
+    }
+</style>
