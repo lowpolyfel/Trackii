@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trackii.Services;
+using Trackii.Services.Gerencia.RealInventory;
 
 namespace Trackii.Controllers;
 
@@ -9,13 +10,18 @@ namespace Trackii.Controllers;
 public class GerenciaController : Controller
 {
     private readonly GerenciaService _svc;
-    private readonly ProjectedInventoryService _projectedInventoryService;
+    private readonly RealInventoryMapService _realInventoryMapService;
+    private readonly RealInventoryDaysMapService _realInventoryDaysMapService;
     private const string ViewBase = "~/Views/Gerencia/";
 
-    public GerenciaController(GerenciaService svc, ProjectedInventoryService projectedInventoryService)
+    public GerenciaController(
+        GerenciaService svc,
+        RealInventoryMapService realInventoryMapService,
+        RealInventoryDaysMapService realInventoryDaysMapService)
     {
         _svc = svc;
-        _projectedInventoryService = projectedInventoryService;
+        _realInventoryMapService = realInventoryMapService;
+        _realInventoryDaysMapService = realInventoryDaysMapService;
     }
 
     [HttpGet("")]
@@ -33,8 +39,17 @@ public class GerenciaController : Controller
     [HttpGet("InventarioReal")]
     public IActionResult InventarioReal()
     {
-        var vm = _projectedInventoryService.GetProjectedInventoryMap();
+        var vm = _realInventoryMapService.GetMap();
+        var daysVm = _realInventoryDaysMapService.BuildDaysMap(vm);
+        ViewBag.DaysMap = daysVm;
         return View($"{ViewBase}InventarioReal.cshtml", vm);
+    }
+
+    [HttpGet("InventarioRealDetalle")]
+    public IActionResult InventarioRealDetalle(string location, string familyGroup)
+    {
+        var vm = _realInventoryMapService.GetCellDetail(location, familyGroup);
+        return View($"{ViewBase}InventarioRealDetalle.cshtml", vm);
     }
 
     [HttpGet("MapaDiscretos")]
