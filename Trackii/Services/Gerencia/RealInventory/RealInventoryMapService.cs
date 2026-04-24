@@ -50,7 +50,7 @@ public class RealInventoryMapService
 
         using var cmd = new MySqlCommand($@"
             SELECT
-                {BuildInventoryLocationSql()} AS normalized_location,
+                {BuildDestinationLocationSql("destination_l")} AS normalized_location,
                 {BuildFamilyGroupSql()} AS family_group,
                 COALESCE(SUM(COALESCE(last_qty.qty_in, 0)), 0) AS qty
             FROM wip_item wip
@@ -58,14 +58,8 @@ public class RealInventoryMapService
             JOIN product p ON p.id = wo.product_id
             JOIN subfamily sf ON sf.id = p.id_subfamily
             JOIN family f ON f.id = sf.id_family
-            LEFT JOIN route_step rs ON rs.id = wip.current_step_id
-            LEFT JOIN location l ON l.id = rs.location_id
-            LEFT JOIN route_step next_rs
-                ON next_rs.route_id = rs.route_id
-               AND next_rs.step_number = rs.step_number + 1
-            LEFT JOIN location next_l ON next_l.id = next_rs.location_id
-            LEFT JOIN (
-                SELECT wse.wip_item_id, wse.qty_in
+            JOIN (
+                SELECT wse.wip_item_id, wse.route_step_id, wse.qty_in, wse.create_at
                 FROM wip_step_execution wse
                 INNER JOIN (
                     SELECT wip_item_id, MAX(id) AS max_wse_id
@@ -73,6 +67,11 @@ public class RealInventoryMapService
                     GROUP BY wip_item_id
                 ) latest ON latest.max_wse_id = wse.id
             ) last_qty ON last_qty.wip_item_id = wip.id
+            LEFT JOIN route_step executed_rs ON executed_rs.id = last_qty.route_step_id
+            LEFT JOIN route_step next_rs
+                ON next_rs.route_id = executed_rs.route_id
+               AND next_rs.step_number = executed_rs.step_number + 1
+            LEFT JOIN location destination_l ON destination_l.id = next_rs.location_id
             WHERE wo.active = 1
               AND wo.status IN ('OPEN', 'IN_PROGRESS', 'HOLD')
               AND wip.status = 'ACTIVE'
@@ -136,25 +135,19 @@ public class RealInventoryMapService
                     p.part_number,
                     COALESCE(f.name, 'Sin familia') AS family_name,
                     COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name,
-                    {BuildInventoryLocationSql()} AS normalized_location,
+                    {BuildDestinationLocationSql("destination_l")} AS normalized_location,
                     {BuildFamilyGroupSql()} AS family_group,
                     COALESCE(last_qty.qty_in, 0) AS current_qty,
                     wo.status AS wo_status,
                     wip.status AS wip_status,
-                    last_qty.last_movement_at
+                    last_qty.create_at AS last_movement_at
                 FROM wip_item wip
                 JOIN work_order wo ON wo.id = wip.wo_order_id
                 JOIN product p ON p.id = wo.product_id
                 JOIN subfamily sf ON sf.id = p.id_subfamily
                 JOIN family f ON f.id = sf.id_family
-                LEFT JOIN route_step rs ON rs.id = wip.current_step_id
-                LEFT JOIN location l ON l.id = rs.location_id
-                LEFT JOIN route_step next_rs
-                    ON next_rs.route_id = rs.route_id
-                   AND next_rs.step_number = rs.step_number + 1
-                LEFT JOIN location next_l ON next_l.id = next_rs.location_id
-                LEFT JOIN (
-                    SELECT wse.wip_item_id, wse.qty_in, wse.create_at AS last_movement_at
+                JOIN (
+                    SELECT wse.wip_item_id, wse.route_step_id, wse.qty_in, wse.create_at
                     FROM wip_step_execution wse
                     INNER JOIN (
                         SELECT wip_item_id, MAX(id) AS max_wse_id
@@ -162,6 +155,11 @@ public class RealInventoryMapService
                         GROUP BY wip_item_id
                     ) latest ON latest.max_wse_id = wse.id
                 ) last_qty ON last_qty.wip_item_id = wip.id
+                LEFT JOIN route_step executed_rs ON executed_rs.id = last_qty.route_step_id
+                LEFT JOIN route_step next_rs
+                    ON next_rs.route_id = executed_rs.route_id
+                   AND next_rs.step_number = executed_rs.step_number + 1
+                LEFT JOIN location destination_l ON destination_l.id = next_rs.location_id
                 WHERE wo.active = 1
                   AND wo.status IN ('OPEN', 'IN_PROGRESS', 'HOLD')
                   AND wip.status = 'ACTIVE'
@@ -195,24 +193,16 @@ public class RealInventoryMapService
         return vm;
     }
 
-    private static string BuildInventoryLocationSql()
+    private static string BuildDestinationLocationSql(string locationAlias)
     {
         return $@"
             CASE
-                WHEN (
-                        COALESCE(l.name, '') LIKE '%Emp%'
-                     )
-                     AND (
-                        COALESCE(next_l.name, '') LIKE '%QC%'
-                        OR COALESCE(next_l.name, '') LIKE '%Q.C.%'
-                        OR COALESCE(next_l.name, '') LIKE '%Calidad%'
-                     )
-                THEN 'QC'
-                ELSE {BuildNormalizedLocationSql("l")}
+                WHEN {locationAlias}.id IS NULL THEN 'Almacen'
+                ELSE {BuildNormalizedLocationSql(locationAlias, "NULL")}
             END";
     }
 
-    private static string BuildNormalizedLocationSql(string locationAlias)
+    private static string BuildNormalizedLocationSql(string locationAlias, string elseValue = "'Almacen'")
     {
         return $@"
             CASE
@@ -230,7 +220,7 @@ public class RealInventoryMapService
                     OR COALESCE({locationAlias}.name, '') LIKE '%Calidad%' THEN 'QC'
                 WHEN COALESCE({locationAlias}.name, '') LIKE '%Almacen%'
                     OR COALESCE({locationAlias}.name, '') LIKE '%Almacén%' THEN 'Almacen'
-                ELSE 'Almacen'
+                ELSE {elseValue}
             END";
     }
 
