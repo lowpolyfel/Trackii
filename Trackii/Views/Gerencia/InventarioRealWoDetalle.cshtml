@@ -1,0 +1,132 @@
+@model Trackii.Models.Gerencia.RealInventory.RealInventoryWoDetailVm
+@{
+    ViewData["Title"] = "Detalle extendido WO";
+}
+
+<div class="dashboard">
+    <div class="page-header error-causes-header">
+        <div>
+            <h2>WO @Model.WoNumber</h2>
+            <p class="subtitle">Detalle extendido de trazabilidad, tiempos, flujo de ruta y eventos por paso.</p>
+        </div>
+        <a asp-action="InventarioRealDetalle"
+           asp-route-location="@Model.ReturnLocation"
+           asp-route-familyGroup="@Model.ReturnFamilyGroup"
+           class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Volver al detalle
+        </a>
+    </div>
+
+    <section class="error-kpis">
+        <article class="kpi-highlight apple-card error-kpi-card"><span class="kpi-label">Producto</span><strong class="kpi-value">@Model.Product</strong></article>
+        <article class="kpi-highlight apple-card error-kpi-card"><span class="kpi-label">Familia</span><strong class="kpi-value">@Model.Family</strong></article>
+        <article class="kpi-highlight apple-card error-kpi-card"><span class="kpi-label">Subfamilia</span><strong class="kpi-value">@Model.Subfamily</strong></article>
+        <article class="kpi-highlight apple-card error-kpi-card"><span class="kpi-label">Días desde paso 1</span><strong class="kpi-value">@Model.DaysSinceFirstStep</strong></article>
+        <article class="kpi-highlight apple-card error-kpi-card"><span class="kpi-label">Días sin moverse</span><strong class="kpi-value">@Model.DaysSinceLastStep</strong></article>
+        <article class="kpi-highlight apple-card error-kpi-card"><span class="kpi-label">Scrap acumulado</span><strong class="kpi-value">@Model.TotalQtyScrap.ToString("N0")</strong></article>
+    </section>
+
+    <section class="card apple-card error-causes-card mb-4">
+        <div class="card-heading">
+            <h3>Resumen de la WO</h3>
+            <span class="chip">Status WO: @UiTextHelper.NormalizeStatus(Model.WoStatus)</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Primer paso</th>
+                        <th>Último paso</th>
+                        <th>Piezas registradas</th>
+                        <th>Piezas perdidas (scrap)</th>
+                        <th>Status WIP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>@(Model.FirstStepAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                        <td>@(Model.LastStepAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                        <td>@Model.TotalQtyIn.ToString("N0")</td>
+                        <td>@Model.TotalQtyScrap.ToString("N0")</td>
+                        <td>@UiTextHelper.NormalizeStatus(Model.WipStatus)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card apple-card error-causes-card">
+        <div class="card-heading">
+            <h3>Mapa de flujo completo (clic por paso)</h3>
+            <span class="chip">Route Flow</span>
+        </div>
+        @if (!Model.RouteSteps.Any())
+        {
+            <p class="subtitle">No se encontraron pasos de ruta para esta WO.</p>
+        }
+        else
+        {
+            <div class="flow-steps">
+                @foreach (var step in Model.RouteSteps)
+                {
+                    <details class="flow-step">
+                        <summary>
+                            <span class="step-number">Paso @step.StepNumber</span>
+                            <span class="step-location">@step.LocationName</span>
+                            <span class="step-chip">Qty: @step.QtyIn.ToString("N0")</span>
+                            <span class="step-chip scrap">Scrap: @step.QtyScrap.ToString("N0")</span>
+                            <span class="step-chip">Último: @(step.LastExecutionAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</span>
+                        </summary>
+                        <div class="table-wrapper mt-2">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Evento</th>
+                                        <th>Cantidad</th>
+                                        <th>Código error</th>
+                                        <th>Descripción</th>
+                                        <th>Comentario</th>
+                                        <th>Usuario</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (!step.Events.Any())
+                                    {
+                                        <tr><td colspan="7" class="empty">Sin eventos en este paso.</td></tr>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var ev in step.Events)
+                                        {
+                                            <tr>
+                                                <td>@ev.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                                <td>@ev.EventType</td>
+                                                <td>@ev.Qty.ToString("N0")</td>
+                                                <td>@(ev.ErrorCode ?? "-")</td>
+                                                <td>@(ev.ErrorDescription ?? "-")</td>
+                                                <td>@(ev.Comments ?? "-")</td>
+                                                <td>@(ev.UserName ?? "-")</td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+<style>
+    .flow-steps { display: grid; gap: 12px; }
+    .flow-step { border: 1px solid #dbe4f0; border-radius: 14px; padding: 8px 12px; background: #f8fafc; }
+    .flow-step summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; list-style: none; }
+    .flow-step summary::-webkit-details-marker { display: none; }
+    .step-number { font-weight: 700; color: #1d4ed8; }
+    .step-location { font-weight: 600; }
+    .step-chip { background: #e2e8f0; border-radius: 999px; padding: 4px 10px; font-size: .8rem; }
+    .step-chip.scrap { background: #fee2e2; color: #991b1b; }
+</style>

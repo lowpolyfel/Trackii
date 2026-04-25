@@ -35,6 +35,7 @@ public class RealInventoryOrderRowVm
     public string Product { get; set; } = string.Empty;
     public string Family { get; set; } = string.Empty;
     public string Subfamily { get; set; } = string.Empty;
+    public string SourceLocation { get; set; } = string.Empty;
     public string CurrentLocation { get; set; } = string.Empty;
     public int Qty { get; set; }
     public string WoStatus { get; set; } = string.Empty;

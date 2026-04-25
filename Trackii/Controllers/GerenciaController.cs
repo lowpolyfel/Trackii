@@ -52,6 +52,13 @@ public class GerenciaController : Controller
         return View($"{ViewBase}InventarioRealDetalle.cshtml", vm);
     }
 
+    [HttpGet("InventarioRealWoDetalle")]
+    public IActionResult InventarioRealWoDetalle(string woNumber, string? location, string? familyGroup)
+    {
+        var vm = _realInventoryMapService.GetWorkOrderDetail(woNumber, location, familyGroup);
+        return View($"{ViewBase}InventarioRealWoDetalle.cshtml", vm);
+    }
+
     [HttpGet("MapaDiscretos")]
     public IActionResult DiscreteMap(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, string? sortBy, string? metricView, string? selectedSubfamily)
     {

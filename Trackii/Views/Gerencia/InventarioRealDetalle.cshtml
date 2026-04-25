@@ -13,8 +13,8 @@
         .ToList();
     var avgDays = rowsWithDays.Where(x => x.DaysSinceLastStep.HasValue).Select(x => x.DaysSinceLastStep!.Value).DefaultIfEmpty(0).Average();
     var maxDays = rowsWithDays.Where(x => x.DaysSinceLastStep.HasValue).Select(x => x.DaysSinceLastStep!.Value).DefaultIfEmpty(0).Max();
-    var topQty = rowsWithDays.Select(x => x.Order.Qty).DefaultIfEmpty(1).Max();
-    var topBars = rowsWithDays.OrderByDescending(x => x.Order.Qty).Take(5).ToList();
+    var onTimeOrders = rowsWithDays.Count(x => x.DaysSinceLastStep.HasValue && x.DaysSinceLastStep.Value <= 2);
+    var delayedOrders = rowsWithDays.Count(x => x.DaysSinceLastStep.HasValue && x.DaysSinceLastStep.Value > 2);
 }
 
 <div class="dashboard">
@@ -51,31 +51,25 @@
 
     <section class="card apple-card error-causes-card mb-4">
         <div class="card-heading">
-            <h3>Panel dinámico · Top cantidades</h3>
-            <span class="chip">Actualizable</span>
+            <h3>Panel de seguimiento</h3>
+            <span class="chip">En tránsito</span>
         </div>
-        <div class="trend-bars">
-            @if (!topBars.Any())
-            {
-                <p class="subtitle">Sin datos para graficar.</p>
-            }
-            else
-            {
-                @foreach (var item in topBars)
-                {
-                    var width = topQty > 0 ? (item.Order.Qty * 100.0 / topQty) : 0;
-                    <div class="trend-row">
-                        <div class="trend-label">
-                            <strong>@item.Order.WoNumber</strong>
-                            <small>@item.Order.Product</small>
-                        </div>
-                        <div class="trend-bar-shell">
-                            <div class="trend-bar-fill" style="width:@width.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></div>
-                        </div>
-                        <div class="trend-value">@item.Order.Qty.ToString("N0")</div>
-                    </div>
-                }
-            }
+        <div class="status-panels">
+            <article class="status-panel good">
+                <h4>Fluyendo (≤ 2 días)</h4>
+                <strong>@onTimeOrders</strong>
+                <small>Órdenes en ritmo esperado.</small>
+            </article>
+            <article class="status-panel warn">
+                <h4>En observación (&gt; 2 días)</h4>
+                <strong>@delayedOrders</strong>
+                <small>Requiere seguimiento de avance.</small>
+            </article>
+            <article class="status-panel info">
+                <h4>Destino objetivo</h4>
+                <strong>@Model.Location</strong>
+                <small>Próxima localidad operativa.</small>
+            </article>
         </div>
     </section>
 
@@ -109,14 +103,23 @@
                         @foreach (var row in rowsWithDays)
                         {
                             <tr>
-                                <td>@row.Order.WoNumber</td>
+                                <td>
+                                    <a asp-action="InventarioRealWoDetalle"
+                                       asp-route-woNumber="@row.Order.WoNumber"
+                                       asp-route-location="@Model.Location"
+                                       asp-route-familyGroup="@Model.FamilyGroup"
+                                       class="inventory-link">
+                                        @row.Order.WoNumber
+                                    </a>
+                                </td>
                                 <td>@row.Order.Product</td>
                                 <td>@row.Order.Family</td>
                                 <td>@row.Order.CurrentLocation</td>
                                 <td>@row.Order.Qty.ToString("N0")</td>
                                 <td>
                                     <span class="chip chip-success status-out">
-                                        SALIÓ DE ESTA LOCALIDAD (@row.Order.CurrentLocation)
+                                        SALIÓ DE (@row.Order.SourceLocation) → VA PARA @row.Order.CurrentLocation.
+                                        Se espera arribo a @Model.Location en próximos días.
                                     </span>
                                 </td>
                                 <td>
@@ -152,26 +155,14 @@
         border: 1px solid #6ee7b7;
         font-weight: 700;
     }
-    .trend-bars { display: grid; gap: 10px; }
-    .trend-row { display: grid; grid-template-columns: 220px 1fr 90px; align-items: center; gap: 12px; }
-    .trend-label { display: flex; flex-direction: column; }
-    .trend-bar-shell {
-        width: 100%;
-        background: #e2e8f0;
-        border-radius: 999px;
-        height: 14px;
-        overflow: hidden;
-    }
-    .trend-bar-fill {
-        height: 100%;
-        border-radius: 999px;
-        background: linear-gradient(90deg, #60a5fa, #2563eb);
-        animation: grow-bar .8s ease;
-    }
-    .trend-value { text-align: right; font-weight: 700; }
-    @@keyframes grow-bar { from { width: 0; } to { width: 100%; } }
+    .status-panels { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px; }
+    .status-panel { border-radius: 14px; padding: 14px; border: 1px solid #dbe4f0; background: #f8fafc; }
+    .status-panel h4 { margin: 0 0 6px; font-size: .9rem; text-transform: uppercase; letter-spacing: .04em; }
+    .status-panel strong { font-size: 1.5rem; line-height: 1; display: block; margin-bottom: 6px; }
+    .status-panel.good { background: #ecfdf5; border-color: #a7f3d0; }
+    .status-panel.warn { background: #fff7ed; border-color: #fdba74; }
+    .status-panel.info { background: #eff6ff; border-color: #93c5fd; }
     @@media (max-width: 900px) {
-        .trend-row { grid-template-columns: 1fr; gap: 6px; }
-        .trend-value { text-align: left; }
+        .status-panels { grid-template-columns: 1fr; }
     }
 </style>

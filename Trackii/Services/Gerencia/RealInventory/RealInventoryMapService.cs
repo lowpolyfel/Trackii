@@ -136,6 +136,7 @@ public class RealInventoryMapService
                 q.part_number,
                 q.family_name,
                 q.subfamily_name,
+                q.source_location,
                 q.normalized_location,
                 q.current_qty,
                 q.wo_status,
@@ -147,6 +148,7 @@ public class RealInventoryMapService
                     p.part_number,
                     COALESCE(f.name, 'Sin familia') AS family_name,
                     COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name,
+                    {BuildNormalizedLocationSql("executed_l", "'Sin localidad'")} AS source_location,
                     {BuildDestinationLocationSql("next_rs", "destination_l", "executed_l")} AS normalized_location,
                     {BuildFamilyGroupSql()} AS family_group,
                     COALESCE(last_qty.qty_in, 0) AS current_qty,
@@ -206,11 +208,208 @@ public class RealInventoryMapService
                 Product = rd.GetString("part_number"),
                 Family = rd.GetString("family_name"),
                 Subfamily = rd.GetString("subfamily_name"),
+                SourceLocation = rd.GetString("source_location"),
                 CurrentLocation = rd.GetString("normalized_location"),
                 Qty = Convert.ToInt32(rd.GetInt64("current_qty")),
                 WoStatus = rd.GetString("wo_status"),
                 WipStatus = rd.GetString("wip_status"),
                 LastMovementAt = rd.IsDBNull(lastMovementOrdinal) ? null : rd.GetDateTime(lastMovementOrdinal)
+            });
+        }
+
+        return vm;
+    }
+
+    public RealInventoryWoDetailVm GetWorkOrderDetail(string woNumber, string? returnLocation, string? returnFamilyGroup)
+    {
+        var vm = new RealInventoryWoDetailVm
+        {
+            WoNumber = woNumber.Trim(),
+            ReturnLocation = string.IsNullOrWhiteSpace(returnLocation) ? null : returnLocation.Trim(),
+            ReturnFamilyGroup = string.IsNullOrWhiteSpace(returnFamilyGroup) ? null : returnFamilyGroup.Trim()
+        };
+
+        using var cn = new MySqlConnection(_conn);
+        cn.Open();
+
+        using (var summaryCmd = new MySqlCommand(@"
+            SELECT
+                wo.wo_number,
+                p.part_number,
+                COALESCE(f.name, 'Sin familia') AS family_name,
+                COALESCE(sf.name, 'Sin subfamilia') AS subfamily_name,
+                wo.status AS wo_status,
+                COALESCE(MAX(wip.status), 'N/A') AS wip_status,
+                MIN(wse.create_at) AS first_step_at,
+                MAX(wse.create_at) AS last_step_at,
+                COALESCE(SUM(wse.qty_in), 0) AS total_qty_in,
+                COALESCE(SUM(wse.qty_scrap), 0) AS total_qty_scrap
+            FROM work_order wo
+            JOIN product p ON p.id = wo.product_id
+            JOIN subfamily sf ON sf.id = p.id_subfamily
+            JOIN family f ON f.id = sf.id_family
+            LEFT JOIN wip_item wip ON wip.wo_order_id = wo.id
+            LEFT JOIN wip_step_execution wse ON wse.wip_item_id = wip.id
+            WHERE wo.wo_number = @wo
+            GROUP BY wo.wo_number, p.part_number, family_name, subfamily_name, wo.status", cn))
+        {
+            summaryCmd.Parameters.AddWithValue("@wo", vm.WoNumber);
+            using var rd = summaryCmd.ExecuteReader();
+            if (rd.Read())
+            {
+                var firstOrdinal = rd.GetOrdinal("first_step_at");
+                var lastOrdinal = rd.GetOrdinal("last_step_at");
+                vm.Product = rd.GetString("part_number");
+                vm.Family = rd.GetString("family_name");
+                vm.Subfamily = rd.GetString("subfamily_name");
+                vm.WoStatus = rd.GetString("wo_status");
+                vm.WipStatus = rd.GetString("wip_status");
+                vm.FirstStepAt = rd.IsDBNull(firstOrdinal) ? null : rd.GetDateTime(firstOrdinal);
+                vm.LastStepAt = rd.IsDBNull(lastOrdinal) ? null : rd.GetDateTime(lastOrdinal);
+                vm.TotalQtyIn = Convert.ToInt32(rd.GetInt64("total_qty_in"));
+                vm.TotalQtyScrap = Convert.ToInt32(rd.GetInt64("total_qty_scrap"));
+            }
+        }
+
+        var now = DateTime.Now;
+        vm.DaysSinceFirstStep = vm.FirstStepAt.HasValue ? Math.Max(0, (int)Math.Floor((now - vm.FirstStepAt.Value).TotalDays)) : 0;
+        vm.DaysSinceLastStep = vm.LastStepAt.HasValue ? Math.Max(0, (int)Math.Floor((now - vm.LastStepAt.Value).TotalDays)) : 0;
+
+        uint? routeId = null;
+        using (var routeCmd = new MySqlCommand(@"
+            SELECT rs.route_id
+            FROM wip_step_execution wse
+            JOIN wip_item wip ON wip.id = wse.wip_item_id
+            JOIN work_order wo ON wo.id = wip.wo_order_id
+            JOIN route_step rs ON rs.id = wse.route_step_id
+            WHERE wo.wo_number = @wo
+            ORDER BY wse.id DESC
+            LIMIT 1", cn))
+        {
+            routeCmd.Parameters.AddWithValue("@wo", vm.WoNumber);
+            var routeObj = routeCmd.ExecuteScalar();
+            if (routeObj is not null && routeObj != DBNull.Value)
+            {
+                routeId = Convert.ToUInt32(routeObj);
+            }
+        }
+
+        if (!routeId.HasValue)
+        {
+            return vm;
+        }
+
+        var stepsById = new Dictionary<uint, RealInventoryWoRouteStepVm>();
+        using (var stepsCmd = new MySqlCommand(@"
+            SELECT
+                rs.id AS route_step_id,
+                rs.step_number,
+                COALESCE(l.name, CONCAT('Paso ', rs.step_number)) AS location_name,
+                COALESCE(SUM(CASE WHEN wo.wo_number = @wo THEN wse.qty_in ELSE 0 END), 0) AS qty_in,
+                COALESCE(SUM(CASE WHEN wo.wo_number = @wo THEN wse.qty_scrap ELSE 0 END), 0) AS qty_scrap,
+                MAX(CASE WHEN wo.wo_number = @wo THEN wse.create_at ELSE NULL END) AS last_execution_at
+            FROM route_step rs
+            LEFT JOIN location l ON l.id = rs.location_id
+            LEFT JOIN wip_step_execution wse ON wse.route_step_id = rs.id
+            LEFT JOIN wip_item wip ON wip.id = wse.wip_item_id
+            LEFT JOIN work_order wo ON wo.id = wip.wo_order_id
+            WHERE rs.route_id = @routeId
+            GROUP BY rs.id, rs.step_number, location_name
+            ORDER BY rs.step_number", cn))
+        {
+            stepsCmd.Parameters.AddWithValue("@wo", vm.WoNumber);
+            stepsCmd.Parameters.AddWithValue("@routeId", routeId.Value);
+            using var rd = stepsCmd.ExecuteReader();
+            while (rd.Read())
+            {
+                var lastExecOrdinal = rd.GetOrdinal("last_execution_at");
+                var step = new RealInventoryWoRouteStepVm
+                {
+                    RouteStepId = rd.GetUInt32("route_step_id"),
+                    StepNumber = rd.GetInt32("step_number"),
+                    LocationName = rd.GetString("location_name"),
+                    QtyIn = Convert.ToInt32(rd.GetInt64("qty_in")),
+                    QtyScrap = Convert.ToInt32(rd.GetInt64("qty_scrap")),
+                    LastExecutionAt = rd.IsDBNull(lastExecOrdinal) ? null : rd.GetDateTime(lastExecOrdinal)
+                };
+                vm.RouteSteps.Add(step);
+                stepsById[step.RouteStepId] = step;
+            }
+        }
+
+        using var eventsCmd = new MySqlCommand(@"
+            SELECT
+                x.route_step_id,
+                x.created_at,
+                x.event_type,
+                x.qty,
+                x.error_code,
+                x.error_description,
+                x.comments,
+                x.username
+            FROM (
+                SELECT
+                    wse.route_step_id,
+                    wse.create_at AS created_at,
+                    'MOVIMIENTO' AS event_type,
+                    wse.qty_in AS qty,
+                    NULL AS error_code,
+                    NULL AS error_description,
+                    NULL AS comments,
+                    NULL AS username
+                FROM wip_step_execution wse
+                JOIN wip_item wip ON wip.id = wse.wip_item_id
+                JOIN work_order wo ON wo.id = wip.wo_order_id
+                WHERE wo.wo_number = @wo
+
+                UNION ALL
+
+                SELECT
+                    sl.route_step_id,
+                    sl.created_at,
+                    'SCRAP' AS event_type,
+                    sl.qty AS qty,
+                    ec.code AS error_code,
+                    ec.description AS error_description,
+                    sl.comments,
+                    u.username
+                FROM scrap_log sl
+                JOIN wip_item wip ON wip.id = sl.wip_item_id
+                JOIN work_order wo ON wo.id = wip.wo_order_id
+                LEFT JOIN error_code ec ON ec.id = sl.error_code_id
+                LEFT JOIN `user` u ON u.id = sl.user_id
+                WHERE wo.wo_number = @wo
+            ) x
+            ORDER BY x.created_at DESC", cn);
+
+        eventsCmd.Parameters.AddWithValue("@wo", vm.WoNumber);
+        using var eventsRd = eventsCmd.ExecuteReader();
+        while (eventsRd.Read())
+        {
+            var routeStepIdOrdinal = eventsRd.GetOrdinal("route_step_id");
+            if (eventsRd.IsDBNull(routeStepIdOrdinal))
+            {
+                continue;
+            }
+            var routeStepId = eventsRd.GetUInt32(routeStepIdOrdinal);
+            if (!stepsById.TryGetValue(routeStepId, out var step))
+            {
+                continue;
+            }
+
+            var errorCodeOrdinal = eventsRd.GetOrdinal("error_code");
+            var errorDescriptionOrdinal = eventsRd.GetOrdinal("error_description");
+            var commentsOrdinal = eventsRd.GetOrdinal("comments");
+            var userOrdinal = eventsRd.GetOrdinal("username");
+            step.Events.Add(new RealInventoryWoStepEventVm
+            {
+                CreatedAt = eventsRd.GetDateTime("created_at"),
+                EventType = eventsRd.GetString("event_type"),
+                Qty = Convert.ToInt32(eventsRd.GetInt64("qty")),
+                ErrorCode = eventsRd.IsDBNull(errorCodeOrdinal) ? null : eventsRd.GetString(errorCodeOrdinal),
+                ErrorDescription = eventsRd.IsDBNull(errorDescriptionOrdinal) ? null : eventsRd.GetString(errorDescriptionOrdinal),
+                Comments = eventsRd.IsDBNull(commentsOrdinal) ? null : eventsRd.GetString(commentsOrdinal),
+                UserName = eventsRd.IsDBNull(userOrdinal) ? null : eventsRd.GetString(userOrdinal)
             });
         }
 
