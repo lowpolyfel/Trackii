@@ -107,8 +107,13 @@ public class GerenciaController : Controller
     }
 
     [HttpGet("InventarioRealDetalle")]
-    public IActionResult InventarioRealDetalle(string location, string familyGroup)
+    public IActionResult InventarioRealDetalle(string? location, string? familyGroup)
     {
+        if (string.IsNullOrWhiteSpace(location) || string.IsNullOrWhiteSpace(familyGroup))
+        {
+            return RedirectToAction(nameof(InventarioReal));
+        }
+
         var vm = _realInventoryMapService.GetCellDetail(location, familyGroup);
         return View($"{ViewBase}InventarioRealDetalle.cshtml", vm);
     }

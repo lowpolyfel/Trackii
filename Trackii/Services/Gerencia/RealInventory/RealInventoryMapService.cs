@@ -119,13 +119,21 @@ public class RealInventoryMapService
         return vm;
     }
 
-    public RealInventoryCellDetailVm GetCellDetail(string location, string familyGroup)
+    public RealInventoryCellDetailVm GetCellDetail(string? location, string? familyGroup)
     {
+        var normalizedLocation = (location ?? string.Empty).Trim();
+        var normalizedFamilyGroup = (familyGroup ?? string.Empty).Trim();
+
         var vm = new RealInventoryCellDetailVm
         {
-            Location = location.Trim(),
-            FamilyGroup = familyGroup.Trim()
+            Location = normalizedLocation,
+            FamilyGroup = normalizedFamilyGroup
         };
+
+        if (string.IsNullOrWhiteSpace(normalizedLocation) || string.IsNullOrWhiteSpace(normalizedFamilyGroup))
+        {
+            return vm;
+        }
 
         using var cn = new MySqlConnection(_conn);
         cn.Open();

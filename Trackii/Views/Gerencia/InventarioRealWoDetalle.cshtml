@@ -14,12 +14,21 @@
         <div class="hero-actions">
             <span class="chip chip-strong">WO: @UiTextHelper.NormalizeStatus(Model.WoStatus)</span>
             <span class="chip">WIP: @UiTextHelper.NormalizeStatus(Model.WipStatus)</span>
-            <a asp-action="InventarioRealDetalle"
-               asp-route-location="@Model.ReturnLocation"
-               asp-route-familyGroup="@Model.ReturnFamilyGroup"
-               class="btn btn-secondary">
-                <i class="fa-solid fa-arrow-left"></i> Volver al detalle
-            </a>
+            @if (!string.IsNullOrWhiteSpace(Model.ReturnLocation) && !string.IsNullOrWhiteSpace(Model.ReturnFamilyGroup))
+            {
+                <a asp-action="InventarioRealDetalle"
+                   asp-route-location="@Model.ReturnLocation"
+                   asp-route-familyGroup="@Model.ReturnFamilyGroup"
+                   class="btn btn-secondary">
+                    <i class="fa-solid fa-arrow-left"></i> Volver al detalle
+                </a>
+            }
+            else
+            {
+                <a asp-action="InventarioReal" class="btn btn-secondary">
+                    <i class="fa-solid fa-arrow-left"></i> Volver a Inventario real
+                </a>
+            }
         </div>
     </section>
 
