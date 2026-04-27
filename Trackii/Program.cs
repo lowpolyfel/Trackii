@@ -80,6 +80,8 @@ builder.Services.AddScoped<InventoryMapService>();
 builder.Services.AddScoped<ProjectedInventoryService>();
 builder.Services.AddScoped<RealInventoryMapService>();
 builder.Services.AddScoped<RealInventoryDaysMapService>();
+builder.Services.Configure<Trackii.Models.EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<GerenciaLobbyService>();
 builder.Services.AddScoped<Trackii.Services.Reports.ReportsService>();
 builder.Services.AddScoped<Trackii.Services.Engineering.UnregisteredPartsService>();

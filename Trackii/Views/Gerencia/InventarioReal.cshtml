@@ -7,6 +7,15 @@
     var grandTotal = Model.GrandTotalPieces;
 }
 
+@if (User.IsInRole("Admin") || User.IsInRole("Gerencia"))
+{
+    <div class="d-flex justify-content-end mb-3">
+        <button id="btnSendTestEmail" class="btn btn-primary shadow-sm">
+            <i class="fa-solid fa-envelope me-2"></i> Enviar Correo de Prueba
+        </button>
+    </div>
+}
+
 <div class="dashboard real-inventory-dashboard">
     <div class="page-header real-inventory-header">
         <div>
@@ -124,6 +133,41 @@
         (() => {
             const table = document.getElementById('inventoryRealTable');
             if (!table) return;
+
+            const btnEmail = document.getElementById('btnSendTestEmail');
+            if (btnEmail) {
+                btnEmail.addEventListener('click', async function () {
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Enviando...';
+                    this.disabled = true;
+
+                    try {
+                        const response = await fetch('/Gerencia/SendTestEmail', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+
+                        let data = null;
+                        try {
+                            data = await response.json();
+                        } catch {
+                            data = { message: response.statusText };
+                        }
+
+                        if (response.ok) {
+                            alert('Éxito: ' + data.message);
+                        } else {
+                            alert('Error: ' + (data.message || response.statusText));
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        alert('Error de conexión al intentar enviar el correo.');
+                    } finally {
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                });
+            }
 
             const dayLinks = Array.from(document.querySelectorAll('.days-cell-link'));
             const clearDayComparison = () => {
