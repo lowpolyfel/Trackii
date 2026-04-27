@@ -127,11 +127,21 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseStaticFiles(new StaticFileOptions
+
+var assetsPath = Path.Combine(app.Environment.ContentRootPath, "Assets");
+if (Directory.Exists(assetsPath))
 {
-    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "Assets")),
-    RequestPath = "/Assets"
-});
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(assetsPath),
+        RequestPath = "/Assets"
+    });
+}
+else
+{
+    Console.WriteLine($"[WARN] Assets directory not found. Skipping static file mapping: {assetsPath}");
+}
+
 app.UseRouting();
 
 app.UseAuthentication();
