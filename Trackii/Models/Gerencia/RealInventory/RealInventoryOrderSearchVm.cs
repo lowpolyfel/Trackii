@@ -4,8 +4,7 @@ public class RealInventoryOrderSearchVm
 {
     public const int DefaultPageSize = 20;
 
-    public string? WoNumber { get; set; }
-    public string? Product { get; set; }
+    public string? Query { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = DefaultPageSize;
     public int TotalResults { get; set; }
@@ -13,7 +12,7 @@ public class RealInventoryOrderSearchVm
     public List<RealInventoryOrderSearchRowVm> Results { get; } = new();
 
     public int TotalPages => TotalResults <= 0 ? 1 : (int)Math.Ceiling((double)TotalResults / PageSize);
-    public bool HasFilters => !string.IsNullOrWhiteSpace(WoNumber) || !string.IsNullOrWhiteSpace(Product);
+    public bool HasFilters => !string.IsNullOrWhiteSpace(Query);
 }
 
 public class RealInventoryOrderSearchRowVm

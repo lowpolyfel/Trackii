@@ -12,12 +12,11 @@ public class RealInventoryOrderSearchService
         _conn = cfg.GetConnectionString("TrackiiDb") ?? throw new InvalidOperationException("Connection string 'TrackiiDb' not found.");
     }
 
-    public RealInventoryOrderSearchVm Search(string? woNumber, string? product, int page)
+    public RealInventoryOrderSearchVm Search(string? query, int page)
     {
         var vm = new RealInventoryOrderSearchVm
         {
-            WoNumber = woNumber?.Trim(),
-            Product = product?.Trim(),
+            Query = query?.Trim(),
             Page = page < 1 ? 1 : page
         };
 
@@ -29,7 +28,7 @@ public class RealInventoryOrderSearchService
         using var cn = new MySqlConnection(_conn);
         cn.Open();
 
-        vm.TotalResults = GetTotalCount(cn, vm.WoNumber, vm.Product);
+        vm.TotalResults = GetTotalCount(cn, vm.Query);
 
         var offset = (vm.Page - 1) * vm.PageSize;
         using var cmd = new MySqlCommand(@"
@@ -43,8 +42,8 @@ public class RealInventoryOrderSearchService
                    l.name AS current_location
             FROM work_order wo
             JOIN product p ON p.id = wo.product_id
-            LEFT JOIN family f ON f.id = p.id_family
             LEFT JOIN subfamily sf ON sf.id = p.id_subfamily
+            LEFT JOIN family f ON f.id = sf.id_family
             LEFT JOIN (
                 SELECT wi1.*
                 FROM wip_item wi1
@@ -57,15 +56,11 @@ public class RealInventoryOrderSearchService
             LEFT JOIN route_step rs ON rs.id = wip.current_step_id
             LEFT JOIN location l ON l.id = rs.location_id
             WHERE wo.active = 1
-              AND (@woNumber IS NULL OR @woNumber = '' OR wo.wo_number LIKE @woLike)
-              AND (@product IS NULL OR @product = '' OR p.part_number LIKE @productLike)
+              AND (wo.wo_number LIKE @searchLike OR p.part_number LIKE @searchLike)
             ORDER BY wo.wo_number
             LIMIT @take OFFSET @skip", cn);
 
-        cmd.Parameters.AddWithValue("@woNumber", vm.WoNumber);
-        cmd.Parameters.AddWithValue("@woLike", $"%{vm.WoNumber}%");
-        cmd.Parameters.AddWithValue("@product", vm.Product);
-        cmd.Parameters.AddWithValue("@productLike", $"%{vm.Product}%");
+        cmd.Parameters.AddWithValue("@searchLike", $"%{vm.Query}%");
         cmd.Parameters.AddWithValue("@take", vm.PageSize);
         cmd.Parameters.AddWithValue("@skip", offset);
 
@@ -92,20 +87,16 @@ public class RealInventoryOrderSearchService
         return vm;
     }
 
-    private static int GetTotalCount(MySqlConnection cn, string? woNumber, string? product)
+    private static int GetTotalCount(MySqlConnection cn, string? query)
     {
         using var cmd = new MySqlCommand(@"
             SELECT COUNT(DISTINCT wo.id)
             FROM work_order wo
             JOIN product p ON p.id = wo.product_id
             WHERE wo.active = 1
-              AND (@woNumber IS NULL OR @woNumber = '' OR wo.wo_number LIKE @woLike)
-              AND (@product IS NULL OR @product = '' OR p.part_number LIKE @productLike)", cn);
+              AND (wo.wo_number LIKE @searchLike OR p.part_number LIKE @searchLike)", cn);
 
-        cmd.Parameters.AddWithValue("@woNumber", woNumber);
-        cmd.Parameters.AddWithValue("@woLike", $"%{woNumber}%");
-        cmd.Parameters.AddWithValue("@product", product);
-        cmd.Parameters.AddWithValue("@productLike", $"%{product}%");
+        cmd.Parameters.AddWithValue("@searchLike", $"%{query}%");
 
         return Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
     }

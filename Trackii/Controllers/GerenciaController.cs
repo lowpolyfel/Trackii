@@ -121,9 +121,9 @@ public class GerenciaController : Controller
     }
 
     [HttpGet("BuscadorOrdenes")]
-    public IActionResult OrderSearch(string? woNumber, string? product, int page = 1)
+    public IActionResult OrderSearch(string? q, int page = 1)
     {
-        var vm = _realInventoryOrderSearchService.Search(woNumber, product, page);
+        var vm = _realInventoryOrderSearchService.Search(q, page);
         return View($"{ViewBase}OrderSearch.cshtml", vm);
     }
 

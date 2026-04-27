@@ -11,21 +11,17 @@
         <div class="page-header">
             <div>
                 <h2>Buscador de órdenes</h2>
-                <p class="subtitle">Busca por No. WO, producto o ambos. Solo incluye órdenes con <strong>active = 1</strong>.</p>
+                <p class="subtitle">Una sola búsqueda por No. WO o Producto. Solo incluye órdenes con <strong>active = 1</strong>.</p>
             </div>
             <a asp-controller="Gerencia" asp-action="InventarioReal" class="btn btn-secondary">
                 <i class="fa-solid fa-arrow-left"></i> Volver a Inventario real
             </a>
         </div>
 
-        <form method="get" class="order-search-form">
+        <form method="get" class="order-search-form-single">
             <div class="field">
-                <label for="woNumber">No. WO</label>
-                <input id="woNumber" name="woNumber" type="search" value="@Model.WoNumber" placeholder="Ej. WO-240015" />
-            </div>
-            <div class="field">
-                <label for="product">Producto</label>
-                <input id="product" name="product" type="search" value="@Model.Product" placeholder="Ej. 320-XXX" />
+                <label for="q">Buscar</label>
+                <input id="q" name="q" type="search" value="@Model.Query" placeholder="Busca por No. WO o Producto" />
             </div>
             <div class="actions">
                 <button class="btn btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
@@ -45,11 +41,11 @@
 
         @if (!Model.HasFilters)
         {
-            <p class="empty">Ingresa No. WO, producto o ambos para buscar.</p>
+            <p class="empty">Ingresa un No. WO o un Producto para buscar.</p>
         }
         else if (Model.TotalResults == 0)
         {
-            <p class="empty">No se encontraron órdenes con active = 1 para los filtros capturados.</p>
+            <p class="empty">No se encontraron órdenes con active = 1 para la búsqueda capturada.</p>
         }
         else
         {
@@ -100,8 +96,7 @@
                         <a class="page @(i == Model.Page ? "active" : string.Empty)"
                            asp-controller="Gerencia"
                            asp-action="OrderSearch"
-                           asp-route-woNumber="@Model.WoNumber"
-                           asp-route-product="@Model.Product"
+                           asp-route-q="@Model.Query"
                            asp-route-page="@i">@i</a>
                     }
                 </nav>
@@ -111,27 +106,27 @@
 </div>
 
 <style>
-    .order-search-form {
+    .order-search-form-single {
         display: grid;
-        grid-template-columns: repeat(2, minmax(220px, 1fr)) auto;
+        grid-template-columns: minmax(260px, 1fr) auto;
         gap: 12px;
         align-items: end;
     }
 
-    .order-search-form .field {
+    .order-search-form-single .field {
         display: flex;
         flex-direction: column;
         gap: 6px;
     }
 
-    .order-search-form input {
+    .order-search-form-single input {
         border: 1px solid #d9dfe8;
         border-radius: 10px;
         padding: 10px 12px;
         background: #fff;
     }
 
-    .order-search-form .actions {
+    .order-search-form-single .actions {
         display: flex;
         gap: 8px;
         justify-content: flex-end;
@@ -145,15 +140,15 @@
     }
 
     @@media (max-width: 900px) {
-        .order-search-form {
+        .order-search-form-single {
             grid-template-columns: 1fr;
         }
 
-        .order-search-form .actions {
+        .order-search-form-single .actions {
             justify-content: stretch;
         }
 
-        .order-search-form .actions .btn {
+        .order-search-form-single .actions .btn {
             flex: 1;
         }
     }
