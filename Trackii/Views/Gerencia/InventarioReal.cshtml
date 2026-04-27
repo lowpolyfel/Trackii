@@ -1,5 +1,5 @@
 @using System.Globalization
-@model Trackii.Models.Gerencia.GerenciaBackendLobbyVm
+@model Trackii.Models.Gerencia.RealInventory.RealInventoryMapVm
 
 @{
     ViewData["Title"] = "Inventario real";
@@ -7,11 +7,20 @@
     var grandTotal = Model.GrandTotalPieces;
 }
 
+@if (User.IsInRole("Admin") || User.IsInRole("Gerencia"))
+{
+    <div class="d-flex justify-content-end mb-3">
+        <button id="btnSendTestEmail" class="btn btn-primary shadow-sm">
+            <i class="fa-solid fa-file-excel me-2"></i> Enviar Excel de Discretos
+        </button>
+    </div>
+}
+
 <div class="dashboard real-inventory-dashboard">
     <div class="page-header real-inventory-header">
         <div>
             <h2>INVENTARIO REAL</h2>
-            <p class="subtitle">Vista ejecutiva por localidad y familia/subfamilia OPB. Corte: <strong>@Model.DataCutoffUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", spanish)</strong>.</p>
+            <p class="subtitle">Corte: <strong>@Model.DataCutoffUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", spanish)</strong>.</p>
         </div>
         <div class="real-inventory-kpis">
             <span class="chip chip-muted">Localidades: @Model.Rows.Count</span>
@@ -20,17 +29,6 @@
     </div>
 
     <section class="card apple-card real-inventory-card">
-        <div class="real-inventory-toolbar">
-            <label class="real-inventory-search">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="search" id="inventorySearch" placeholder="Filtrar localidad..." autocomplete="off" />
-            </label>
-            <label class="real-inventory-toggle">
-                <input type="checkbox" id="hideEmptyRows" />
-                Ocultar filas en cero
-            </label>
-        </div>
-
         <div class="table-wrapper real-inventory-table-wrapper">
             <table class="table real-inventory-table" id="inventoryRealTable">
                 <thead>
@@ -51,13 +49,12 @@
                             @foreach (var col in Model.Columns)
                             {
                                 var qty = row.PiecesByColumn.TryGetValue(col, out var value) ? value : 0;
-                                <td class="text-end @(qty == 0 ? "is-zero" : string.Empty)">
+                                <td data-family="@col" class="text-end @(qty == 0 ? "is-zero" : string.Empty)">
                                     @if (qty > 0)
                                     {
-                                        <a asp-action="BackendLobbyInventoryDetail"
+                                        <a asp-action="InventarioRealDetalle"
                                            asp-route-location="@row.LocationName"
                                            asp-route-familyGroup="@col"
-                                           asp-route-mode="@Model.ViewMode"
                                            class="inventory-link">
                                             @qty.ToString("N0")
                                         </a>
@@ -86,32 +83,139 @@
             </table>
         </div>
     </section>
+
+    @if (ViewBag.DaysMap is Trackii.Models.Gerencia.RealInventory.RealInventoryDaysVm daysMap)
+    {
+        <partial name="_RealInventoryDaysMap" model="daysMap" />
+    }
 </div>
+
+<style>
+    .day-color-1 { background-color: rgba(255, 99, 132, 0.14); }
+    .day-color-2 { background-color: rgba(255, 159, 64, 0.14); }
+    .day-color-3 { background-color: rgba(255, 205, 86, 0.14); }
+    .day-color-4 { background-color: rgba(75, 192, 192, 0.14); }
+    .day-color-5 { background-color: rgba(54, 162, 235, 0.14); }
+    .day-color-6 { background-color: rgba(153, 102, 255, 0.14); }
+    .day-color-7 { background-color: rgba(201, 203, 207, 0.2); }
+    .day-match {
+        outline: 2px solid currentColor;
+        font-weight: 600;
+    }
+    @@media (max-width: 1024px) {
+        .real-inventory-table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .real-inventory-table {
+            min-width: 980px;
+        }
+    }
+
+    @@media (max-width: 768px) and (orientation: portrait) {
+        .real-inventory-table {
+            min-width: 1100px;
+            font-size: 0.82rem;
+        }
+    }
+
+    @@media (max-width: 932px) and (orientation: landscape) {
+        .real-inventory-table {
+            min-width: 980px;
+            font-size: 0.82rem;
+        }
+    }
+</style>
 
 @section Scripts {
     <script>
         (() => {
             const table = document.getElementById('inventoryRealTable');
-            const searchInput = document.getElementById('inventorySearch');
-            const hideEmptyRows = document.getElementById('hideEmptyRows');
-            if (!table || !searchInput || !hideEmptyRows) return;
+            if (!table) return;
 
-            const rows = Array.from(table.querySelectorAll('tbody tr'));
-            const applyFilters = () => {
-                const term = searchInput.value.trim().toLowerCase();
-                const hideZero = hideEmptyRows.checked;
+            const btnEmail = document.getElementById('btnSendTestEmail');
+            if (btnEmail) {
+                btnEmail.addEventListener('click', async function () {
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Generando y enviando...';
+                    this.disabled = true;
 
-                rows.forEach(row => {
-                    const location = (row.dataset.location || '').toLowerCase();
-                    const total = Number(row.dataset.total || 0);
-                    const matchSearch = !term || location.includes(term);
-                    const matchZero = !hideZero || total > 0;
-                    row.style.display = matchSearch && matchZero ? '' : 'none';
+                    try {
+                        const response = await fetch('/Gerencia/SendInventoryExcel', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+
+                        let data = null;
+                        try {
+                            data = await response.json();
+                        } catch {
+                            data = { message: response.statusText };
+                        }
+
+                        if (response.ok) {
+                            alert('Éxito: ' + data.message);
+                        } else {
+                            alert('Error: ' + (data.message || response.statusText));
+                        }
+                    } catch (error) {
+                        console.error(error);
+                            alert('Error de conexión al intentar enviar el reporte.');
+                    } finally {
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
                 });
+            }
+
+            const dayLinks = Array.from(document.querySelectorAll('.days-cell-link'));
+            const clearDayComparison = () => {
+                table.querySelectorAll('.day-match, .day-color-1, .day-color-2, .day-color-3, .day-color-4, .day-color-5, .day-color-6, .day-color-7')
+                    .forEach(el => {
+                        el.classList.remove('day-match', 'day-color-1', 'day-color-2', 'day-color-3', 'day-color-4', 'day-color-5', 'day-color-6', 'day-color-7');
+                    });
             };
 
-            searchInput.addEventListener('input', applyFilters);
-            hideEmptyRows.addEventListener('change', applyFilters);
+            dayLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    const family = link.dataset.family;
+                    const day = link.dataset.day || '';
+                    const locations = (link.dataset.locations || '')
+                        .split(',')
+                        .map(x => x.trim().toLowerCase())
+                        .filter(Boolean);
+                    if (!family || locations.length === 0) return;
+
+                    clearDayComparison();
+
+                    const dayNumber = Number((day.match(/\d+/) || [0])[0]);
+                    const dayClass = dayNumber >= 1 && dayNumber <= 7 ? `day-color-${dayNumber}` : '';
+
+                    const rows = Array.from(table.querySelectorAll('tbody tr'));
+                    let firstMatch = null;
+                    rows.forEach(row => {
+                        const rowLocation = (row.dataset.location || '').toLowerCase();
+                        const matchesLocation = locations.includes(rowLocation);
+                        if (!matchesLocation) return;
+
+                        const cells = Array.from(row.querySelectorAll('td[data-family]'));
+                        cells.forEach(cell => {
+                            if ((cell.dataset.family || '').toLowerCase() === family.toLowerCase()) {
+                                cell.classList.add('day-match');
+                                if (dayClass) cell.classList.add(dayClass);
+                                firstMatch ??= cell;
+                            }
+                        });
+                    });
+
+                    if (firstMatch) {
+                        firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else {
+                        table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
         })();
     </script>
 }

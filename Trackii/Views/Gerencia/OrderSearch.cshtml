@@ -1,0 +1,160 @@
+@model Trackii.Models.Gerencia.RealInventory.RealInventoryOrderSearchVm
+
+@{
+    ViewData["Title"] = "Buscador de órdenes";
+    var start = Model.TotalResults == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1;
+    var end = Math.Min(Model.Page * Model.PageSize, Model.TotalResults);
+}
+
+<div class="dashboard order-search-dashboard">
+    <section class="card apple-card order-search-hero">
+        <div class="page-header">
+            <div>
+                <h2>Buscador de órdenes</h2>
+                <p class="subtitle">Busca por No. WO, producto o ambos. Solo incluye órdenes con <strong>active = 1</strong>.</p>
+            </div>
+            <a asp-controller="Gerencia" asp-action="InventarioReal" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Volver a Inventario real
+            </a>
+        </div>
+
+        <form method="get" class="order-search-form">
+            <div class="field">
+                <label for="woNumber">No. WO</label>
+                <input id="woNumber" name="woNumber" type="search" value="@Model.WoNumber" placeholder="Ej. WO-240015" />
+            </div>
+            <div class="field">
+                <label for="product">Producto</label>
+                <input id="product" name="product" type="search" value="@Model.Product" placeholder="Ej. 320-XXX" />
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+                <a asp-controller="Gerencia" asp-action="OrderSearch" class="btn btn-secondary">Limpiar</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="card apple-card">
+        <div class="page-header compact">
+            <h3>Resultados</h3>
+            @if (Model.HasFilters)
+            {
+                <span class="chip chip-muted">Mostrando @start-@end de @Model.TotalResults</span>
+            }
+        </div>
+
+        @if (!Model.HasFilters)
+        {
+            <p class="empty">Ingresa No. WO, producto o ambos para buscar.</p>
+        }
+        else if (Model.TotalResults == 0)
+        {
+            <p class="empty">No se encontraron órdenes con active = 1 para los filtros capturados.</p>
+        }
+        else
+        {
+            <div class="table-wrapper">
+                <table class="table real-inventory-table">
+                    <thead>
+                    <tr>
+                        <th>No. WO</th>
+                        <th>Producto</th>
+                        <th>Familia</th>
+                        <th>Subfamilia</th>
+                        <th>Estatus WO</th>
+                        <th>Estatus WIP</th>
+                        <th>Localidad actual</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var row in Model.Results)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@row.WoNumber</td>
+                            <td>@row.Product</td>
+                            <td>@row.Family</td>
+                            <td>@row.Subfamily</td>
+                            <td>@row.WoStatus</td>
+                            <td>@(row.WipStatus ?? "-")</td>
+                            <td>@(row.CurrentLocation ?? "-")</td>
+                            <td class="text-end">
+                                <a class="btn btn-primary btn-sm"
+                                   asp-controller="Gerencia"
+                                   asp-action="InventarioRealWoDetalle"
+                                   asp-route-woNumber="@row.WoNumber">
+                                    Ver detalle
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="pagination-shell" aria-label="Paginación de órdenes">
+                    @for (var i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <a class="page @(i == Model.Page ? "active" : string.Empty)"
+                           asp-controller="Gerencia"
+                           asp-action="OrderSearch"
+                           asp-route-woNumber="@Model.WoNumber"
+                           asp-route-product="@Model.Product"
+                           asp-route-page="@i">@i</a>
+                    }
+                </nav>
+            }
+        }
+    </section>
+</div>
+
+<style>
+    .order-search-form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(220px, 1fr)) auto;
+        gap: 12px;
+        align-items: end;
+    }
+
+    .order-search-form .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .order-search-form input {
+        border: 1px solid #d9dfe8;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: #fff;
+    }
+
+    .order-search-form .actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    .pagination-shell {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+
+    @@media (max-width: 900px) {
+        .order-search-form {
+            grid-template-columns: 1fr;
+        }
+
+        .order-search-form .actions {
+            justify-content: stretch;
+        }
+
+        .order-search-form .actions .btn {
+            flex: 1;
+        }
+    }
+</style>

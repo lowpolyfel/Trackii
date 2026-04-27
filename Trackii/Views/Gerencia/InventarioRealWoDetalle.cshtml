@@ -1,0 +1,248 @@
+@model Trackii.Models.Gerencia.RealInventory.RealInventoryWoDetailVm
+@{
+    ViewData["Title"] = "Detalle extendido WO";
+    var maxQty = Model.RouteSteps.Select(x => x.QtyIn).DefaultIfEmpty(1).Max();
+}
+
+<div class="dashboard wo-detail-v2">
+    <section class="wo-hero card apple-card">
+        <div>
+            <p class="eyebrow">TRAZABILIDAD AVANZADA</p>
+            <h2>WO @Model.WoNumber</h2>
+            <p class="subtitle">Vista integral de tiempos, ruta, pérdidas y eventos por paso.</p>
+        </div>
+        <div class="hero-actions">
+            <span class="chip chip-strong">WO: @UiTextHelper.NormalizeStatus(Model.WoStatus)</span>
+            <span class="chip">WIP: @UiTextHelper.NormalizeStatus(Model.WipStatus)</span>
+            <a asp-action="InventarioRealDetalle"
+               asp-route-location="@Model.ReturnLocation"
+               asp-route-familyGroup="@Model.ReturnFamilyGroup"
+               class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Volver al detalle
+            </a>
+        </div>
+    </section>
+
+    <section class="kpi-grid">
+        <article class="kpi-tile">
+            <label>Producto</label>
+            <strong>@Model.Product</strong>
+            <small>@Model.Family · @Model.Subfamily</small>
+        </article>
+        <article class="kpi-tile">
+            <label>Días desde paso 1</label>
+            <strong>@Model.DaysSinceFirstStep</strong>
+            <small>Desde @(Model.FirstStepAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</small>
+        </article>
+        <article class="kpi-tile">
+            <label>Días sin moverse</label>
+            <strong>@Model.DaysSinceLastStep</strong>
+            <small>Último: @(Model.LastStepAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</small>
+        </article>
+        <article class="kpi-tile success">
+            <label>Piezas registradas</label>
+            <strong>@Model.CurrentQty.ToString("N0")</strong>
+            <small>Piezas actuales (inicial - scrap)</small>
+        </article>
+        <article class="kpi-tile danger">
+            <label>Scrap acumulado</label>
+            <strong>@Model.TotalQtyScrap.ToString("N0")</strong>
+            <small>Piezas perdidas</small>
+        </article>
+    </section>
+
+    <section class="card apple-card detail-summary">
+        <div class="card-heading">
+            <h3>Resumen ejecutivo de la WO</h3>
+            <span class="chip">Fechas clave + producción</span>
+        </div>
+        <div class="summary-columns summary-pretty">
+            <article class="summary-card blue">
+                <header><i class="fa-regular fa-clock"></i> Fechas importantes</header>
+                <p><strong>Primer paso</strong><span>@(Model.FirstStepAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</span></p>
+                <p><strong>Último paso</strong><span>@(Model.LastStepAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</span></p>
+            </article>
+            <article class="summary-card purple">
+                <header><i class="fa-solid fa-diagram-project"></i> Identidad de ruta</header>
+                <p><strong>Familia</strong><span>@Model.Family</span></p>
+                <p><strong>Subfamilia</strong><span>@Model.Subfamily</span></p>
+                <p><strong>Estatus WO/WIP</strong><span>@UiTextHelper.NormalizeStatus(Model.WoStatus) · @UiTextHelper.NormalizeStatus(Model.WipStatus)</span></p>
+            </article>
+        </div>
+    </section>
+
+    <section class="card apple-card route-card">
+        <div class="card-heading">
+            <h3>Mapa de flujo completo</h3>
+            <span class="chip">Clic en paso para ver detalle fino</span>
+        </div>
+
+        @if (!Model.RouteSteps.Any())
+        {
+            <p class="subtitle">No se encontraron pasos de ruta para esta WO.</p>
+        }
+        else
+        {
+            <div class="flow-steps">
+                @foreach (var step in Model.RouteSteps)
+                {
+                    var width = maxQty > 0 ? (step.QtyIn * 100.0 / maxQty) : 0;
+                    <details class="flow-step">
+                        <summary>
+                            <div class="flow-top">
+                                <div class="left">
+                                    <span class="step-number">Paso @step.StepNumber</span>
+                                    <span class="step-location">@step.LocationName</span>
+                                </div>
+                                <div class="right">
+                                    <span class="step-chip qty">Qty: @step.QtyIn.ToString("N0")</span>
+                                    <span class="step-chip scrap">Scrap: @step.QtyScrap.ToString("N0")</span>
+                                    <span class="step-chip time">Último: @(step.LastExecutionAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</span>
+                                </div>
+                            </div>
+                            <div class="progress-shell">
+                                <div class="progress-fill" style="width:@width.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                            </div>
+                        </summary>
+
+                        <div class="table-wrapper mt-3">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Evento</th>
+                                        <th>Cantidad</th>
+                                        <th>Código error</th>
+                                        <th>Descripción</th>
+                                        <th>Comentario</th>
+                                        <th>Usuario</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (!step.Events.Any())
+                                    {
+                                        <tr><td colspan="7" class="empty">Sin eventos en este paso.</td></tr>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var ev in step.Events)
+                                        {
+                                            <tr>
+                                                <td>@ev.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                                <td>
+                                                    <span class="chip @(ev.EventType == "SCRAP" ? "chip-event-scrap" : "chip-event-move")">
+                                                        @ev.EventType
+                                                    </span>
+                                                </td>
+                                                <td>@ev.Qty.ToString("N0")</td>
+                                                <td>@(ev.ErrorCode ?? "-")</td>
+                                                <td>@(ev.ErrorDescription ?? "-")</td>
+                                                <td>@(ev.Comments ?? "-")</td>
+                                                <td>@(ev.UserName ?? "-")</td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+<style>
+    .wo-detail-v2 { display: grid; gap: 16px; }
+    .wo-hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        background: linear-gradient(120deg, #eff6ff, #eef2ff 55%, #f8fafc);
+        border: 1px solid #bfdbfe;
+    }
+    .wo-hero .eyebrow { margin: 0; letter-spacing: .09em; font-weight: 700; color: #1d4ed8; font-size: .78rem; }
+    .wo-hero h2 { margin: 2px 0 6px; font-size: 2rem; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .chip-strong { background: #1d4ed8; color: white; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(170px, 1fr)); gap: 12px; }
+    .kpi-tile {
+        background: #fff;
+        border: 1px solid #dbe4f0;
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, .04);
+    }
+    .kpi-tile label { display: block; font-size: .76rem; letter-spacing: .06em; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
+    .kpi-tile strong { display: block; font-size: 1.55rem; line-height: 1.1; }
+    .kpi-tile small { color: #64748b; }
+    .kpi-tile.success { border-color: #86efac; background: #f0fdf4; }
+    .kpi-tile.danger { border-color: #fca5a5; background: #fef2f2; }
+
+    .summary-columns { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 16px; }
+    .summary-pretty .summary-card {
+        border-radius: 14px;
+        border: 1px solid #dbe4f0;
+        padding: 14px;
+        background: #fff;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.55), 0 8px 18px rgba(15,23,42,.03);
+    }
+    .summary-pretty .summary-card header {
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    .summary-pretty .summary-card p {
+        margin: 0 0 7px;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .summary-pretty .summary-card p strong { color: #475569; font-size: .9rem; }
+    .summary-pretty .summary-card p span { text-align: right; font-weight: 600; }
+    .summary-card.blue { background: linear-gradient(180deg, #eff6ff, #ffffff); border-color: #bfdbfe; }
+    .summary-card.purple { background: linear-gradient(180deg, #f5f3ff, #ffffff); border-color: #c4b5fd; }
+
+    .flow-steps { display: grid; gap: 12px; }
+    .flow-step {
+        border: 1px solid #c7d2fe;
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    }
+    .flow-step summary { cursor: pointer; list-style: none; }
+    .flow-step summary::-webkit-details-marker { display: none; }
+    .flow-top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .flow-top .left { display: flex; align-items: center; gap: 10px; }
+    .step-number { font-weight: 800; color: #1d4ed8; }
+    .step-location { font-weight: 700; font-size: 1.05rem; }
+    .flow-top .right { display: flex; gap: 8px; flex-wrap: wrap; }
+    .step-chip { border-radius: 999px; padding: 4px 10px; font-size: .8rem; }
+    .step-chip.qty { background: #dbeafe; color: #1e3a8a; }
+    .step-chip.scrap { background: #fee2e2; color: #991b1b; }
+    .step-chip.time { background: #e2e8f0; color: #334155; }
+
+    .progress-shell { margin-top: 10px; height: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+    .progress-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #38bdf8, #2563eb);
+        animation: wo-grow .8s ease;
+    }
+
+    .chip-event-move { background: #dbeafe; color: #1e40af; }
+    .chip-event-scrap { background: #fee2e2; color: #b91c1c; }
+
+    @@keyframes wo-grow { from { width: 0; } to { width: 100%; } }
+    @@media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(3, minmax(170px, 1fr)); } }
+    @@media (max-width: 900px) {
+        .wo-hero { flex-direction: column; }
+        .hero-actions { justify-content: flex-start; }
+        .kpi-grid { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+        .summary-columns { grid-template-columns: 1fr; }
+    }
+</style>
