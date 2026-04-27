@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MySql.Data.MySqlClient;
 using Trackii.Services;
+using Trackii.Services.Gerencia.RealInventory;
 
 namespace Trackii.Controllers;
 
@@ -9,13 +11,18 @@ namespace Trackii.Controllers;
 public class GerenciaController : Controller
 {
     private readonly GerenciaService _svc;
-    private readonly ProjectedInventoryService _projectedInventoryService;
+    private readonly RealInventoryMapService _realInventoryMapService;
+    private readonly RealInventoryDaysMapService _realInventoryDaysMapService;
     private const string ViewBase = "~/Views/Gerencia/";
 
-    public GerenciaController(GerenciaService svc, ProjectedInventoryService projectedInventoryService)
+    public GerenciaController(
+        GerenciaService svc,
+        RealInventoryMapService realInventoryMapService,
+        RealInventoryDaysMapService realInventoryDaysMapService)
     {
         _svc = svc;
-        _projectedInventoryService = projectedInventoryService;
+        _realInventoryMapService = realInventoryMapService;
+        _realInventoryDaysMapService = realInventoryDaysMapService;
     }
 
     [HttpGet("")]
@@ -33,8 +40,75 @@ public class GerenciaController : Controller
     [HttpGet("InventarioReal")]
     public IActionResult InventarioReal()
     {
-        var vm = _projectedInventoryService.GetProjectedInventoryMap();
+        var vm = _realInventoryMapService.GetMap();
+        var daysVm = _realInventoryDaysMapService.BuildDaysMap(vm);
+        ViewBag.DaysMap = daysVm;
         return View($"{ViewBase}InventarioReal.cshtml", vm);
+    }
+
+    [HttpPost("SendTestEmail")]
+    [Authorize]
+    public async Task<IActionResult> SendTestEmail([FromServices] EmailService emailService, [FromServices] IConfiguration cfg)
+    {
+        try
+        {
+            var username = User.Identity?.Name;
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                return BadRequest(new { message = "Usuario no autenticado correctamente." });
+            }
+
+            string? userEmail = null;
+            var connString = cfg.GetConnectionString("TrackiiDb");
+            if (string.IsNullOrWhiteSpace(connString))
+            {
+                return StatusCode(500, new { message = "No se encontró la cadena de conexión TrackiiDb." });
+            }
+
+            await using (var cn = new MySqlConnection(connString))
+            {
+                await cn.OpenAsync();
+                await using var cmd = new MySqlCommand("SELECT email FROM `user` WHERE username = @username LIMIT 1", cn);
+                cmd.Parameters.AddWithValue("@username", username);
+                var result = await cmd.ExecuteScalarAsync();
+                if (result is not null && result != DBNull.Value)
+                {
+                    userEmail = result.ToString();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(userEmail))
+            {
+                return NotFound(new { message = "El usuario actual no tiene un correo configurado en la base de datos." });
+            }
+
+            var subject = "Prueba de Integración - Trackii";
+            var body = $@"
+                <h2>Hola Mundo desde Trackii</h2>
+                <p>Este es un correo de prueba automatizado para confirmar que la configuración SMTP está funcionando correctamente.</p>
+                <p>Usuario que detonó la prueba: <strong>{username}</strong></p>";
+
+            await emailService.SendEmailAsync(userEmail, subject, body);
+            return Ok(new { message = $"Correo enviado exitosamente a {userEmail}" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Error interno al enviar el correo: {ex.Message}" });
+        }
+    }
+
+    [HttpGet("InventarioRealDetalle")]
+    public IActionResult InventarioRealDetalle(string location, string familyGroup)
+    {
+        var vm = _realInventoryMapService.GetCellDetail(location, familyGroup);
+        return View($"{ViewBase}InventarioRealDetalle.cshtml", vm);
+    }
+
+    [HttpGet("InventarioRealWoDetalle")]
+    public IActionResult InventarioRealWoDetalle(string woNumber, string? location, string? familyGroup)
+    {
+        var vm = _realInventoryMapService.GetWorkOrderDetail(woNumber, location, familyGroup);
+        return View($"{ViewBase}InventarioRealWoDetalle.cshtml", vm);
     }
 
     [HttpGet("MapaDiscretos")]

@@ -9,6 +9,7 @@ using Trackii.Services;
 using Trackii.Services.Admin;
 using Trackii.Services.Api;
 using Trackii.Services.GerenciaLobby;
+using Trackii.Services.Gerencia.RealInventory;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,6 +78,10 @@ builder.Services.AddScoped<LobbyService>();
 builder.Services.AddScoped<GerenciaService>();
 builder.Services.AddScoped<InventoryMapService>();
 builder.Services.AddScoped<ProjectedInventoryService>();
+builder.Services.AddScoped<RealInventoryMapService>();
+builder.Services.AddScoped<RealInventoryDaysMapService>();
+builder.Services.Configure<Trackii.Models.EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<GerenciaLobbyService>();
 builder.Services.AddScoped<Trackii.Services.Reports.ReportsService>();
 builder.Services.AddScoped<Trackii.Services.Engineering.UnregisteredPartsService>();
