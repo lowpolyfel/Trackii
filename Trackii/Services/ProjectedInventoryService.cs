@@ -57,18 +57,27 @@ public class ProjectedInventoryService
                     ELSE 'Sin localidad'
                 END AS projected_location,
 
-                CASE
-                    WHEN UPPER(f.name) LIKE '%LATERAL LED%' THEN 'LATERAL LED'
-                    WHEN UPPER(f.name) LIKE '%LATERAL%SENSOR%' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'LATERAL SENSOR'
-                    WHEN UPPER(f.name) LIKE '%LATERAL%SENSOR%' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'LATERAL OPB'
-                    WHEN UPPER(f.name) LIKE '%MINI%AXIAL%' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'MINI AXIAL'
-                    WHEN UPPER(f.name) LIKE '%MINI%AXIAL%' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'MINI AXIAL OPB'
-                    WHEN UPPER(f.name) LIKE '%MAXI%AXIAL%' THEN 'MAXI AXIAL'
-                    WHEN UPPER(f.name) LIKE '%FOTOLOGICO%' AND UPPER(COALESCE(sf.name, '')) NOT LIKE '%OPB%' THEN 'FOTOLOGICO'
-                    WHEN UPPER(f.name) LIKE '%FOTOLOGICO%' AND UPPER(COALESCE(sf.name, '')) LIKE '%OPB%' THEN 'PHOTO OPBS'
-                    WHEN UPPER(COALESCE(sf.name, '')) LIKE '%LAT%RAL%OPB%' THEN 'LATERAL OPB'
-                    ELSE NULL
-                END AS inventory_column,
+              CASE
+    -- OPB primero, porque en tu BD LATERAL OPB pertenece a la familia LATERAL LED
+    WHEN sf.id = 10 OR UPPER(COALESCE(sf.name, '')) = 'LATERAL OPB' THEN 'LATERAL OPB'
+
+    WHEN sf.id = 3 OR UPPER(COALESCE(sf.name, '')) = 'MINI AXIAL OPB' THEN 'MINI AXIAL OPB'
+
+    WHEN sf.id = 13 OR UPPER(COALESCE(sf.name, '')) = 'PHOTO OPBS' THEN 'PHOTO OPBS'
+
+    -- Después las familias normales
+    WHEN f.id = 4 OR UPPER(f.name) LIKE '%LATERAL LED%' THEN 'LATERAL LED'
+
+    WHEN f.id = 3 OR UPPER(f.name) LIKE '%LATERAL%SENSOR%' THEN 'LATERAL SENSOR'
+
+    WHEN f.id = 2 OR UPPER(f.name) LIKE '%MINI%AXIAL%' THEN 'MINI AXIAL'
+
+    WHEN f.id = 1 OR UPPER(f.name) LIKE '%MAXI%AXIAL%' THEN 'MAXI AXIAL'
+
+    WHEN f.id = 5 OR UPPER(f.name) LIKE '%FOTOLOGICO%' OR UPPER(f.name) LIKE '%FOTOLOGICOS%' THEN 'FOTOLOGICO'
+
+    ELSE NULL
+END AS inventory_column,
 
                 COALESCE(SUM(last_qty.qty_in), 0) AS qty
             FROM wip_item wip
