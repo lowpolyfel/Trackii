@@ -1,0 +1,168 @@
+@model Trackii.Models.Gerencia.RealInventory.RealInventoryCellDetailVm
+@{
+    ViewData["Title"] = "Detalle de inventario real";
+    var now = DateTime.Now;
+    var rowsWithDays = Model.Orders
+        .Select(o => new
+        {
+            Order = o,
+            DaysSinceLastStep = o.LastMovementAt.HasValue
+                ? Math.Max(0, (int)Math.Floor((now - o.LastMovementAt.Value).TotalDays))
+                : (int?)null
+        })
+        .ToList();
+    var avgDays = rowsWithDays.Where(x => x.DaysSinceLastStep.HasValue).Select(x => x.DaysSinceLastStep!.Value).DefaultIfEmpty(0).Average();
+    var maxDays = rowsWithDays.Where(x => x.DaysSinceLastStep.HasValue).Select(x => x.DaysSinceLastStep!.Value).DefaultIfEmpty(0).Max();
+    var onTimeOrders = rowsWithDays.Count(x => x.DaysSinceLastStep.HasValue && x.DaysSinceLastStep.Value <= 2);
+    var delayedOrders = rowsWithDays.Count(x => x.DaysSinceLastStep.HasValue && x.DaysSinceLastStep.Value > 2);
+}
+
+<div class="dashboard">
+    <div class="page-header error-causes-header">
+        <div>
+            <h2>@Model.Location · @Model.FamilyGroup</h2>
+            <p class="subtitle">Detalle por WO en la localidad destino según la última salida registrada.</p>
+        </div>
+        <a asp-action="InventarioReal" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver a inventario real</a>
+    </div>
+
+    <section class="error-kpis" aria-label="KPIs detalle inventario real">
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Órdenes</span>
+            <strong class="kpi-value">@Model.Orders.Count.ToString("N0")</strong>
+            <small>Total de órdenes en la combinación seleccionada.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Piezas</span>
+            <strong class="kpi-value">@Model.TotalQty.ToString("N0")</strong>
+            <small>Suma de la celda seleccionada.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Promedio días</span>
+            <strong class="kpi-value">@avgDays.ToString("N1")</strong>
+            <small>Días desde el último paso registrado.</small>
+        </article>
+        <article class="kpi-highlight apple-card error-kpi-card">
+            <span class="kpi-label">Mayor antigüedad</span>
+            <strong class="kpi-value">@maxDays.ToString("N0")</strong>
+            <small>Orden con más días sin nuevo paso.</small>
+        </article>
+    </section>
+
+    <section class="card apple-card error-causes-card mb-4">
+        <div class="card-heading">
+            <h3>Panel de seguimiento</h3>
+            <span class="chip">En tránsito</span>
+        </div>
+        <div class="status-panels">
+            <article class="status-panel good">
+                <h4>Fluyendo (≤ 2 días)</h4>
+                <strong>@onTimeOrders</strong>
+                <small>Órdenes en ritmo esperado.</small>
+            </article>
+            <article class="status-panel warn">
+                <h4>En observación (&gt; 2 días)</h4>
+                <strong>@delayedOrders</strong>
+                <small>Requiere seguimiento de avance.</small>
+            </article>
+            <article class="status-panel info">
+                <h4>Destino objetivo</h4>
+                <strong>@Model.Location</strong>
+                <small>Próxima localidad operativa.</small>
+            </article>
+        </div>
+    </section>
+
+    <div class="card apple-card error-causes-card">
+        <div class="card-heading">
+            <h3>Detalle de inventario real</h3>
+            <span class="chip">Vista ejecutiva</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>WO</th>
+                        <th>Producto</th>
+                        <th>Familia</th>
+                        <th>Localidad destino</th>
+                        <th>Cantidad</th>
+                        <th>Estatus</th>
+                        <th>Días de su último paso</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!rowsWithDays.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="empty">No hay WIP activo para la combinación seleccionada.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var row in rowsWithDays)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-action="InventarioRealWoDetalle"
+                                       asp-route-woNumber="@row.Order.WoNumber"
+                                       asp-route-location="@Model.Location"
+                                       asp-route-familyGroup="@Model.FamilyGroup"
+                                       class="inventory-link">
+                                        @row.Order.WoNumber
+                                    </a>
+                                </td>
+                                <td>@row.Order.Product</td>
+                                <td>@row.Order.Family</td>
+                                <td>@row.Order.CurrentLocation</td>
+                                <td>@row.Order.Qty.ToString("N0")</td>
+                                <td>
+                                    <span class="chip chip-success status-out">
+                                        SALIÓ DE (@row.Order.SourceLocation) → VA PARA @row.Order.CurrentLocation.
+                                        Se espera arribo a @Model.Location en próximos días.
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (row.DaysSinceLastStep.HasValue)
+                                    {
+                                        <span class="chip chip-muted">@row.DaysSinceLastStep.Value día(s)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="4">TOTAL</th>
+                        <th>@Model.TotalQty.ToString("N0")</th>
+                        <th colspan="2"></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .status-out {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+        font-weight: 700;
+    }
+    .status-panels { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px; }
+    .status-panel { border-radius: 14px; padding: 14px; border: 1px solid #dbe4f0; background: #f8fafc; }
+    .status-panel h4 { margin: 0 0 6px; font-size: .9rem; text-transform: uppercase; letter-spacing: .04em; }
+    .status-panel strong { font-size: 1.5rem; line-height: 1; display: block; margin-bottom: 6px; }
+    .status-panel.good { background: #ecfdf5; border-color: #a7f3d0; }
+    .status-panel.warn { background: #fff7ed; border-color: #fdba74; }
+    .status-panel.info { background: #eff6ff; border-color: #93c5fd; }
+    @@media (max-width: 900px) {
+        .status-panels { grid-template-columns: 1fr; }
+    }
+</style>
