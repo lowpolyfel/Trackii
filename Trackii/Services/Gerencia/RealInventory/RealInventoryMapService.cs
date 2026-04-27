@@ -276,6 +276,7 @@ public class RealInventoryMapService
                 vm.LastStepAt = rd.IsDBNull(lastOrdinal) ? null : rd.GetDateTime(lastOrdinal);
                 vm.TotalQtyIn = Convert.ToInt32(rd.GetInt64("total_qty_in"));
                 vm.TotalQtyScrap = Convert.ToInt32(rd.GetInt64("total_qty_scrap"));
+                vm.CurrentQty = Math.Max(vm.TotalQtyIn - vm.TotalQtyScrap, 0);
             }
         }
 

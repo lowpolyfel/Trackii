@@ -12,6 +12,7 @@ public class RealInventoryWoDetailVm
     public DateTime? LastStepAt { get; set; }
     public int TotalQtyIn { get; set; }
     public int TotalQtyScrap { get; set; }
+    public int CurrentQty { get; set; }
     public int DaysSinceFirstStep { get; set; }
     public int DaysSinceLastStep { get; set; }
     public string? ReturnLocation { get; set; }

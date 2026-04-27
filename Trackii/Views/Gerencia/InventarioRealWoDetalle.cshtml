@@ -41,8 +41,8 @@
         </article>
         <article class="kpi-tile success">
             <label>Piezas registradas</label>
-            <strong>@Model.TotalQtyIn.ToString("N0")</strong>
-            <small>Capturadas en ruta</small>
+            <strong>@Model.CurrentQty.ToString("N0")</strong>
+            <small>Piezas actuales (inicial - scrap)</small>
         </article>
         <article class="kpi-tile danger">
             <label>Scrap acumulado</label>
@@ -61,12 +61,6 @@
                 <header><i class="fa-regular fa-clock"></i> Fechas importantes</header>
                 <p><strong>Primer paso</strong><span>@(Model.FirstStepAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</span></p>
                 <p><strong>Último paso</strong><span>@(Model.LastStepAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</span></p>
-            </article>
-            <article class="summary-card green">
-                <header><i class="fa-solid fa-cubes-stacked"></i> Eficiencia de piezas</header>
-                <p><strong>Cantidad inicial</strong><span>@Model.TotalQtyIn.ToString("N0")</span></p>
-                <p><strong>Scrap acumulado</strong><span>@Model.TotalQtyScrap.ToString("N0")</span></p>
-                <p><strong>Piezas netas estimadas</strong><span>@Math.Max(Model.TotalQtyIn - Model.TotalQtyScrap, 0).ToString("N0")</span></p>
             </article>
             <article class="summary-card purple">
                 <header><i class="fa-solid fa-diagram-project"></i> Identidad de ruta</header>
@@ -187,7 +181,7 @@
     .kpi-tile.success { border-color: #86efac; background: #f0fdf4; }
     .kpi-tile.danger { border-color: #fca5a5; background: #fef2f2; }
 
-    .summary-columns { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 16px; }
+    .summary-columns { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 16px; }
     .summary-pretty .summary-card {
         border-radius: 14px;
         border: 1px solid #dbe4f0;
@@ -211,7 +205,6 @@
     .summary-pretty .summary-card p strong { color: #475569; font-size: .9rem; }
     .summary-pretty .summary-card p span { text-align: right; font-weight: 600; }
     .summary-card.blue { background: linear-gradient(180deg, #eff6ff, #ffffff); border-color: #bfdbfe; }
-    .summary-card.green { background: linear-gradient(180deg, #ecfdf5, #ffffff); border-color: #86efac; }
     .summary-card.purple { background: linear-gradient(180deg, #f5f3ff, #ffffff); border-color: #c4b5fd; }
 
     .flow-steps { display: grid; gap: 12px; }
