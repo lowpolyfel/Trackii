@@ -46,9 +46,12 @@ public class GerenciaController : Controller
         return View($"{ViewBase}InventarioReal.cshtml", vm);
     }
 
-    [HttpPost("SendTestEmail")]
+    [HttpPost("SendInventoryExcel")]
     [Authorize]
-    public async Task<IActionResult> SendTestEmail([FromServices] EmailService emailService, [FromServices] IConfiguration cfg)
+    public async Task<IActionResult> SendInventoryExcel(
+        [FromServices] EmailService emailService,
+        [FromServices] IConfiguration cfg,
+        [FromServices] RealInventoryDiscreteExcelService excelService)
     {
         try
         {
@@ -82,18 +85,21 @@ public class GerenciaController : Controller
                 return NotFound(new { message = "El usuario actual no tiene un correo configurado en la base de datos." });
             }
 
-            var subject = "Prueba de Integración - Trackii";
+            var excelBytes = excelService.BuildExcel();
+            var fileName = $"InventarioDiscretos_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+            var subject = "Reporte de inventario de discretos - Trackii";
             var body = $@"
-                <h2>Hola Mundo desde Trackii</h2>
-                <p>Este es un correo de prueba automatizado para confirmar que la configuración SMTP está funcionando correctamente.</p>
-                <p>Usuario que detonó la prueba: <strong>{username}</strong></p>";
+                <h2>Reporte de inventario de discretos</h2>
+                <p>Se adjunta el archivo Excel con las hojas de resumen por familias e inventario detallado.</p>
+                <p>Usuario que solicitó el envío: <strong>{username}</strong></p>
+                <p>Generado el: <strong>{DateTime.Now:yyyy-MM-dd HH:mm}</strong></p>";
 
-            await emailService.SendEmailAsync(userEmail, subject, body);
-            return Ok(new { message = $"Correo enviado exitosamente a {userEmail}" });
+            await emailService.SendEmailWithAttachmentAsync(userEmail, subject, body, excelBytes, fileName);
+            return Ok(new { message = $"Reporte enviado exitosamente a {userEmail}" });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = $"Error interno al enviar el correo: {ex.Message}" });
+            return StatusCode(500, new { message = $"Error interno al enviar el reporte: {ex.Message}" });
         }
     }
 

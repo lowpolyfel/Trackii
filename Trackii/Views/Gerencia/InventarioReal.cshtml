@@ -11,7 +11,7 @@
 {
     <div class="d-flex justify-content-end mb-3">
         <button id="btnSendTestEmail" class="btn btn-primary shadow-sm">
-            <i class="fa-solid fa-envelope me-2"></i> Enviar Correo de Prueba
+            <i class="fa-solid fa-file-excel me-2"></i> Enviar Excel de Discretos
         </button>
     </div>
 }
@@ -138,11 +138,11 @@
             if (btnEmail) {
                 btnEmail.addEventListener('click', async function () {
                     const originalText = this.innerHTML;
-                    this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Enviando...';
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Generando y enviando...';
                     this.disabled = true;
 
                     try {
-                        const response = await fetch('/Gerencia/SendTestEmail', {
+                        const response = await fetch('/Gerencia/SendInventoryExcel', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' }
                         });
@@ -161,7 +161,7 @@
                         }
                     } catch (error) {
                         console.error(error);
-                        alert('Error de conexión al intentar enviar el correo.');
+                            alert('Error de conexión al intentar enviar el reporte.');
                     } finally {
                         this.innerHTML = originalText;
                         this.disabled = false;

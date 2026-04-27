@@ -33,4 +33,33 @@ public class EmailService
 
         await smtp.SendMailAsync(message);
     }
+
+    public async Task SendEmailWithAttachmentAsync(
+        string toEmail,
+        string subject,
+        string htmlBody,
+        byte[] fileBytes,
+        string fileName,
+        string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    {
+        using var message = new MailMessage
+        {
+            From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
+            Subject = subject,
+            Body = htmlBody,
+            IsBodyHtml = true
+        };
+        message.To.Add(toEmail);
+
+        using var fileStream = new MemoryStream(fileBytes);
+        message.Attachments.Add(new Attachment(fileStream, fileName, contentType));
+
+        using var smtp = new SmtpClient(_emailSettings.SmtpServer, _emailSettings.Port)
+        {
+            Credentials = new NetworkCredential(_emailSettings.Username, _emailSettings.Password),
+            EnableSsl = true
+        };
+
+        await smtp.SendMailAsync(message);
+    }
 }
