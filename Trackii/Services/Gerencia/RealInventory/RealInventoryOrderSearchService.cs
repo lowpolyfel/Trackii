@@ -72,12 +72,13 @@ public class RealInventoryOrderSearchService
         using var rd = cmd.ExecuteReader();
         while (rd.Read())
         {
+            var workOrderIdOrdinal = rd.GetOrdinal("work_order_id");
             var wipStatusOrdinal = rd.GetOrdinal("wip_status");
             var locationOrdinal = rd.GetOrdinal("current_location");
 
             vm.Results.Add(new RealInventoryOrderSearchRowVm
             {
-                WorkOrderId = rd.GetFieldValue<uint>("work_order_id"),
+                WorkOrderId = rd.GetFieldValue<uint>(workOrderIdOrdinal),
                 WoNumber = rd.GetString("wo_number"),
                 Product = rd.GetString("part_number"),
                 Family = rd.GetString("family_name"),
