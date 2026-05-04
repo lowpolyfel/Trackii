@@ -1,0 +1,29 @@
+@model Trackii.Models.Engineering.OrderTools.OrderActivationVm
+@{ ViewData["Title"] = "Activar órdenes"; }
+<div class="card">
+    <h2>Activar órdenes canceladas/inactivas</h2>
+    <form method="get" class="filters" style="margin:12px 0;">
+        <input type="search" class="input" name="search" value="@Model.Search" placeholder="Buscar WO o part number" />
+        <button class="btn btn-secondary" type="submit">Buscar</button>
+    </form>
+    @if (TempData["Ok"] is string ok){<div class="alert">@ok</div>}
+    @if (TempData["Error"] is string er){<div class="alert error">@er</div>}
+    <table class="table">
+        <thead><tr><th>WO</th><th>Part</th><th>Status</th><th>Active</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var row in Model.Items){
+            <tr>
+                <td>@row.WoNumber</td><td>@row.PartNumber</td><td>@row.Status</td><td>@(row.Active ? "1" : "0")</td>
+                <td>
+                    <form method="post" action="/Engineering/OrderTools/Activate" class="inline-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="workOrderId" value="@row.WorkOrderId" />
+                        <input type="hidden" name="search" value="@Model.Search" />
+                        <button class="btn-chip success" type="submit">Activar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
