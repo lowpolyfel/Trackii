@@ -158,6 +158,17 @@
                         <i class="fa-solid fa-industry"></i>
                         <span>WIP Manager</span>
                     </a>
+
+                    <a asp-controller="OrderTools" asp-action="Activate" class="@(currentController == "OrderTools" && currentAction == "Activate" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-play"></i>
+                        <span>Activar órdenes</span>
+                    </a>
+
+                    <a asp-controller="OrderTools" asp-action="EditPieces" class="@(currentController == "OrderTools" && currentAction == "EditPieces" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                        <span>Modificar piezas</span>
+                    </a>
+
                 }
 
 
