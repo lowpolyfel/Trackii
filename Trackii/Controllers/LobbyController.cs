@@ -4,7 +4,7 @@ using Trackii.Services;
 
 namespace Trackii.Controllers;
 
-[Authorize(Roles = "Admin,Engineering,Ingenieria")]
+[Authorize(Roles = "Admin")]
 public class LobbyController : Controller
 {
     private readonly LobbyService _svc;
@@ -32,7 +32,7 @@ public class LobbyController : Controller
         return View(vm);
     }
 
-    [Authorize(Roles = "Admin,Engineering,Ingenieria")]
+    [Authorize(Roles = "Admin")]
     public IActionResult EngineeringOrders(string? search, string? status, uint? familyId, uint? subfamilyId, uint? focusSubfamilyId, uint? locationId, uint? routeId)
     {
         var vm = _svc.GetEngineeringActiveOrders(search, status, familyId, subfamilyId, focusSubfamilyId, locationId, routeId);

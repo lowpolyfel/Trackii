@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trackii.Models.Admin.Family;
 using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize(Roles = "Admin,Engineering,Ingenieria")]
+[Authorize(Roles = "Admin")]
 [Route("Admin/Family")]
 public class FamilyController : Controller
 {
