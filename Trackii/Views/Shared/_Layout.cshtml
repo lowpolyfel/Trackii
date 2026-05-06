@@ -55,7 +55,7 @@
                     </a>
                 }
 
-                @if (isAdmin || isGerencia)
+                @if (isAdmin || isEngineering || isGerencia)
                 {
                     <a asp-controller="Gerencia" asp-action="Index" class="@(currentController == "Gerencia" && currentAction == "Index" ? "active" : string.Empty)">
                         <i class="fa-solid fa-clipboard-check"></i>
@@ -68,6 +68,11 @@
                     <a asp-controller="Gerencia" asp-action="InventarioReal" class="@(currentController == "Gerencia" && (currentAction == "InventarioReal" || currentAction == "Lobby" || currentAction == "Index") ? "active" : string.Empty)">
                         <i class="fa-solid fa-table"></i>
                         <span>INVENTARIO REAL</span>
+                    </a>
+
+                    <a asp-controller="Gerencia" asp-action="BackendLobby" class="@(currentController == "Gerencia" && currentAction == "BackendLobby" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-table-cells"></i>
+                        <span>Lobby gerencia</span>
                     </a>
 
                     <a asp-controller="Gerencia" asp-action="OrderSearch" class="@(currentController == "Gerencia" && currentAction == "OrderSearch" ? "active" : string.Empty)">
