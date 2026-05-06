@@ -9,6 +9,7 @@
     var isAdmin = User.IsInRole("Admin");
     var isEngineering = User.IsInRole("Engineering") || User.IsInRole("Ingenieria");
     var isGerencia = User.IsInRole("Gerencia");
+    var orderSearchTerm = Context.Request.Query["q"].ToString();
     var altasBajasControllers = new[] { "AltasBajas", "Area", "Family", "Subfamily", "Product", "Route", "UnregisteredParts", "HardMod", "User", "Location", "Device", "Role", "ViewCatalog", "AdminWip", "ExcelGenerator", "WorkOrderReactivation" };
     var isAltasBajasActive = altasBajasControllers.Contains(currentController);
 }
@@ -80,7 +81,7 @@
                     </a>
                 }
 
-                @if (isAdmin)
+                @if (isAdmin || isGerencia)
                 {
                     <a asp-controller="Gerencia" asp-action="BackendLobby" class="@(currentController == "Gerencia" && currentAction == "BackendLobby" ? "active" : string.Empty)">
                         <i class="fa-solid fa-table-cells"></i>
@@ -94,7 +95,10 @@
                         <i class="fa-solid fa-list-check"></i>
                         <span>Órdenes activas</span>
                     </a>
+                }
 
+                @if (isAdmin)
+                {
                     <a asp-controller="Gerencia" asp-action="WorkOrders" class="@(currentController == "Gerencia" && currentAction == "WorkOrders" ? "active" : string.Empty)">
                         <i class="fa-solid fa-clipboard-list"></i>
                         <span>Detalle órdenes</span>
@@ -202,12 +206,6 @@
                         <span>Alta de órdenes</span>
                     </a>
                 }
-
-                    <a asp-controller="Reports" asp-action="Index" class="@(currentController == "Reports" ? "active" : string.Empty)">
-                        <i class="fa-solid fa-chart-pie"></i>
-                        <span>Reportes</span>
-                    </a>
-                }
             </nav>
         </aside>
 
@@ -220,6 +218,14 @@
                         <p>Operación organizada con una interfaz limpia y productiva.</p>
                     </div>
                 </div>
+
+                @if (isAdmin || isEngineering || isGerencia)
+                {
+                    <form asp-controller="Gerencia" asp-action="OrderSearch" method="get" class="topbar-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="search" name="q" placeholder="Buscar orden en inventario real..." autocomplete="off" value="@orderSearchTerm" />
+                    </form>
+                }
 
                 <div class="topbar-right">
                     <span class="user-pill">

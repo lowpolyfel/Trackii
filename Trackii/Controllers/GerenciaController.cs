@@ -144,7 +144,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}DiscreteMap.cshtml", vm);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Gerencia")]
     [HttpGet("LobbyGerencia")]
     public IActionResult BackendLobby(string? mode)
     {
@@ -152,7 +152,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}BackendLobby.cshtml", vm);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Gerencia")]
     [HttpGet("LobbyInventarioDetalle")]
     public IActionResult BackendLobbyInventoryDetail(string location, string familyGroup, string? mode)
     {
@@ -226,7 +226,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}Production.cshtml", vm);
     }
 
-    [Authorize(Roles = "Admin,Gerencia")]
+    [Authorize(Roles = "Admin")]
     [HttpGet("Ordenes")]
     public IActionResult WorkOrders()
     {
