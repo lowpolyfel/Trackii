@@ -9,7 +9,7 @@
     var isAdmin = User.IsInRole("Admin");
     var isEngineering = User.IsInRole("Engineering") || User.IsInRole("Ingenieria");
     var isGerencia = User.IsInRole("Gerencia");
-    var showGerenciaSidebarExtras = false;
+    var showGerenciaSidebarExtras = true;
     var showGerenciaAlternateModules = false;
     var altasBajasControllers = new[] { "AltasBajas", "Area", "Family", "Subfamily", "Product", "Route", "UnregisteredParts", "HardMod", "User", "Location", "Device", "Role", "ViewCatalog", "AdminWip", "ExcelGenerator", "WorkOrderReactivation" };
     var isAltasBajasActive = altasBajasControllers.Contains(currentController);
@@ -61,7 +61,7 @@
                     </a>
                 }
 
-                @if (isAdmin || isGerencia)
+                @if (isAdmin || isEngineering || isGerencia)
                 {
                     <a asp-controller="Gerencia" asp-action="Index" class="@(currentController == "Gerencia" && currentAction == "Index" ? "active" : string.Empty)">
                         <i class="fa-solid fa-clipboard-check"></i>
@@ -71,6 +71,11 @@
                     <a asp-controller="Gerencia" asp-action="InventarioReal" class="@(currentController == "Gerencia" && (currentAction == "InventarioReal" || currentAction == "Lobby" || currentAction == "Index") ? "active" : string.Empty)">
                         <i class="fa-solid fa-table"></i>
                         <span>INVENTARIO REAL</span>
+                    </a>
+
+                    <a asp-controller="Gerencia" asp-action="BackendLobby" class="@(currentController == "Gerencia" && currentAction == "BackendLobby" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-table-cells"></i>
+                        <span>Lobby gerencia</span>
                     </a>
 
                     <a asp-controller="Gerencia" asp-action="OrderSearch" class="@(currentController == "Gerencia" && currentAction == "OrderSearch" ? "active" : string.Empty)">
@@ -83,6 +88,36 @@
                         <span>Órdenes activas</span>
                     </a>
 
+                    <a asp-controller="Gerencia" asp-action="WorkOrders" class="@(currentController == "Gerencia" && currentAction == "WorkOrders" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                        <span>Detalle órdenes</span>
+                    </a>
+
+                    <a asp-controller="Gerencia" asp-action="Wip" class="@(currentController == "Gerencia" && currentAction == "Wip" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        <span>WIP detalle</span>
+                    </a>
+
+                    <a asp-controller="Gerencia" asp-action="ScanEvents" class="@(currentController == "Gerencia" && currentAction == "ScanEvents" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-barcode"></i>
+                        <span>Eventos de scan</span>
+                    </a>
+
+                    <a asp-controller="Gerencia" asp-action="Production" class="@(currentController == "Gerencia" && currentAction == "Production" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-gears"></i>
+                        <span>Producción</span>
+                    </a>
+
+                    <a asp-controller="Gerencia" asp-action="WeeklyOutput" class="@(currentController == "Gerencia" && currentAction == "WeeklyOutput" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-calendar-week"></i>
+                        <span>Salida semanal</span>
+                    </a>
+
+                    <a asp-controller="Gerencia" asp-action="ScrapCauses" class="@(currentController == "Gerencia" && currentAction == "ScrapCauses" ? "active" : string.Empty)">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span>Causas scrap</span>
+                    </a>
+
                     <a asp-controller="Gerencia" asp-action="ErrorCauses" class="@(currentController == "Gerencia" && currentAction == "ErrorCauses" ? "active" : string.Empty)">
                         <i class="fa-solid fa-triangle-exclamation"></i>
                         <span>Causas de errores</span>
@@ -90,7 +125,7 @@
 
                     <a asp-controller="Gerencia" asp-action="DiscreteMap" class="@(currentController == "Gerencia" && currentAction == "DiscreteMap" ? "active" : string.Empty)">
                         <i class="fa-solid fa-chart-column"></i>
-                        <span>Scrap por periodo</span>
+                        <span>Mapa de discretos</span>
                     </a>
 
                     @if (showGerenciaAlternateModules)
@@ -179,7 +214,10 @@
                         <i class="fa-solid fa-file-circle-plus"></i>
                         <span>Alta de órdenes</span>
                     </a>
+                }
 
+                @if (isAdmin || isEngineering)
+                {
                     <a asp-controller="ExcelGenerator" asp-action="Index" class="@(currentController == "ExcelGenerator" ? "active" : string.Empty)">
                         <i class="fa-solid fa-file-excel"></i>
                         <span>Generador de Excel</span>
