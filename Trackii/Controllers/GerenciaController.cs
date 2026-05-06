@@ -6,7 +6,7 @@ using Trackii.Services.Gerencia.RealInventory;
 
 namespace Trackii.Controllers;
 
-[Authorize(Roles = "Admin,Gerencia")]
+[Authorize(Roles = "Admin,Engineering,Ingenieria,Gerencia")]
 [Route("Gerencia")]
 public class GerenciaController : Controller
 {
@@ -40,6 +40,7 @@ public class GerenciaController : Controller
         return RedirectToAction(nameof(InventarioReal));
     }
 
+    [Authorize(Roles = "Admin,Engineering,Ingenieria,Gerencia")]
     [HttpGet("InventarioReal")]
     public IActionResult InventarioReal()
     {
@@ -50,7 +51,7 @@ public class GerenciaController : Controller
     }
 
     [HttpPost("SendInventoryExcel")]
-    [Authorize]
+    [Authorize(Roles = "Admin,Gerencia")]
     public async Task<IActionResult> SendInventoryExcel(
         [FromServices] EmailService emailService,
         [FromServices] IConfiguration cfg,
@@ -106,6 +107,7 @@ public class GerenciaController : Controller
         }
     }
 
+    [Authorize(Roles = "Admin,Engineering,Ingenieria,Gerencia")]
     [HttpGet("InventarioRealDetalle")]
     public IActionResult InventarioRealDetalle(string? location, string? familyGroup)
     {
@@ -118,6 +120,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}InventarioRealDetalle.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin,Engineering,Ingenieria,Gerencia")]
     [HttpGet("InventarioRealWoDetalle")]
     public IActionResult InventarioRealWoDetalle(string woNumber, string? location, string? familyGroup)
     {
@@ -125,6 +128,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}InventarioRealWoDetalle.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin,Engineering,Ingenieria,Gerencia")]
     [HttpGet("BuscadorOrdenes")]
     public IActionResult OrderSearch(string? q, int page = 1)
     {
@@ -132,6 +136,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}OrderSearch.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin,Engineering,Ingenieria")]
     [HttpGet("MapaDiscretos")]
     public IActionResult DiscreteMap(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, string? sortBy, string? metricView, string? selectedSubfamily)
     {
@@ -139,6 +144,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}DiscreteMap.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("LobbyGerencia")]
     public IActionResult BackendLobby(string? mode)
     {
@@ -146,6 +152,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}BackendLobby.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("LobbyInventarioDetalle")]
     public IActionResult BackendLobbyInventoryDetail(string location, string familyGroup, string? mode)
     {
@@ -153,6 +160,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}BackendLobbyInventoryDetail.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin,Engineering,Ingenieria")]
     [HttpGet("DiaDiscretos")]
     public IActionResult DiscreteDay(DateTime day, string? sortBy)
     {
@@ -160,6 +168,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}DiscreteDay.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin,Engineering,Ingenieria")]
     [HttpGet("DetalleMapaDiscretos")]
     public IActionResult DiscreteMapDetail(string location, string subfamily, string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate, DateTime? day)
     {
@@ -167,6 +176,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}DiscreteMapDetail.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("PanelesDiariosDiscretos")]
     public IActionResult DiscreteDailyPanels()
     {
@@ -174,6 +184,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}DiscreteDailyPanels.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("CausasScrap")]
     public IActionResult ScrapCauses(DateTime? day, string? woNumber, string? product)
     {
@@ -181,6 +192,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}ScrapCauses.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin,Gerencia")]
     [HttpGet("OrdenesActivas")]
     public IActionResult ActiveOrders(string? location, string? subfamily)
     {
@@ -190,6 +202,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}ActiveOrders.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin,Engineering,Ingenieria,Gerencia")]
     [HttpGet("CausasErrores")]
     public IActionResult ErrorCauses()
     {
@@ -197,6 +210,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}ErrorCauses.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("TendenciaDiaria")]
     public IActionResult DailyTrend()
     {
@@ -204,6 +218,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}DailyTrend.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("Produccion")]
     public IActionResult Production()
     {
@@ -211,6 +226,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}Production.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin,Gerencia")]
     [HttpGet("Ordenes")]
     public IActionResult WorkOrders()
     {
@@ -218,6 +234,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}WorkOrders.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("Wip")]
     public IActionResult Wip()
     {
@@ -225,6 +242,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}Wip.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("ScanEvents")]
     public IActionResult ScanEvents()
     {
@@ -232,6 +250,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}ScanEvents.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("Throughput")]
     public IActionResult Throughput()
     {
@@ -239,6 +258,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}Throughput.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("SalidaSemanal")]
     public IActionResult WeeklyOutput(string? periodType, string? weekValue, string? monthValue, DateTime? fromDate, DateTime? toDate)
     {
@@ -246,6 +266,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}WeeklyOutput.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("ReworkSummary")]
     public IActionResult ReworkSummary()
     {
@@ -253,6 +274,7 @@ public class GerenciaController : Controller
         return View($"{ViewBase}ReworkSummary.cshtml", vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("WoHealth")]
     public IActionResult WoHealth()
     {

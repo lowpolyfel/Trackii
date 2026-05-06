@@ -40,10 +40,16 @@ public class AccountController : Controller
             principal
         );
 
+        if (principal.IsInRole("Admin"))
+            return RedirectToAction("Index", "Lobby");
+
+        if (principal.IsInRole("Engineering") || principal.IsInRole("Ingenieria"))
+            return RedirectToAction("InventarioReal", "Gerencia");
+
         if (principal.IsInRole("Gerencia"))
             return RedirectToAction("Lobby", "Gerencia");
 
-        return RedirectToAction("Index", "Lobby");
+        return RedirectToAction("Denied", "Account");
     }
 
 

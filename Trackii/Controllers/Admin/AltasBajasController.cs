@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize(Roles = "Admin,Engineering,Ingenieria")]
+[Authorize(Roles = "Admin")]
 [Route("Admin/AltasBajas")]
 public class AltasBajasController : Controller
 {

@@ -5,7 +5,7 @@ using Trackii.Services.Engineering;
 
 namespace Trackii.Controllers.Engineering;
 
-[Authorize(Roles = "Admin,Engineering,Ingenieria")]
+[Authorize(Roles = "Admin")]
 [Route("Engineering/UnregisteredParts")]
 public class UnregisteredPartsController : Controller
 {

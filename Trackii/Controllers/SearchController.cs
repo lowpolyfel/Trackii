@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trackii.Services.Search;
 
 namespace Trackii.Controllers;
 
+[Authorize(Roles = "Admin")]
 [Route("Buscador")]
 public class SearchController : Controller
 {
