@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trackii.Models.Admin.Product;
 using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize(Roles = "Admin,Engineering,Ingenieria")]
+[Authorize(Roles = "Admin")]
 [Route("Admin/Product")]
 public class ProductController : Controller
 {
