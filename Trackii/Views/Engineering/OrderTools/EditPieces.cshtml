@@ -1,0 +1,54 @@
+@model Trackii.Models.Engineering.OrderTools.OrderPiecesEditVm
+@{ ViewData["Title"] = "Modificar piezas"; }
+<div class="card">
+    <h2>Modificar piezas por orden</h2>
+    <form method="get" class="filters" style="margin:12px 0;">
+        <input type="search" class="input" name="search" value="@Model.Search" placeholder="Buscar WO o part number" />
+        <button class="btn btn-secondary" type="submit">Buscar</button>
+    </form>
+
+    @if (TempData["Ok"] is string ok){<div class="alert">@ok</div>}
+    @if (TempData["Error"] is string er){<div class="alert error">@er</div>}
+
+    <div style="display:grid; grid-template-columns: 320px 1fr; gap:16px;">
+        <div>
+            <h4>Resultados</h4>
+            @foreach (var m in Model.Matches){
+                <a class="btn btn-secondary" style="display:block; margin-bottom:6px; text-align:left;" href="/Engineering/OrderTools/EditPieces?search=@Model.Search&selectedWo=@m.WoNumber">@m.WoNumber · @m.PartNumber</a>
+            }
+        </div>
+        <div>
+            @if (Model.Detail is null)
+            {
+                <p class="subtitle">Selecciona una orden para editar piezas y recalcular scrap.</p>
+            }
+            else
+            {
+                <h4>@Model.Detail.WoNumber · @Model.Detail.PartNumber</h4>
+                <table class="table">
+                    <thead><tr><th>Paso</th><th>Localidad</th><th>Qty In</th><th>Scrap</th><th>Actualizar</th></tr></thead>
+                    <tbody>
+                    @foreach (var s in Model.Detail.Steps)
+                    {
+                        <tr>
+                            <td>@s.StepNumber</td><td>@s.Location</td><td>@s.QtyIn</td><td>@s.QtyScrap</td>
+                            <td>
+                                <form method="post" action="/Engineering/OrderTools/EditPieces" class="inline-form" style="display:flex; gap:6px; align-items:center;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="workOrderId" value="@Model.Detail.WorkOrderId" />
+                                    <input type="hidden" name="routeStepId" value="@s.RouteStepId" />
+                                    <input type="hidden" name="search" value="@Model.Search" />
+                                    <input type="hidden" name="selectedWo" value="@Model.Detail.WoNumber" />
+                                    <input class="input" type="number" name="qtyIn" min="0" value="@s.QtyIn" style="width:100px;" />
+                                    <label><input type="checkbox" name="cascade" value="true" /> Ajustar siguientes pasos</label>
+                                    <button type="submit" class="btn-chip">Guardar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>

@@ -5,7 +5,7 @@ using Trackii.Services.Admin;
 
 namespace Trackii.Controllers.Admin;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Engineering,Ingenieria")]
 [Route("Admin/ExcelGenerator")]
 public class ExcelGeneratorController : Controller
 {

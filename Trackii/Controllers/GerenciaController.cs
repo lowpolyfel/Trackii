@@ -6,7 +6,7 @@ using Trackii.Services.Gerencia.RealInventory;
 
 namespace Trackii.Controllers;
 
-[Authorize(Roles = "Admin,Gerencia")]
+[Authorize(Roles = "Admin,Engineering,Ingenieria,Gerencia")]
 [Route("Gerencia")]
 public class GerenciaController : Controller
 {
